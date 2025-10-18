@@ -1,4 +1,8 @@
-import { Context, Effect, Layer } from "effect";
+import { Context, Effect, Layer, Schema } from "effect";
+import {
+  type ExaAnswerResponse,
+  ExaAnswerResponseSchema,
+} from "../schema/exa-answer.schema";
 import { exaApiKeyConfig, mapboxTokenConfig } from "./config-service";
 import type { SearchResult, SearchStateService } from "./search-state-service";
 import { SearchStateServiceTag } from "./search-state-service";
@@ -14,8 +18,8 @@ export class ExaError {
 /**
  * Exa Search Service
  *
- * Integrates with Exa.ai API for semantic search of locations and places.
- * Coordinates with SearchStateService to update shared state.
+ * Integrates with Exa.ai Answer API for semantic search of Singapore landmarks.
+ * Uses Effect.Schema for type-safe response parsing.
  */
 export interface ExaSearchService {
   search: (
@@ -25,21 +29,6 @@ export interface ExaSearchService {
 
 export const ExaSearchServiceTag =
   Context.GenericTag<ExaSearchService>("ExaSearchService");
-
-/**
- * Exa API Response Types
- */
-interface ExaSearchResult {
-  id: string;
-  title: string;
-  url: string;
-  text: string;
-  publishedDate?: string;
-}
-
-interface ExaSearchResponse {
-  results: ExaSearchResult[];
-}
 
 /**
  * Mapbox Geocoding Response Types
@@ -55,7 +44,7 @@ interface MapboxGeocodingResponse {
 }
 
 /**
- * Implementation of Exa Search Service
+ * Implementation of Exa Search Service using Answer API
  */
 export class ExaSearchServiceImpl implements ExaSearchService {
   /**
@@ -107,24 +96,101 @@ export class ExaSearchServiceImpl implements ExaSearchService {
     );
   }
 
+  /**
+   * Extract location entries from Exa Answer response
+   * Parses structured format: "Name | Address | Description"
+   * Returns objects with name, searchQuery, and description
+   */
+  private extractLocationEntries(
+    answer: string,
+  ): Array<{ name: string; searchQuery: string; description: string }> {
+    // Split by numbered lines (1. 2. 3.) or bullet points
+    const lines = answer.split(/\n\s*[\d]+\.\s*|\n\s*[•-]\s*/);
+
+    const entries: Array<{
+      name: string;
+      searchQuery: string;
+      description: string;
+    }> = [];
+
+    for (const line of lines) {
+      if (line.trim().length < 10) continue; // Skip short lines
+
+      // Try to parse structured format: "Name | Address | Description"
+      const parts = line.split("|").map((p) => p.trim());
+
+      if (parts.length >= 2) {
+        // Structured format found
+        const name = parts[0].trim();
+        const address = parts[1].trim();
+        const description = parts[2]?.trim() || "";
+
+        if (name.length < 3) continue;
+
+        // Use name + address for geocoding
+        const searchQuery = `${name}, ${address}`;
+
+        entries.push({ name, searchQuery, description });
+      } else {
+        // Fallback: try to parse unstructured format
+        // Extract name (first part before comma, colon, dash, or "at")
+        const nameMatch = line.match(/^([^,:\-|]+?)(?:\s+at|\s+-|\s+,|\s+\|)/i);
+        if (!nameMatch) continue;
+
+        const name = nameMatch[1].trim();
+
+        // Skip if too short or generic
+        if (
+          name.length < 3 ||
+          /^(and|or|the|in|at|near|Singapore|landmark|location|place|here|are|top|famous|find|list)$/i.test(
+            name,
+          )
+        ) {
+          continue;
+        }
+
+        // Extract address (look for street patterns, postal codes)
+        const addressMatch = line.match(
+          /(?:at|located|address|:)\s*([^,\n]+?(?:Road|Street|Avenue|Drive|Boulevard|Lane|Way|Singapore\s+\d{6}|\d{6}))/i,
+        );
+
+        // Extract description (remaining text, up to 100 chars)
+        const descMatch = line.match(/[:\-|]\s*(.+)$/);
+        const description = descMatch?.[1]?.trim().substring(0, 100) || "";
+
+        // Use name + address for better geocoding
+        const searchQuery = addressMatch
+          ? `${name}, ${addressMatch[1].trim()}, Singapore`
+          : `${name}, Singapore`;
+
+        entries.push({ name, searchQuery, description });
+      }
+
+      // Limit to top 5
+      if (entries.length >= 5) break;
+    }
+
+    return entries;
+  }
+
+  /**
+   * Search for Singapore landmarks using Exa Answer API
+   */
   search(query: string) {
     return Effect.gen(
       function* (this: ExaSearchServiceImpl) {
         const searchState = yield* SearchStateServiceTag;
 
-        // Update state to loading
         yield* searchState.startSearch(query);
 
-        // Get API keys from config
         const exaApiKey = yield* exaApiKeyConfig;
         const mapboxToken = yield* mapboxTokenConfig;
 
-        // Check if API key is configured
+        // Fallback to mock data if API key not configured
         if (!exaApiKey || exaApiKey === "") {
           yield* Effect.logWarning(
             "EXA_API_KEY not configured, using mock data",
           );
-          // Return mock data if no API key
           const mockResults: SearchResult[] = yield* Effect.sync(() => [
             {
               id: `exa-${Date.now()}-1`,
@@ -156,32 +222,34 @@ export class ExaSearchServiceImpl implements ExaSearchService {
           return mockResults;
         }
 
-        // Search Exa for Singapore landmarks
         yield* Effect.log(
-          `Searching Exa API for Singapore landmarks: "${query}"`,
+          `Searching Exa Answer API for Singapore landmarks: "${query}"`,
         );
 
-        const searchQuery = `${query} Singapore landmark tourist attraction`;
+        // Concise query focused on essential location data
+        const enhancedQuery = `Find 5 locations for "${query}" in Singapore. For each, list:
+Name | Full Address | Brief description (max 8 words)
 
+Example format:
+1. Marina Bay Sands | 10 Bayfront Ave, Singapore 018956 | Iconic hotel with rooftop pool`;
+
+        // Call Exa Answer API
         const response = yield* Effect.tryPromise({
           try: () =>
-            fetch("https://api.exa.ai/search", {
+            fetch("https://api.exa.ai/answer", {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
                 "x-api-key": exaApiKey,
               },
               body: JSON.stringify({
-                query: searchQuery,
-                num_results: 5,
-                type: "auto",
-                contents: {
-                  text: { max_characters: 300 },
-                },
-                livecrawl: "preferred",
+                query: enhancedQuery,
+                num_sources: 3,
+                use_autoprompt: true,
               }),
             }),
-          catch: (error) => new ExaError(`Exa API fetch failed: ${error}`),
+          catch: (error) =>
+            new ExaError(`Exa Answer API fetch failed: ${error}`),
         });
 
         if (!response.ok) {
@@ -190,61 +258,85 @@ export class ExaSearchServiceImpl implements ExaSearchService {
             catch: () => "Unknown error",
           });
           yield* Effect.logError(
-            `Exa API error: ${response.status} - ${errorText}`,
+            `Exa Answer API error: ${response.status} - ${errorText}`,
           );
           return yield* Effect.fail(
-            new ExaError(`Exa API returned ${response.status}`),
+            new ExaError(`Exa Answer API returned ${response.status}`),
           );
         }
 
-        const data: ExaSearchResponse = yield* Effect.tryPromise({
+        // Parse response as JSON
+        const rawData = yield* Effect.tryPromise({
           try: () => response.json(),
           catch: (error) =>
             new ExaError(`Failed to parse Exa response: ${error}`),
         });
 
+        // Decode and validate using Effect.Schema
+        const answerData: ExaAnswerResponse = yield* Effect.try({
+          try: () => Schema.decodeUnknownSync(ExaAnswerResponseSchema)(rawData),
+          catch: (error) =>
+            new ExaError(
+              `Schema validation failed: ${error instanceof Error ? error.message : String(error)}`,
+            ),
+        });
+
         yield* Effect.log(
-          `Exa API returned ${data.results.length} results, geocoding locations...`,
+          `Exa Answer: "${answerData.answer.substring(0, 100)}..."`,
+        );
+        if (answerData.sources) {
+          yield* Effect.log(`Sources: ${answerData.sources.length}`);
+        }
+
+        // Extract location entries from the answer
+        const locationEntries = this.extractLocationEntries(answerData.answer);
+
+        yield* Effect.log(
+          `Extracted ${locationEntries.length} locations: ${locationEntries.map((e) => e.name).join(", ")}`,
         );
 
-        // Process results and geocode each one
+        // Geocode each location
         const exaResults: SearchResult[] = [];
 
-        for (const result of data.results.slice(0, 5)) {
-          // Extract location from title or description
-          const locationName = result.title;
+        for (const entry of locationEntries) {
+          yield* Effect.log(`Geocoding: "${entry.searchQuery}"`);
 
-          // Geocode the location
           const coordinates = yield* this.geocodeLocation(
-            locationName,
+            entry.searchQuery,
             mapboxToken,
           );
 
           if (coordinates) {
-            // Create search result with geocoded coordinates
+            // Use description from entry, or try to extract from answer, or use source content
+            const description =
+              entry.description ||
+              answerData.sources?.[0]?.content.substring(0, 150) ||
+              "Singapore location (via Exa Answer API)";
+
             exaResults.push({
-              id: result.id,
-              title: result.title,
-              description:
-                result.text?.substring(0, 200) ||
-                `Singapore landmark found via Exa search`,
+              id: `exa-${Date.now()}-${exaResults.length}`,
+              title: entry.name,
+              description,
               location: coordinates,
               source: "exa" as const,
               timestamp: Date.now(),
             });
+
+            yield* Effect.log(
+              `✓ ${entry.name} at (${coordinates.latitude.toFixed(4)}, ${coordinates.longitude.toFixed(4)})`,
+            );
           } else {
             yield* Effect.logWarning(
-              `Skipping result "${result.title}" - geocoding failed`,
+              `✗ Skipped "${entry.name}" - geocoding failed`,
             );
           }
         }
 
-        // Update state with results
         yield* searchState.setResults(exaResults);
         yield* searchState.completeSearch();
 
         yield* Effect.log(
-          `Exa search completed: ${exaResults.length} results with coordinates`,
+          `Exa Answer search completed: ${exaResults.length} results with coordinates`,
         );
 
         return exaResults;
@@ -256,10 +348,12 @@ export class ExaSearchServiceImpl implements ExaSearchService {
           const errorMessage =
             error && typeof error === "object" && "message" in error
               ? String((error as { message: unknown }).message)
-              : "Exa search failed";
+              : "Exa Answer search failed";
           yield* searchState.setError(errorMessage);
-          yield* Effect.logError("Exa search error", error);
-          return yield* Effect.fail(new ExaError("Failed to search Exa API"));
+          yield* Effect.logError("Exa Answer search error", error);
+          return yield* Effect.fail(
+            new ExaError("Failed to search Exa Answer API"),
+          );
         }),
       ),
     );
@@ -270,12 +364,3 @@ export const ExaSearchServiceLive = Layer.succeed(
   ExaSearchServiceTag,
   new ExaSearchServiceImpl(),
 );
-
-/**
- * Helper effect to perform Exa search
- */
-export const searchExaEffect = (query: string) =>
-  Effect.gen(function* () {
-    const exaService = yield* ExaSearchServiceTag;
-    return yield* exaService.search(query);
-  });
