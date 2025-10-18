@@ -1,7 +1,8 @@
 "use client";
 
-import { Moon, Sun, Monitor } from "lucide-react";
+import { Monitor, Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -9,7 +10,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useEffect, useState } from "react";
 
 export function ThemeToggle() {
   const { setTheme, theme } = useTheme();
@@ -21,7 +21,7 @@ export function ThemeToggle() {
 
   if (!mounted) {
     return (
-      <Button variant="outline" size="icon">
+      <Button variant="outline" size="icon" data-testid="theme-toggle">
         <Sun className="h-4 w-4" />
       </Button>
     );
@@ -30,27 +30,44 @@ export function ThemeToggle() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="icon">
+        <Button
+          variant="outline"
+          size="icon"
+          data-testid="theme-toggle"
+          className="bg-gray-900/95 text-white border-gray-700 hover:bg-gray-800/95 dark:bg-white/95 dark:text-gray-900 dark:border-gray-200 dark:hover:bg-gray-100/95"
+        >
           {theme === "light" ? (
-            <Sun className="h-4 w-4" />
-          ) : theme === "dark" ? (
             <Moon className="h-4 w-4" />
+          ) : theme === "dark" ? (
+            <Sun className="h-4 w-4" />
           ) : (
             <Monitor className="h-4 w-4" />
           )}
           <span className="sr-only">Toggle theme</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => setTheme("light")}>
+      <DropdownMenuContent
+        align="end"
+        className="bg-gray-900/95 border-gray-700 dark:bg-white/95 dark:border-gray-200"
+      >
+        <DropdownMenuItem
+          onClick={() => setTheme("light")}
+          className="text-white hover:bg-gray-800 dark:text-gray-900 dark:hover:bg-gray-100"
+        >
           <Sun className="mr-2 h-4 w-4" />
           Light
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("dark")}>
+        <DropdownMenuItem
+          onClick={() => setTheme("dark")}
+          className="text-white hover:bg-gray-800 dark:text-gray-900 dark:hover:bg-gray-100"
+        >
           <Moon className="mr-2 h-4 w-4" />
           Dark
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("system")}>
+        <DropdownMenuItem
+          onClick={() => setTheme("system")}
+          className="text-white hover:bg-gray-800 dark:text-gray-900 dark:hover:bg-gray-100"
+        >
           <Monitor className="mr-2 h-4 w-4" />
           System
         </DropdownMenuItem>

@@ -1,6 +1,8 @@
 "use client";
 
 import mapboxgl from "mapbox-gl";
+import { toastNotifications } from "@/hooks/use-toast";
+import { logger } from "@/lib/client-logger";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { useEffect, useRef, useState } from "react";
 
@@ -10,6 +12,7 @@ interface MapboxGLMapProps {
   className?: string;
   accessToken: string;
   onMapReady?: (map: mapboxgl.Map) => void;
+  style?: string;
 }
 
 export function MapboxGLMap({
@@ -18,23 +21,43 @@ export function MapboxGLMap({
   className = "",
   accessToken,
   onMapReady,
+  style = "mapbox://styles/mapbox/streets-v12",
 }: MapboxGLMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
+  const currentStyleRef = useRef<string>(style);
   const [isLoaded, setIsLoaded] = useState(false);
+  const lastErrorRef = useRef<string>("");
+
+  // Store initial props in refs so they don't trigger re-initialization
+  const initialPropsRef = useRef({
+    center,
+    zoom,
+    accessToken,
+    style,
+    onMapReady,
+  });
 
   useEffect(() => {
     if (map.current) return; // Initialize map only once
 
+    const {
+      accessToken: token,
+      center: initialCenter,
+      zoom: initialZoom,
+      style: initialStyle,
+      onMapReady: callback,
+    } = initialPropsRef.current;
+
     // Set Mapbox access token from props
-    mapboxgl.accessToken = accessToken;
+    mapboxgl.accessToken = token;
 
     if (mapContainer.current) {
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
-        style: "mapbox://styles/mapbox/streets-v12",
-        center: center,
-        zoom: zoom,
+        style: initialStyle,
+        center: initialCenter,
+        zoom: initialZoom,
         attributionControl: false,
       });
 
@@ -56,33 +79,87 @@ export function MapboxGLMap({
         "top-right",
       );
 
-      // Add marker for the center point
-      new mapboxgl.Marker({ color: "#8b5cf6" })
-        .setLngLat(center)
-        .addTo(map.current);
-
       // Handle map load
       map.current.on("load", () => {
         setIsLoaded(true);
-        if (onMapReady && map.current) {
-          onMapReady(map.current);
+        if (callback && map.current) {
+          callback(map.current);
         }
       });
 
-      // Handle map errors
+      // Handle map errors with user-friendly toasts
       map.current.on("error", (e) => {
-        console.error("Mapbox GL error:", e);
+        const errorMessage = e.error?.message || "Unknown error";
+
+        // Prevent duplicate toasts for the same error
+        if (lastErrorRef.current === errorMessage) {
+          logger.debug("Mapbox GL error (duplicate)", e);
+          return;
+        }
+        lastErrorRef.current = errorMessage;
+
+        // Token-related errors
+        if (
+          errorMessage.includes("secret access token") ||
+          errorMessage.includes("sk.")
+        ) {
+          toastNotifications.error(
+            "Invalid Mapbox token - please use a public token (pk.*)",
+          );
+        }
+        // 403 Forbidden errors (token permissions/restrictions)
+        else if (
+          errorMessage.includes("Forbidden") ||
+          errorMessage.includes("403")
+        ) {
+          toastNotifications.error(
+            "Mapbox token forbidden - check token permissions and URL restrictions",
+          );
+        }
+        // Tile loading errors
+        else if (
+          errorMessage.includes("tile") ||
+          errorMessage.includes("Tile")
+        ) {
+          toastNotifications.warning(
+            "Map tiles failed to load - check your internet connection",
+          );
+        }
+        // Style loading errors
+        else if (
+          errorMessage.includes("style") ||
+          errorMessage.includes("Style")
+        ) {
+          toastNotifications.error("Failed to load map style");
+        }
+        // Generic errors
+        else {
+          toastNotifications.error(
+            "Map error occurred - see console for details",
+          );
+        }
+
+        logger.error("Mapbox GL error", e);
       });
     }
 
-    // Cleanup function
+    // Cleanup function - only runs when component unmounts
     return () => {
       if (map.current) {
         map.current.remove();
         map.current = null;
       }
     };
-  }, [accessToken]); // Only depend on accessToken, not center/zoom
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Initialize map only once - empty deps array
+
+  // Handle style changes dynamically
+  useEffect(() => {
+    if (map.current && isLoaded && currentStyleRef.current !== style) {
+      currentStyleRef.current = style;
+      map.current.setStyle(style);
+    }
+  }, [style, isLoaded]);
 
   return (
     <div className={`relative ${className}`} data-testid="mapbox-gl-map">

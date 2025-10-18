@@ -1,10 +1,10 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
+import { generateRandomCoordinatesEffect } from "@/lib/services/random-coordinates-service";
 import { Effect } from "effect";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { generateRandomCoordinatesEffect } from "@/lib/random-coordinates-service";
 
 interface RandomCoordinatesButtonProps {
   onCoordinatesGenerated: (coords: {
@@ -46,9 +46,9 @@ export function RandomCoordinatesButton({
       toast.success(
         `New coordinates generated: ${result.latitude.toFixed(4)}, ${result.longitude.toFixed(4)}`,
       );
-    } catch (error) {
-      // Error is already handled in the Effect.catchAll above
-      console.error("Random coordinate generation failed:", error);
+    } catch (_error) {
+      // Error is already handled and logged in the Effect.catchAll above
+      // No additional logging needed here
     } finally {
       setIsGenerating(false);
     }
@@ -59,7 +59,7 @@ export function RandomCoordinatesButton({
       onClick={generateRandomCoordinates}
       disabled={isGenerating}
       variant="outline"
-      className="w-full"
+      className="w-full bg-gray-900/95 text-white border-gray-700 hover:bg-gray-800/95 dark:bg-white/95 dark:text-gray-900 dark:border-gray-200 dark:hover:bg-gray-100/95"
     >
       {isGenerating ? (
         <>
