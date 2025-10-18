@@ -1,10 +1,10 @@
 import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
 import {
-    getCurrentLocation,
-    getRandomSingaporeCoords,
-    getSingaporeLocation,
-    getStaticMap,
+  getCurrentLocation,
+  getRandomSingaporeCoords,
+  getSingaporeLocation,
+  getStaticMap,
 } from "./server-runtime";
 
 describe("Server Runtime - Live Functionality", () => {
