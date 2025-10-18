@@ -1,0 +1,135 @@
+# Cursor Configuration for Next.js + Effect-TS Project
+
+## Project Structure
+This is a full-stack application with:
+- **Frontend**: Next.js 15 with App Router, TypeScript, Tailwind CSS
+- **Backend**: Effect-TS with Express.js, separate runtime
+- **Code Organization**: Frontend and backend are separated by runtimes
+
+## Directory Structure
+```
+src/
+├── app/                    # Next.js App Router (frontend)
+│   ├── globals.css
+│   ├── layout.tsx
+│   └── page.tsx
+├── components/             # React components (frontend)
+├── lib/                   # Frontend utilities
+└── backend/               # Effect-TS backend (separate runtime)
+    ├── api/               # Express routes
+    ├── services/          # Effect-TS services
+    ├── config/            # Configuration
+    ├── types/             # Type definitions
+    └── index.ts           # Backend entry point
+```
+
+## Development Guidelines
+
+### Frontend (Next.js)
+- Use App Router patterns
+- Components in `src/components/`
+- Utilities in `src/lib/`
+- Use TypeScript strictly
+- Follow React 19 patterns
+- Use Tailwind CSS for styling
+- Prefer server components when possible
+
+### Backend (Effect-TS)
+- All backend code in `src/backend/`
+- Use Effect-TS for all business logic
+- Express.js for HTTP handling
+- Services should be pure Effect programs
+- Use proper error handling with Effect
+- Configuration through Effect Config
+- Layer-based dependency injection
+
+### Effect-TS Patterns
+- Use `Effect.gen` for complex flows
+- Use `Data.TaggedError` for custom errors
+- Use `Layer` for dependency injection
+- Use `Runtime` for running effects
+- Use `Console.log` instead of console.log
+- Prefer `Effect.Effect` over raw functions
+
+### API Design
+- RESTful endpoints under `/api/`
+- Use proper HTTP status codes
+- Error responses should be consistent
+- Use Effect error handling in routes
+- Separate concerns: routes, services, types
+
+### TypeScript Configuration
+- Frontend: `tsconfig.json` (extends base)
+- Backend: `tsconfig.backend.json` (separate compilation)
+- Strict mode enabled
+- Path aliases: `@/*` for frontend
+
+### Development Scripts
+- `npm run dev` - Frontend only
+- `npm run dev:backend` - Backend only  
+- `npm run dev:full` - Both frontend and backend
+- `npm run build` - Build frontend
+- `npm run build:backend` - Build backend
+- `npm run build:full` - Build both
+
+### Code Style
+- Use Biome for linting and formatting
+- Follow Effect-TS conventions
+- Use functional programming patterns
+- Prefer immutability
+- Use proper error boundaries
+
+### Dependencies
+- Frontend: React 19, Next.js 15, Tailwind CSS
+- Backend: Effect-TS, Express.js, CORS, Helmet
+- Dev: TypeScript, Biome, tsx, concurrently
+
+## AI Assistant Instructions
+When working on this project:
+
+1. **Identify the context**: Frontend (Next.js) or Backend (Effect-TS)
+2. **Use appropriate patterns**: React patterns for frontend, Effect patterns for backend
+3. **Maintain separation**: Don't mix frontend and backend code
+4. **Follow Effect-TS conventions**: Use Effect.gen, proper error handling, layers
+5. **Use TypeScript strictly**: Proper typing for both runtimes
+6. **Consider the architecture**: Services for business logic, routes for HTTP handling
+7. **Test thoroughly**: Both frontend and backend should work independently
+
+## Common Patterns
+
+### Effect-TS Service Pattern
+```typescript
+export interface MyService {
+  readonly doSomething: () => Effect.Effect<Result, Error, never>
+}
+
+const makeMyService = (): MyService => ({
+  doSomething: () => Effect.gen(function* () {
+    // Implementation
+  })
+})
+
+export const MyServiceLive = Effect.sync(() => makeMyService())
+export const MyService = Effect.service(MyServiceLive)
+```
+
+### Express Route with Effect
+```typescript
+router.get("/", (req, res) => {
+  const program = Effect.gen(function* () {
+    // Effect logic
+  })
+
+  Effect.runPromise(program)
+    .then((result) => res.json(result))
+    .catch((error) => res.status(500).json({ error }))
+})
+```
+
+### Next.js API Route (if needed)
+```typescript
+export async function GET() {
+  // Server-side logic
+  return Response.json({ data })
+}
+```
