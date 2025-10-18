@@ -9,6 +9,7 @@ interface MapboxGLMapProps {
   zoom: number;
   className?: string;
   accessToken: string;
+  onMapReady?: (map: mapboxgl.Map) => void;
 }
 
 export function MapboxGLMap({
@@ -16,6 +17,7 @@ export function MapboxGLMap({
   zoom,
   className = "",
   accessToken,
+  onMapReady,
 }: MapboxGLMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -62,6 +64,9 @@ export function MapboxGLMap({
       // Handle map load
       map.current.on("load", () => {
         setIsLoaded(true);
+        if (onMapReady && map.current) {
+          onMapReady(map.current);
+        }
       });
 
       // Handle map errors
@@ -77,7 +82,7 @@ export function MapboxGLMap({
         map.current = null;
       }
     };
-  }, [center, zoom, accessToken]);
+  }, [accessToken]); // Only depend on accessToken, not center/zoom
 
   return (
     <div className={`relative ${className}`} data-testid="mapbox-gl-map">
