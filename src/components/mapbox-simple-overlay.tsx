@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/client-logger";
 import mapboxgl from "mapbox-gl";
 import { useEffect, useRef } from "react";
 
@@ -43,7 +44,7 @@ export function MapboxSimpleOverlay({
             setTimeout(tryAddMarker, retryDelay);
             return;
           }
-          console.warn("Map canvas container not ready after retries");
+          logger.warn("Map canvas container not ready after retries");
           return;
         }
       } catch (error) {
@@ -53,7 +54,7 @@ export function MapboxSimpleOverlay({
           setTimeout(tryAddMarker, retryDelay);
           return;
         }
-        console.warn("Map not fully initialized after retries:", error);
+        logger.warn("Map not fully initialized after retries", error);
         return;
       }
 
@@ -97,7 +98,7 @@ export function MapboxSimpleOverlay({
 
         markerRef.current = marker;
       } catch (error) {
-        console.error("Failed to add marker:", error);
+        logger.error("Failed to add marker", error);
       }
     };
 

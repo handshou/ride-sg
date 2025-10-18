@@ -32,29 +32,21 @@ export interface ToastService {
  */
 export class ToastServiceImpl implements ToastService {
   success(message: string): Effect.Effect<void, never> {
-    return Effect.sync(() => {
-      // In server components, we can't use client-side toasts
-      // This will be handled by the UI layer
-      console.log(`✅ Toast Success: ${message}`);
-    });
+    // In server components, we can't use client-side toasts
+    // This will be handled by the UI layer
+    return Effect.log(`✅ Toast Success: ${message}`);
   }
 
   error(message: string): Effect.Effect<void, never> {
-    return Effect.sync(() => {
-      console.log(`❌ Toast Error: ${message}`);
-    });
+    return Effect.logError(`❌ Toast Error: ${message}`);
   }
 
   warning(message: string): Effect.Effect<void, never> {
-    return Effect.sync(() => {
-      console.log(`⚠️ Toast Warning: ${message}`);
-    });
+    return Effect.logWarning(`⚠️ Toast Warning: ${message}`);
   }
 
   info(message: string): Effect.Effect<void, never> {
-    return Effect.sync(() => {
-      console.log(`ℹ️ Toast Info: ${message}`);
-    });
+    return Effect.logInfo(`ℹ️ Toast Info: ${message}`);
   }
 }
 

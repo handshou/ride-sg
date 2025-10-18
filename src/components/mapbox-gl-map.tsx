@@ -1,7 +1,8 @@
 "use client";
 
-import mapboxgl from "mapbox-gl";
+import { logger } from "@/lib/client-logger";
 import { toastNotifications } from "@/lib/toast-hook";
+import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { useEffect, useRef, useState } from "react";
 
@@ -92,7 +93,7 @@ export function MapboxGLMap({
 
         // Prevent duplicate toasts for the same error
         if (lastErrorRef.current === errorMessage) {
-          console.error("Mapbox GL error (duplicate):", e);
+          logger.debug("Mapbox GL error (duplicate)", e);
           return;
         }
         lastErrorRef.current = errorMessage;
@@ -104,6 +105,15 @@ export function MapboxGLMap({
         ) {
           toastNotifications.error(
             "Invalid Mapbox token - please use a public token (pk.*)",
+          );
+        }
+        // 403 Forbidden errors (token permissions/restrictions)
+        else if (
+          errorMessage.includes("Forbidden") ||
+          errorMessage.includes("403")
+        ) {
+          toastNotifications.error(
+            "Mapbox token forbidden - check token permissions and URL restrictions",
           );
         }
         // Tile loading errors
@@ -129,7 +139,7 @@ export function MapboxGLMap({
           );
         }
 
-        console.error("Mapbox GL error:", e);
+        logger.error("Mapbox GL error", e);
       });
     }
 

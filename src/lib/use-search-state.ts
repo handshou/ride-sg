@@ -2,6 +2,7 @@
 
 import { Effect } from "effect";
 import { useState } from "react";
+import { logger } from "./client-logger";
 import {
   runCoordinatedSearch,
   runGetSearchResults,
@@ -68,7 +69,7 @@ export function useSearchState() {
         selectedResult: result,
       }));
     } catch (error) {
-      console.error("Failed to select result:", error);
+      logger.error("Failed to select result", error);
     }
   };
 
@@ -86,7 +87,7 @@ export function useSearchState() {
 
       return results;
     } catch (error) {
-      console.error("Failed to refresh results:", error);
+      logger.error("Failed to refresh results", error);
       return [];
     }
   };

@@ -7,6 +7,7 @@ import { MapboxGLMap } from "@/components/mapbox-gl-map";
 import { MapboxSimpleOverlay } from "@/components/mapbox-simple-overlay";
 import { RandomCoordinatesButton } from "@/components/random-coordinates-button";
 import { SearchPanel } from "@/components/search-panel";
+import { logger } from "@/lib/client-logger";
 import { MAPBOX_STYLES } from "@/lib/map-styles";
 import type { GeocodeResult } from "@/lib/mapbox-service";
 import type { SearchResult } from "@/lib/search-state-service";
@@ -55,7 +56,7 @@ export function SingaporeMapExplorer({
       setIsMapReady(true);
 
       // Fly to initial location with a gentle animation
-      console.log("🗺️ Map ready, flying to initial location");
+      logger.debug("Map ready, flying to initial location");
       map.flyTo({
         center: [initialRandomCoords.longitude, initialRandomCoords.latitude],
         zoom: 13,
@@ -147,23 +148,24 @@ export function SingaporeMapExplorer({
 
   // Handle search result selection - flyTo the selected location
   const handleSearchResultSelect = useCallback((result: SearchResult) => {
-    console.log("🔍 Search result selected:", result.title, result.location);
+    logger.info("Search result selected", {
+      title: result.title,
+      location: result.location,
+    });
 
     // Fly to the search result with cinematic animation
     if (mapInstanceRef.current) {
       const map = mapInstanceRef.current;
       const currentCenter = map.getCenter();
 
-      console.log(
-        "✈️ Current map center:",
-        currentCenter.lng,
-        currentCenter.lat,
-      );
-      console.log(
-        "✈️ Flying to:",
-        result.location.longitude,
-        result.location.latitude,
-      );
+      logger.debug("Current map center", {
+        lng: currentCenter.lng,
+        lat: currentCenter.lat,
+      });
+      logger.debug("Flying to", {
+        longitude: result.location.longitude,
+        latitude: result.location.latitude,
+      });
 
       // Function to execute flyTo
       const executeFlyTo = () => {
@@ -180,7 +182,7 @@ export function SingaporeMapExplorer({
           pitch: 50, // Tilt for dramatic 3D view
           bearing: 30, // Slight rotation for visual interest
         });
-        console.log("✅ flyTo called successfully");
+        logger.success("flyTo called successfully");
 
         // Update marker location AFTER flyTo starts (to avoid re-render before animation)
         setMapLocation(result.location);
@@ -189,16 +191,16 @@ export function SingaporeMapExplorer({
 
       // If map style is still loading, wait for it to finish
       if (!map.isStyleLoaded()) {
-        console.log("⏳ Map style loading, waiting for 'styledata' event...");
+        logger.debug("Map style loading, waiting for styledata event");
         map.once("styledata", () => {
-          console.log("✅ Map style loaded, executing flyTo");
+          logger.success("Map style loaded, executing flyTo");
           executeFlyTo();
         });
       } else {
         executeFlyTo();
       }
     } else {
-      console.warn("⚠️ Map instance not ready yet");
+      logger.warn("Map instance not ready yet");
     }
   }, []);
 
