@@ -49,6 +49,8 @@
 
 ## Server Component Rules
 - Use synchronous Effects only (Effect.sync, Effect.succeed)
+- **Effect.sync**: For side-effectful computations that won't fail (logging, DOM manipulation)
+- **Effect.succeed**: For pure values without side effects or dependencies
 - Avoid async Effects in server components (no Effect.tryPromise)
 - Use Next.js Image component instead of HTML img tags
 - No event handlers in server components (onError, onClick, etc.)
@@ -67,6 +69,26 @@
 - Use consistent naming: `ServiceName` for interfaces, `ServiceNameImpl` for implementations
 - Export service layers as `ServiceNameLive`
 - Use proper TypeScript type imports with `type` keyword
+
+## Naming Conventions
+
+### Files and Directories
+- Use kebab-case for directories: `user-profile/`
+- Use camelCase for files: `userService.ts`
+- Use PascalCase for React components: `UserProfile.tsx`
+- Use camelCase for Effect services: `loggerService.ts`
+
+### Variables and Functions
+- Use camelCase for variables and functions
+- Use PascalCase for classes and interfaces
+- Use SCREAMING_SNAKE_CASE for constants
+- Use descriptive names that explain intent
+
+### Effect-TS Specific
+- Suffix Effect functions with `Effect`: `createUserEffect()`
+- Use `Service` suffix for service classes: `LoggerService`
+- Use `Tag` suffix for context tags: `LoggerServiceTag`
+- Use `Live` suffix for layer implementations: `LoggerServiceLive`
 
 ## Environment Variables
 - Copy `.env.example` to `.env.local` for local development
