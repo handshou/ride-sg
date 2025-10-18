@@ -1,7 +1,5 @@
 "use client";
 
-import { useTheme } from "next-themes";
-import { useCallback, useRef, useState } from "react";
 import { ErrorToastHandler } from "@/components/error-toast-handler";
 import { LocateMeButton } from "@/components/locate-me-button";
 import { MapStyleSelector } from "@/components/map-style-selector";
@@ -9,10 +7,11 @@ import { MapboxGLMap } from "@/components/mapbox-gl-map";
 import { MapboxSimpleOverlay } from "@/components/mapbox-simple-overlay";
 import { RandomCoordinatesButton } from "@/components/random-coordinates-button";
 import { SearchPanel } from "@/components/search-panel";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { MAPBOX_STYLES } from "@/lib/map-styles";
 import type { GeocodeResult } from "@/lib/mapbox-service";
 import type { SearchResult } from "@/lib/search-state-service";
+import { useTheme } from "next-themes";
+import { useCallback, useRef, useState } from "react";
 
 interface SingaporeMapExplorerProps {
   initialRandomCoords: { latitude: number; longitude: number };
@@ -211,10 +210,10 @@ export function SingaporeMapExplorer({
         staticMapUrl={staticMapUrlState}
       />
 
-      {/* Header with map style selector and theme toggle */}
+      {/* Header with map style selector */}
       <div className="absolute top-4 left-4 z-10 flex gap-2">
         <MapStyleSelector onStyleChange={handleStyleChange} />
-        <ThemeToggle />
+        {/* <ThemeToggle /> */}
       </div>
 
       {/* Search Panel */}

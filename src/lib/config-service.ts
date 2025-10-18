@@ -21,3 +21,13 @@ export const mapboxPublicTokenConfig = Config.string(
     "Mapbox access token for client-side interactive maps",
   ),
 );
+
+/**
+ * Configuration for Exa API key (server-side only)
+ */
+export const exaApiKeyConfig = Config.string("EXA_API_KEY").pipe(
+  Config.withDefault(""),
+  Config.withDescription(
+    "Exa API key for semantic search - server-side only, never expose to client",
+  ),
+);

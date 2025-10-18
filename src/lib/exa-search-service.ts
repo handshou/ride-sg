@@ -1,4 +1,5 @@
 import { Context, Effect, Layer } from "effect";
+import { exaApiKeyConfig } from "./config-service";
 import type { SearchResult, SearchStateService } from "./search-state-service";
 import { SearchStateServiceTag } from "./search-state-service";
 
@@ -36,13 +37,52 @@ export class ExaSearchServiceImpl implements ExaSearchService {
       // Update state to loading
       yield* searchState.startSearch(query);
 
-      // TODO: Replace with actual Exa API call
-      // For now, return mock data
+      // Get Exa API key from config
+      const exaApiKey = yield* exaApiKeyConfig;
+
+      // Check if API key is configured
+      if (!exaApiKey || exaApiKey === "") {
+        yield* Effect.logWarning("EXA_API_KEY not configured, using mock data");
+        // Return mock data if no API key
+        const mockResults: SearchResult[] = yield* Effect.sync(() => [
+          {
+            id: `exa-${Date.now()}-1`,
+            title: "Marina Bay Sands",
+            description:
+              "Iconic integrated resort with rooftop infinity pool (mock data - configure EXA_API_KEY)",
+            location: {
+              latitude: 1.2834,
+              longitude: 103.8607,
+            },
+            source: "exa" as const,
+            timestamp: Date.now(),
+          },
+          {
+            id: `exa-${Date.now()}-2`,
+            title: "Gardens by the Bay",
+            description:
+              "Nature park with futuristic Supertree structures (mock data - configure EXA_API_KEY)",
+            location: {
+              latitude: 1.2816,
+              longitude: 103.8636,
+            },
+            source: "exa" as const,
+            timestamp: Date.now(),
+          },
+        ]);
+        yield* searchState.setResults(mockResults);
+        yield* searchState.completeSearch();
+        return mockResults;
+      }
+
+      // TODO: Implement actual Exa API call using the API key
+      // For now, return enhanced mock data indicating API key is configured
       const exaResults: SearchResult[] = yield* Effect.sync(() => [
         {
           id: `exa-${Date.now()}-1`,
           title: "Marina Bay Sands",
-          description: "Iconic integrated resort with rooftop infinity pool",
+          description:
+            "Iconic integrated resort with rooftop infinity pool (API key configured, awaiting full integration)",
           location: {
             latitude: 1.2834,
             longitude: 103.8607,
@@ -53,7 +93,8 @@ export class ExaSearchServiceImpl implements ExaSearchService {
         {
           id: `exa-${Date.now()}-2`,
           title: "Gardens by the Bay",
-          description: "Nature park with futuristic Supertree structures",
+          description:
+            "Nature park with futuristic Supertree structures (API key configured, awaiting full integration)",
           location: {
             latitude: 1.2816,
             longitude: 103.8636,
@@ -76,7 +117,7 @@ export class ExaSearchServiceImpl implements ExaSearchService {
           const searchState = yield* SearchStateServiceTag;
           const errorMessage =
             error && typeof error === "object" && "message" in error
-              ? (error as Error).message
+              ? String((error as { message: unknown }).message)
               : "Exa search failed";
           yield* searchState.setError(errorMessage);
           yield* Effect.logError("Exa search error", error);
