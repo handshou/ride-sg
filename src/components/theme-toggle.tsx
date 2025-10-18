@@ -1,13 +1,5 @@
 "use client";
 
-<<<<<<< Updated upstream
-import { Moon, Sun, Monitor } from "lucide-react";
-import { useTheme } from "next-themes";
-=======
-import { Monitor, Moon, Sun } from "lucide-react";
-import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
->>>>>>> Stashed changes
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -15,10 +7,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-<<<<<<< Updated upstream
+import { Monitor, Moon, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
-=======
->>>>>>> Stashed changes
 
 export function ThemeToggle() {
   const { setTheme, theme } = useTheme();
@@ -30,7 +21,7 @@ export function ThemeToggle() {
 
   if (!mounted) {
     return (
-      <Button variant="outline" size="icon">
+      <Button variant="outline" size="icon" data-testid="theme-toggle">
         <Sun className="h-4 w-4" />
       </Button>
     );
@@ -39,7 +30,7 @@ export function ThemeToggle() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="icon">
+        <Button variant="outline" size="icon" data-testid="theme-toggle">
           {theme === "light" ? (
             <Sun className="h-4 w-4" />
           ) : theme === "dark" ? (

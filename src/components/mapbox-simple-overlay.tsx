@@ -1,10 +1,5 @@
 "use client";
 
-import {
-  MapReadinessServiceLive,
-  MapReadinessServiceTag,
-} from "@/lib/map-readiness-service";
-import { Effect } from "effect";
 import mapboxgl from "mapbox-gl";
 import { useEffect, useRef } from "react";
 
@@ -24,51 +19,45 @@ export function MapboxSimpleOverlay({
   useEffect(() => {
     if (!map || !coordinates) return;
 
-    // Remove existing marker
+    // Remove existing marker first
     if (markerRef.current) {
       markerRef.current.remove();
       markerRef.current = null;
     }
 
-<<<<<<< Updated upstream
-    // Create a custom marker element
-    const markerElement = document.createElement("div");
-    markerElement.className = "location-marker";
-    markerElement.innerHTML = `
-      <div style="
-        width: 20px;
-        height: 20px;
-        background: ${isUserLocation ? '#3b82f6' : '#10b981'};
-        border: 3px solid white;
-        border-radius: 50%;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        animation: pulse 2s infinite;
-      "></div>
-    `;
+    // Retry logic for adding marker when map is ready
+    let retryCount = 0;
+    const maxRetries = 5;
+    const retryDelay = 200;
 
-    // Add CSS animation if not already added
-    if (!document.getElementById("location-marker-styles")) {
-      const style = document.createElement("style");
-      style.id = "location-marker-styles";
-      style.textContent = `
-        @keyframes pulse {
-          0% { transform: scale(1); opacity: 1; }
-          50% { transform: scale(1.2); opacity: 0.7; }
-          100% { transform: scale(1); opacity: 1; }
+    const tryAddMarker = () => {
+      if (!map || !coordinates) return;
+
+      // Check if map canvas is ready before adding marker
+      try {
+        const container = map.getCanvasContainer();
+        if (!container) {
+          // Retry if we haven't exceeded max attempts
+          if (retryCount < maxRetries) {
+            retryCount++;
+            setTimeout(tryAddMarker, retryDelay);
+            return;
+          }
+          console.warn("Map canvas container not ready after retries");
+          return;
         }
-=======
-    // Create Effect program for marker creation with readiness checks
-    const createMarkerEffect = Effect.gen(function* () {
-      const readinessService = yield* MapReadinessServiceTag;
-
-      // Wait for map to be ready
-      const isReady = yield* readinessService.waitForMapReady(map, 5, 100);
-
-      if (!isReady) {
-        throw new Error("Map not ready after retries");
+      } catch (error) {
+        // Retry on error
+        if (retryCount < maxRetries) {
+          retryCount++;
+          setTimeout(tryAddMarker, retryDelay);
+          return;
+        }
+        console.warn("Map not fully initialized after retries:", error);
+        return;
       }
 
-      // Create marker element
+      // Create a custom marker element
       const markerElement = document.createElement("div");
       markerElement.className = "location-marker";
       markerElement.innerHTML = `
@@ -81,59 +70,43 @@ export function MapboxSimpleOverlay({
           box-shadow: 0 2px 4px rgba(0,0,0,0.3);
           animation: pulse 2s infinite;
         "></div>
->>>>>>> Stashed changes
       `;
-      document.head.appendChild(style);
-    }
 
-    // Create marker
-    const marker = new mapboxgl.Marker({
-      element: markerElement,
-      anchor: "center",
-    })
-      .setLngLat([coordinates.longitude, coordinates.latitude])
-      .addTo(map);
+      // Add CSS animation if not already added
+      if (!document.getElementById("location-marker-styles")) {
+        const style = document.createElement("style");
+        style.id = "location-marker-styles";
+        style.textContent = `
+          @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+          }
+        `;
+        document.head.appendChild(style);
+      }
 
-<<<<<<< Updated upstream
-    markerRef.current = marker;
-=======
-      // Create and add marker
-      const marker = new mapboxgl.Marker({
-        element: markerElement,
-        anchor: "center",
-      })
-        .setLngLat([coordinates.longitude, coordinates.latitude])
-        .addTo(map);
-
-      return marker;
-    });
-
-    // Run the Effect with proper error handling
-    const runMarkerCreation = async () => {
+      // Create marker
       try {
-        const marker = await Effect.runPromise(
-          createMarkerEffect.pipe(Effect.provide(MapReadinessServiceLive)),
-        );
+        const marker = new mapboxgl.Marker({
+          element: markerElement,
+          anchor: "center",
+        })
+          .setLngLat([coordinates.longitude, coordinates.latitude])
+          .addTo(map);
+
         markerRef.current = marker;
       } catch (error) {
-        console.error("Failed to create marker:", error);
-        // Retry after delay
-        setTimeout(() => {
-          if (map && coordinates) {
-            runMarkerCreation();
-          }
-        }, 500);
+        console.error("Failed to add marker:", error);
       }
     };
 
-    // Use timeout to ensure map is ready
-    const timeoutId = setTimeout(() => {
-      runMarkerCreation();
-    }, 100);
->>>>>>> Stashed changes
+    // Start trying to add marker
+    const timeoutId = setTimeout(tryAddMarker, 100);
 
     // Cleanup function
     return () => {
+      clearTimeout(timeoutId);
       if (markerRef.current) {
         markerRef.current.remove();
         markerRef.current = null;

@@ -10,6 +10,7 @@ interface MapboxGLMapProps {
   className?: string;
   accessToken: string;
   onMapReady?: (map: mapboxgl.Map) => void;
+  style?: string;
 }
 
 export function MapboxGLMap({
@@ -18,9 +19,11 @@ export function MapboxGLMap({
   className = "",
   accessToken,
   onMapReady,
+  style = "mapbox://styles/mapbox/streets-v12",
 }: MapboxGLMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
+  const currentStyleRef = useRef<string>(style);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
@@ -32,7 +35,7 @@ export function MapboxGLMap({
     if (mapContainer.current) {
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
-        style: "mapbox://styles/mapbox/streets-v12",
+        style: style,
         center: center,
         zoom: zoom,
         attributionControl: false,
@@ -56,11 +59,6 @@ export function MapboxGLMap({
         "top-right",
       );
 
-      // Add marker for the center point
-      new mapboxgl.Marker({ color: "#8b5cf6" })
-        .setLngLat(center)
-        .addTo(map.current);
-
       // Handle map load
       map.current.on("load", () => {
         setIsLoaded(true);
@@ -82,7 +80,15 @@ export function MapboxGLMap({
         map.current = null;
       }
     };
-  }, [accessToken]); // Only depend on accessToken, not center/zoom
+  }, [accessToken, center, zoom, style, onMapReady]); // Initialize map only once
+
+  // Handle style changes dynamically
+  useEffect(() => {
+    if (map.current && isLoaded && currentStyleRef.current !== style) {
+      currentStyleRef.current = style;
+      map.current.setStyle(style);
+    }
+  }, [style, isLoaded]);
 
   return (
     <div className={`relative ${className}`} data-testid="mapbox-gl-map">
