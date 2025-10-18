@@ -91,10 +91,11 @@
 - Use `Live` suffix for layer implementations: `LoggerServiceLive`
 
 ## Environment Variables
-- Copy `.env.example` to `.env.local` for local development
-- Set `MAPBOX_ACCESS_TOKEN` in your environment variables
+- Copy `.env.example` to `.env` for local development
+- Set both `MAPBOX_ACCESS_TOKEN` and `NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN` in your environment variables
 - Get Mapbox token from: https://account.mapbox.com/access-tokens/
-- Use `process.env.MAPBOX_ACCESS_TOKEN` in services
+- Use `process.env.MAPBOX_ACCESS_TOKEN` for server-side operations
+- Use `process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN` for client-side operations
 - Never commit `.env*` files (except `.env.example`)
 
 ## Testing Standards
@@ -121,10 +122,23 @@
 - Use descriptive test names that explain the expected behavior
 
 ### Test Scripts
-- `pnpm run test` - Run unit tests (Vitest)
-- `pnpm run test:e2e` - Run e2e tests (Playwright)
-- `pnpm run test:e2e:ui` - Run e2e tests with UI
-- `pnpm run test:e2e:headed` - Run e2e tests in headed mode
+- `pnpm test` - Run unit tests once (Vitest) - Default for CI/CD
+- `pnpm test:watch` - Run unit tests in watch mode (Vitest) - Development
+- `pnpm test:e2e` - Run e2e tests (Playwright) - Browser testing
+- `pnpm run check-all` - Full pipeline: lint → type-check → test → build
+- `pnpm run pre-commit` - Pre-commit hook (same as check-all)
+
+### Test Command Differences
+- **`vitest run`**: One-time execution, exits cleanly (perfect for CI/CD)
+- **`vitest`**: Watch mode, stays running until stopped (perfect for development)
+- **Unit tests**: Fast, focused on individual functions and services
+- **E2E tests**: Comprehensive browser testing across Chromium, Firefox, WebKit
+
+### Current Test Performance
+- **Unit Tests**: 14 tests in ~400ms (Vitest)
+- **E2E Tests**: 36 tests across 3 browsers in ~40s (Playwright)
+- **Test Coverage**: Unit tests for Effect-TS services, E2E tests for user interactions
+- **Reliability**: All tests consistently passing, no flaky behavior
 
 ## Commit Messages
 - Use concise, descriptive commit messages
