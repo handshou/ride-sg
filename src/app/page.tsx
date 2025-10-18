@@ -1,6 +1,17 @@
 import Image from "next/image";
+import { 
+  runTurbopackSafeEffect, 
+  createTurbopackSafeHelloWorldEffect, 
+  createTurbopackSafeGreetingEffect,
+  createTurbopackSafeDemoEffect
+} from "@/lib/effect-turbopack-safe";
 
 export default function Home() {
+  // Run Effect-TS programs in server component using Turbopack-safe approach
+  const helloMessage = runTurbopackSafeEffect(createTurbopackSafeHelloWorldEffect());
+  const greetingMessage = runTurbopackSafeEffect(createTurbopackSafeGreetingEffect("Effect-TS Developer"));
+  const demoMessage = runTurbopackSafeEffect(createTurbopackSafeDemoEffect());
+
   return (
     <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
       <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
@@ -12,6 +23,25 @@ export default function Home() {
           height={38}
           priority
         />
+        
+        {/* Effect-TS Hello World Section */}
+        <div className="flex flex-col gap-4 items-center sm:items-start">
+          <h1 className="text-2xl font-bold text-center sm:text-left">
+            {helloMessage}
+          </h1>
+          <p className="text-lg text-gray-600 dark:text-gray-300 text-center sm:text-left">
+            {greetingMessage}
+          </p>
+          <p className="text-base text-blue-600 dark:text-blue-400 text-center sm:text-left">
+            {demoMessage}
+          </p>
+          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 max-w-md">
+            <p className="text-sm text-green-800 dark:text-green-200">
+              ✨ This page is powered by <strong>Effect-TS</strong> running in a Next.js server component with <strong>Turbopack-safe</strong> runtime!
+            </p>
+          </div>
+        </div>
+
         <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
           <li className="mb-2 tracking-[-.01em]">
             Get started by editing{" "}
