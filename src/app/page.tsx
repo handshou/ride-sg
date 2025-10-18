@@ -1,144 +1,209 @@
 import Image from "next/image";
-import { 
-  runServerEffect, 
-  createHelloWorldEffect, 
-  createGreetingEffect,
-  createDemoEffect,
-  getMessage,
-  getAllMessages
+import { ErrorToastHandler } from "@/components/error-toast-handler";
+import { MapboxGLMap } from "@/components/mapbox-gl-map";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  getCurrentLocation,
+  getMapboxPublicToken,
+  getRandomSingaporeCoords,
+  getSingaporeLocation,
+  getStaticMap,
+  runServerEffect,
 } from "@/lib/server-runtime";
 
 export default function Home() {
-  // Run Effect-TS programs with service layer in server component
-  const helloMessage = runServerEffect(createHelloWorldEffect());
-  const greetingMessage = runServerEffect(createGreetingEffect("Effect-TS Developer"));
-  const demoMessage = runServerEffect(createDemoEffect());
-  
-  // Get specific messages using the service
-  const welcomeMessage = runServerEffect(getMessage("1"));
-  const infoMessage = runServerEffect(getMessage("2"));
-  const allMessages = runServerEffect(getAllMessages());
+  // Get random coordinates from MapboxService
+  const randomCoords = runServerEffect(getRandomSingaporeCoords());
+
+  // Get Mapbox location data
+  const singaporeLocations = runServerEffect(getSingaporeLocation());
+  const currentLocation = runServerEffect(getCurrentLocation());
+  const staticMapUrl = runServerEffect(
+    getStaticMap(randomCoords, 12, {
+      width: 400,
+      height: 300,
+    }),
+  );
+
+  // Get Mapbox public token for client-side use
+  const mapboxPublicToken = runServerEffect(getMapboxPublicToken());
 
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        
-        {/* Effect-TS Hello World Section */}
-        <div className="flex flex-col gap-4 items-center sm:items-start">
-          <h1 className="text-2xl font-bold text-center sm:text-left">
-            {helloMessage}
-          </h1>
-          <p className="text-lg text-gray-600 dark:text-gray-300 text-center sm:text-left">
-            {greetingMessage}
+    <div className="font-sans min-h-screen p-8">
+      <ErrorToastHandler
+        singaporeLocationsCount={singaporeLocations.length}
+        currentLocationCount={currentLocation.length}
+        staticMapUrl={staticMapUrl}
+      />
+      <main className="max-w-4xl mx-auto">
+        <div className="mb-8 text-center">
+          <h1 className="text-4xl font-bold mb-4">🗺️ Singapore Map Explorer</h1>
+          <p className="text-lg text-muted-foreground mb-4">
+            Powered by <Badge variant="secondary">Effect-TS</Badge> and{" "}
+            <Badge variant="secondary">Mapbox MCP</Badge>
           </p>
-          <p className="text-base text-blue-600 dark:text-blue-400 text-center sm:text-left">
-            {demoMessage}
-          </p>
-          
-          {/* Service Messages Section */}
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 max-w-md">
-            <h3 className="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-2">
-              📨 Service Messages:
-            </h3>
-            <p className="text-sm text-blue-700 dark:text-blue-300 mb-2">
-              {welcomeMessage.text}
-            </p>
-            <p className="text-sm text-blue-700 dark:text-blue-300 mb-2">
-              {infoMessage.text}
-            </p>
-            <p className="text-xs text-blue-600 dark:text-blue-400">
-              Total messages: {allMessages.length}
-            </p>
-          </div>
-          
-          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 max-w-md">
-            <p className="text-sm text-green-800 dark:text-green-200">
-              ✨ This page is powered by <strong>Effect-TS</strong> with <strong>Context & Services</strong>!
-            </p>
-          </div>
         </div>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
+        {/* Mapbox Integration Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              🗺️ Mapbox Integration
+            </CardTitle>
+            <CardDescription>
+              Interactive and static maps powered by Mapbox and Effect-TS
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Error State Indicators */}
+            {singaporeLocations.length === 0 && (
+              <Alert variant="destructive">
+                <AlertDescription>
+                  ⚠️ Singapore locations service unavailable - using fallback
+                  data
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {currentLocation.length === 0 && (
+              <Alert variant="destructive">
+                <AlertDescription>
+                  ⚠️ Current location service unavailable - using fallback data
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {staticMapUrl.includes("placeholder") && (
+              <Alert variant="destructive">
+                <AlertDescription>
+                  🚨 Map service unavailable - showing placeholder image
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Singapore Locations */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Singapore Locations</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {singaporeLocations.map((location) => (
+                    <div
+                      key={`${location.coordinates.latitude}-${location.coordinates.longitude}`}
+                      className="text-sm"
+                    >
+                      <div className="font-medium">{location.address}</div>
+                      <div className="text-muted-foreground text-xs">
+                        📍 {location.coordinates.latitude.toFixed(6)},{" "}
+                        {location.coordinates.longitude.toFixed(6)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Current Location */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Current Location</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {currentLocation.map((location) => (
+                    <div
+                      key={`current-${location.coordinates.latitude}-${location.coordinates.longitude}`}
+                      className="text-sm"
+                    >
+                      <div className="font-medium">{location.address}</div>
+                      <div className="text-muted-foreground text-xs">
+                        📍 {location.coordinates.latitude.toFixed(6)},{" "}
+                        {location.coordinates.longitude.toFixed(6)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Interactive Mapbox GL Map */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">
+                  Interactive Singapore Map
+                </CardTitle>
+                <CardDescription>
+                  🎲 Random coordinates: {randomCoords.latitude.toFixed(6)},{" "}
+                  {randomCoords.longitude.toFixed(6)}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="border rounded-lg overflow-hidden">
+                  <MapboxGLMap
+                    center={[randomCoords.longitude, randomCoords.latitude]}
+                    zoom={12}
+                    className="h-96"
+                    accessToken={mapboxPublicToken}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground text-center mt-2">
+                  Interactive map with navigation, geolocation, and fullscreen
+                  controls
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Static Map */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Static Map (Fallback)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="border rounded-lg overflow-hidden">
+                  <Image
+                    src={staticMapUrl}
+                    alt="Random Singapore Map"
+                    width={400}
+                    height={300}
+                    className="w-full h-48 object-cover"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground text-center mt-2">
+                  Note: Map may not load without a valid Mapbox token
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Map URL: {staticMapUrl.substring(0, 80)}...
+                </p>
+              </CardContent>
+            </Card>
+
+            <div className="flex items-center justify-center gap-2 pt-4">
+              <Button variant="outline" size="sm">
+                🚀 Mapbox MCP
+              </Button>
+              <Button variant="outline" size="sm">
+                ⚡ Effect-TS
+              </Button>
+              <Button variant="outline" size="sm">
+                🎲 Random Map
+              </Button>
+              <Button variant="outline" size="sm">
+                🗺️ Interactive GL
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
     </div>
   );
 }
