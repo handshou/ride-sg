@@ -26,18 +26,35 @@ export function MapboxGLMap({
   const currentStyleRef = useRef<string>(style);
   const [isLoaded, setIsLoaded] = useState(false);
 
+  // Store initial props in refs so they don't trigger re-initialization
+  const initialPropsRef = useRef({
+    center,
+    zoom,
+    accessToken,
+    style,
+    onMapReady,
+  });
+
   useEffect(() => {
     if (map.current) return; // Initialize map only once
 
+    const {
+      accessToken: token,
+      center: initialCenter,
+      zoom: initialZoom,
+      style: initialStyle,
+      onMapReady: callback,
+    } = initialPropsRef.current;
+
     // Set Mapbox access token from props
-    mapboxgl.accessToken = accessToken;
+    mapboxgl.accessToken = token;
 
     if (mapContainer.current) {
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
-        style: style,
-        center: center,
-        zoom: zoom,
+        style: initialStyle,
+        center: initialCenter,
+        zoom: initialZoom,
         attributionControl: false,
       });
 
@@ -62,8 +79,8 @@ export function MapboxGLMap({
       // Handle map load
       map.current.on("load", () => {
         setIsLoaded(true);
-        if (onMapReady && map.current) {
-          onMapReady(map.current);
+        if (callback && map.current) {
+          callback(map.current);
         }
       });
 
@@ -73,14 +90,15 @@ export function MapboxGLMap({
       });
     }
 
-    // Cleanup function
+    // Cleanup function - only runs when component unmounts
     return () => {
       if (map.current) {
         map.current.remove();
         map.current = null;
       }
     };
-  }, [accessToken, center, zoom, style, onMapReady]); // Initialize map only once
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Initialize map only once - empty deps array
 
   // Handle style changes dynamically
   useEffect(() => {

@@ -54,30 +54,56 @@ export function SingaporeMapExplorer({
 
   const [mapStyle, setMapStyle] = useState(getMapStyleForTheme(theme));
 
-  const handleMapReady = useCallback((map: mapboxgl.Map) => {
-    mapInstanceRef.current = map;
-    setIsMapReady(true);
-  }, []);
+  const handleMapReady = useCallback(
+    (map: mapboxgl.Map) => {
+      mapInstanceRef.current = map;
+      setIsMapReady(true);
+
+      // Fly to initial location with a gentle animation
+      console.log("🗺️ Map ready, flying to initial location");
+      map.flyTo({
+        center: [initialRandomCoords.longitude, initialRandomCoords.latitude],
+        zoom: 13,
+        duration: 1500,
+        essential: true,
+        curve: 1.2,
+        easing: (t) => t * (2 - t),
+      });
+    },
+    [initialRandomCoords],
+  );
 
   const handleCoordinatesGenerated = useCallback(
     (newCoords: { latitude: number; longitude: number }) => {
-      setRandomCoords(newCoords);
-      setMapLocation(newCoords);
-      setIsUserLocation(false);
       // Update static map URL with new coordinates
       const newStaticMapUrl = `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/${newCoords.longitude},${newCoords.latitude},12/400x300?access_token=${mapboxPublicToken}`;
       setStaticMapUrlState(newStaticMapUrl);
 
-      // Fly to new random coordinates with smooth animation
+      // Fly to new random coordinates with smooth animation (no pitch/bearing)
       if (mapInstanceRef.current) {
-        mapInstanceRef.current.flyTo({
-          center: [newCoords.longitude, newCoords.latitude],
-          zoom: 14, // Zoom in a bit closer
-          duration: 1500, // 1.5 second smooth animation
-          essential: true, // Animation won't be interrupted
-          curve: 1.42, // Smoother arc
-          easing: (t) => t * (2 - t), // Ease out for natural deceleration
-        });
+        const map = mapInstanceRef.current;
+
+        const executeFlyTo = () => {
+          map.flyTo({
+            center: [newCoords.longitude, newCoords.latitude],
+            zoom: 14,
+            duration: 1500,
+            essential: true,
+            curve: 1.2,
+            easing: (t) => t * (2 - t),
+          });
+
+          // Update state after flyTo starts
+          setRandomCoords(newCoords);
+          setMapLocation(newCoords);
+          setIsUserLocation(false);
+        };
+
+        if (!map.isStyleLoaded()) {
+          map.once("styledata", executeFlyTo);
+        } else {
+          executeFlyTo();
+        }
       }
     },
     [mapboxPublicToken],
@@ -85,25 +111,35 @@ export function SingaporeMapExplorer({
 
   const handleLocationFound = useCallback(
     (coords: { latitude: number; longitude: number }) => {
-      setRandomCoords(coords);
-      setMapLocation(coords);
-      setIsUserLocation(true);
       // Update static map URL with new coordinates
       const newStaticMapUrl = `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/${coords.longitude},${coords.latitude},12/400x300?access_token=${mapboxPublicToken}`;
       setStaticMapUrlState(newStaticMapUrl);
 
-      // Fly to user's location with dramatic animation
+      // Fly to user's location with smooth animation (no pitch/bearing)
       if (mapInstanceRef.current) {
-        mapInstanceRef.current.flyTo({
-          center: [coords.longitude, coords.latitude],
-          zoom: 16, // Zoom in close to see user's area
-          duration: 2000, // 2 second dramatic animation
-          essential: true,
-          curve: 1.5, // Higher arc for more dramatic effect
-          easing: (t) => t * (2 - t), // Ease out for natural deceleration
-          pitch: 45, // Tilt map for 3D effect
-          bearing: 0, // Reset rotation
-        });
+        const map = mapInstanceRef.current;
+
+        const executeFlyTo = () => {
+          map.flyTo({
+            center: [coords.longitude, coords.latitude],
+            zoom: 16,
+            duration: 1800,
+            essential: true,
+            curve: 1.3,
+            easing: (t) => t * (2 - t),
+          });
+
+          // Update state after flyTo starts
+          setRandomCoords(coords);
+          setMapLocation(coords);
+          setIsUserLocation(true);
+        };
+
+        if (!map.isStyleLoaded()) {
+          map.once("styledata", executeFlyTo);
+        } else {
+          executeFlyTo();
+        }
       }
     },
     [mapboxPublicToken],
@@ -120,13 +156,19 @@ export function SingaporeMapExplorer({
 
     // Fly to the search result with cinematic animation
     if (mapInstanceRef.current) {
-      console.log("✈️ Flying to:", result.location);
-      console.log(
-        "📍 Map instance:",
-        mapInstanceRef.current ? "Ready" : "Not ready",
-      );
-
       const map = mapInstanceRef.current;
+      const currentCenter = map.getCenter();
+
+      console.log(
+        "✈️ Current map center:",
+        currentCenter.lng,
+        currentCenter.lat,
+      );
+      console.log(
+        "✈️ Flying to:",
+        result.location.longitude,
+        result.location.latitude,
+      );
 
       // Function to execute flyTo
       const executeFlyTo = () => {
@@ -158,7 +200,6 @@ export function SingaporeMapExplorer({
           executeFlyTo();
         });
       } else {
-        console.log("✅ Map style already loaded, executing flyTo immediately");
         executeFlyTo();
       }
     } else {
