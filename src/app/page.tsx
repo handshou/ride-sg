@@ -1,23 +1,38 @@
 import Image from "next/image";
-import { 
-  runServerEffect, 
-  createHelloWorldEffect, 
-  createGreetingEffect,
+import {
   createDemoEffect,
+  createGreetingEffect,
+  createHelloWorldEffect,
+  getAllMessages,
+  getCurrentLocation,
   getMessage,
-  getAllMessages
+  getSingaporeLocation,
+  getStaticMap,
+  runServerEffect,
 } from "@/lib/server-runtime";
 
 export default function Home() {
   // Run Effect-TS programs with service layer in server component
   const helloMessage = runServerEffect(createHelloWorldEffect());
-  const greetingMessage = runServerEffect(createGreetingEffect("Effect-TS Developer"));
+  const greetingMessage = runServerEffect(
+    createGreetingEffect("Effect-TS Developer"),
+  );
   const demoMessage = runServerEffect(createDemoEffect());
-  
+
   // Get specific messages using the service
   const welcomeMessage = runServerEffect(getMessage("1"));
   const infoMessage = runServerEffect(getMessage("2"));
   const allMessages = runServerEffect(getAllMessages());
+
+  // Get Mapbox location data
+  const singaporeLocations = runServerEffect(getSingaporeLocation());
+  const currentLocation = runServerEffect(getCurrentLocation());
+  const staticMapUrl = runServerEffect(
+    getStaticMap({ longitude: 103.808053, latitude: 1.351616 }, 12, {
+      width: 400,
+      height: 300,
+    }),
+  );
 
   return (
     <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
@@ -30,7 +45,7 @@ export default function Home() {
           height={38}
           priority
         />
-        
+
         {/* Effect-TS Hello World Section */}
         <div className="flex flex-col gap-4 items-center sm:items-start">
           <h1 className="text-2xl font-bold text-center sm:text-left">
@@ -42,7 +57,7 @@ export default function Home() {
           <p className="text-base text-blue-600 dark:text-blue-400 text-center sm:text-left">
             {demoMessage}
           </p>
-          
+
           {/* Service Messages Section */}
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 max-w-md">
             <h3 className="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-2">
@@ -58,10 +73,88 @@ export default function Home() {
               Total messages: {allMessages.length}
             </p>
           </div>
-          
+
           <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 max-w-md">
             <p className="text-sm text-green-800 dark:text-green-200">
-              ✨ This page is powered by <strong>Effect-TS</strong> with <strong>Context & Services</strong>!
+              ✨ This page is powered by <strong>Effect-TS</strong> with{" "}
+              <strong>Context & Services</strong>!
+            </p>
+          </div>
+
+          {/* Mapbox Integration Section */}
+          <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4 max-w-2xl">
+            <h3 className="text-sm font-semibold text-purple-800 dark:text-purple-200 mb-3">
+              🗺️ Mapbox Integration:
+            </h3>
+
+            {/* Singapore Locations */}
+            <div className="mb-4">
+              <h4 className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2">
+                Singapore Locations:
+              </h4>
+              <div className="space-y-1">
+                {singaporeLocations.map((location) => (
+                  <div
+                    key={`${location.coordinates.latitude}-${location.coordinates.longitude}`}
+                    className="text-xs text-purple-600 dark:text-purple-400"
+                  >
+                    <span className="font-medium">{location.address}</span>
+                    <br />
+                    <span className="text-gray-500">
+                      📍 {location.coordinates.latitude.toFixed(6)},{" "}
+                      {location.coordinates.longitude.toFixed(6)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Current Location */}
+            <div className="mb-4">
+              <h4 className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2">
+                Current Location:
+              </h4>
+              <div className="text-xs text-purple-600 dark:text-purple-400">
+                {currentLocation.map((location) => (
+                  <div
+                    key={`current-${location.coordinates.latitude}-${location.coordinates.longitude}`}
+                  >
+                    <span className="font-medium">{location.address}</span>
+                    <br />
+                    <span className="text-gray-500">
+                      📍 {location.coordinates.latitude.toFixed(6)},{" "}
+                      {location.coordinates.longitude.toFixed(6)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Static Map */}
+            <div className="mb-4">
+              <h4 className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2">
+                Static Map:
+              </h4>
+              <div className="bg-white dark:bg-gray-800 rounded border p-2">
+                <Image
+                  src={staticMapUrl}
+                  alt="Singapore Map"
+                  width={400}
+                  height={300}
+                  className="w-full h-48 object-cover rounded"
+                />
+                <div className="text-xs text-gray-500 text-center py-2">
+                  Note: Map may not load without a valid Mapbox token
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Map URL: {staticMapUrl.substring(0, 80)}...
+              </p>
+            </div>
+
+            <p className="text-xs text-purple-600 dark:text-purple-400">
+              🚀 <strong>Mapbox MCP</strong> integration working with{" "}
+              <strong>Effect-TS</strong>!
             </p>
           </div>
         </div>

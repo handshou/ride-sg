@@ -1,252 +1,76 @@
 # Cursor Rules for Ride-SG Project
 
-This project integrates Effect-TS with Next.js server components. Follow these rules for consistent, high-quality code.
+## Package Manager
+- This project uses **pnpm** instead of npm
+- Always use `pnpm run` commands instead of `npm run`
+- Use `pnpm install` for dependency management
+- Use `pnpm add` for adding new dependencies
 
-## Project Context
+## Automatic Build & Lint Checking
+- Always run `pnpm run lint` after making changes
+- Always run `pnpm run build` to check for TypeScript errors
+- Check for linter errors using `read_lints` tool before completing tasks
+- Fix any TypeScript compilation errors immediately
+- Use `pnpm run check-all` for comprehensive checking
 
-- **Framework**: Next.js 15.5.6 with App Router
-- **Language**: TypeScript with strict mode
-- **Functional Programming**: Effect-TS for composable, type-safe effects
-- **Styling**: Tailwind CSS
-- **Linting**: Biome for fast formatting and linting
-
-## Code Style & Patterns
-
-### Effect-TS Patterns
-- Use Effect.gen for complex effect composition
-- Prefer Effect.sync for synchronous operations
-- Use Effect.async for asynchronous operations
-- Always provide proper error handling with Effect.catchAll
+## Project-Specific Rules
+- Use Effect-TS patterns consistently
+- Follow the established service layer pattern
+- Use proper error handling with Effect.catchAll
+- Maintain type safety throughout
 - Use Context.GenericTag for service dependencies
-- Create Layer.succeed for service implementations
+- Use Layer.succeed for service implementations
 
-### TypeScript Guidelines
-- Use strict type checking
-- Prefer interfaces over types for object shapes
-- Use generic constraints appropriately
-- Avoid `any` type - use `unknown` if necessary
-- Use branded types for domain-specific values
+## MCP (Model Context Protocol) Integration
+- **Effect MCP**: Use `mcp_effect-docs_effect_docs_search` and `mcp_effect-docs_get_effect_doc` for Effect-TS documentation
+- **Mapbox MCP**: Use Mapbox MCP tools for geocoding and mapping:
+  - `mcp_MapboxServer_ForwardGeocodeTool` for address → coordinates
+  - `mcp_MapboxServer_ReverseGeocodeTool` for coordinates → address
+  - `mcp_MapboxServer_StaticMapImageTool` for static map generation
+  - `mcp_MapboxServer_DirectionsTool` for routing
+  - `mcp_MapboxServer_IsochroneTool` for travel time analysis
+- Always test MCP tools before implementing in services
+- Use synchronous Effect patterns for server components (Effect.sync, not Effect.tryPromise)
 
-### React/Next.js Patterns
-- Use server components by default
-- Only use client components when necessary
-- Prefer async/await over promises
-- Use proper error boundaries
-- Follow Next.js App Router conventions
+## Code Quality Standards
+- No TypeScript errors allowed
+- No linting errors allowed
+- All imports must be properly typed
+- All Effect programs must have proper error handling
+- All services must follow the established patterns
+- Use proper import organization (alphabetical order)
+
+## Build Process
+1. Check for linting errors with `read_lints`
+2. Run `pnpm run type-check` for TypeScript compilation
+3. Run `pnpm run build` to verify Next.js build
+4. Fix any issues before marking tasks as complete
+5. Ensure all Effect-TS patterns are properly implemented
+
+## Server Component Rules
+- Use synchronous Effects only (Effect.sync, Effect.succeed)
+- Avoid async Effects in server components (no Effect.tryPromise)
+- Use Next.js Image component instead of HTML img tags
+- No event handlers in server components (onError, onClick, etc.)
+- Use proper error handling with Effect.catchAll
+- Configure external image domains in next.config.ts for remote images
+
+## Error Handling
+- Always use Effect.catchAll for error recovery
+- Provide meaningful error messages
+- Handle Effect failures gracefully
+- Use proper service layer error handling
+- Return fallback values for critical operations
 
 ## File Organization
+- Keep services in `src/lib/` directory
+- Use consistent naming: `ServiceName` for interfaces, `ServiceNameImpl` for implementations
+- Export service layers as `ServiceNameLive`
+- Use proper TypeScript type imports with `type` keyword
 
-```
-src/
-├── app/                 # Next.js App Router pages
-├── lib/                 # Shared utilities and Effect-TS runtime
-├── components/          # Reusable React components
-├── services/            # Effect-TS services and layers
-└── types/               # TypeScript type definitions
-```
-
-## Naming Conventions
-
-### Files and Directories
-- Use kebab-case for directories: `user-profile/`
-- Use camelCase for files: `userService.ts`
-- Use PascalCase for React components: `UserProfile.tsx`
-- Use camelCase for Effect services: `loggerService.ts`
-
-### Variables and Functions
-- Use camelCase for variables and functions
-- Use PascalCase for classes and interfaces
-- Use SCREAMING_SNAKE_CASE for constants
-- Use descriptive names that explain intent
-
-### Effect-TS Specific
-- Suffix Effect functions with `Effect`: `createUserEffect()`
-- Use `Service` suffix for service classes: `LoggerService`
-- Use `Tag` suffix for context tags: `LoggerServiceTag`
-- Use `Live` suffix for layer implementations: `LoggerServiceLive`
-
-## Code Quality Rules
-
-### Effect-TS Best Practices
-- Always handle errors in Effect programs
-- Use Effect.gen for readable effect composition
-- Provide proper service layers
-- Use Effect.catchAll for error recovery
-- Prefer Effect.sync over Effect.succeed when possible
-
-### Performance Guidelines
-- Minimize Effect allocations in hot paths
-- Use Effect.cached for expensive computations
-- Prefer server-side rendering for static content
-- Use React.memo for expensive client components
-- Avoid unnecessary re-renders
-
-### Error Handling
-- Use Effect's error handling mechanisms
-- Provide meaningful error messages
-- Log errors appropriately
-- Handle Effect failures gracefully
-- Use Effect.catchAll for comprehensive error handling
-
-## Import/Export Rules
-
-### Effect-TS Imports
-```typescript
-import { Effect, Runtime, Layer, Context } from "effect";
-```
-
-### Service Pattern
-```typescript
-// Service definition
-export class MyService {
-  doSomething(): Effect.Effect<string> {
-    return Effect.sync(() => "result");
-  }
-}
-
-// Service tag
-export const MyServiceTag = Context.GenericTag<MyService>("MyService");
-
-// Service layer
-export const MyServiceLive = Layer.succeed(MyServiceTag, new MyService());
-```
-
-### Effect Composition
-```typescript
-export function createMyEffect(): Effect.Effect<string> {
-  return Effect.gen(function* () {
-    const service = yield* MyServiceTag;
-    const result = yield* service.doSomething();
-    return result;
-  });
-}
-```
-
-## Testing Guidelines
-
-### Effect-TS Testing
-- Test Effect programs with Effect.runSync
-- Use Effect.provide for dependency injection in tests
-- Test error scenarios with Effect.catchAll
-- Mock services with Layer.succeed
-- Use Effect.gen for test setup
-
-### Component Testing
-- Test server components with proper Effect runtime
-- Mock external dependencies
-- Test error boundaries
-- Verify proper Effect execution
-
-## Documentation Standards
-
-### Code Comments
-- Document complex Effect compositions
-- Explain service dependencies
-- Document error handling strategies
-- Provide usage examples for utilities
-
-### Type Documentation
-- Use JSDoc for public APIs
-- Document Effect signatures
-- Explain service contracts
-- Provide migration guides for breaking changes
-
-## Security Considerations
-
-### Effect-TS Security
-- Validate inputs in Effect programs
-- Use Effect.catchAll for security error handling
-- Sanitize data in Effect transformations
-- Use proper error messages that don't leak information
-
-### Next.js Security
-- Use server components for sensitive operations
-- Validate user inputs
-- Use proper CORS settings
-- Implement rate limiting where appropriate
-
-## Performance Optimization
-
-### Effect-TS Performance
-- Use Effect.cached for expensive computations
-- Minimize Effect allocations
-- Use Effect.gen for readable composition
-- Profile Effect execution
-
-### Next.js Performance
-- Use server components for static content
-- Implement proper caching strategies
-- Optimize bundle size
-- Use dynamic imports for code splitting
-
-## Common Patterns
-
-### Service Layer Pattern
-```typescript
-export class DatabaseService {
-  constructor(private connection: Connection) {}
-  
-  query(sql: string): Effect.Effect<Result[]> {
-    return Effect.tryPromise({
-      try: () => this.connection.query(sql),
-      catch: (error) => new DatabaseError({ error })
-    });
-  }
-}
-```
-
-### Error Handling Pattern
-```typescript
-export function createSafeEffect(): Effect.Effect<string> {
-  return Effect.gen(function* () {
-    const result = yield* riskyOperation();
-    return result;
-  }).pipe(
-    Effect.catchAll((error) => 
-      Effect.succeed(`Fallback: ${error.message}`)
-    )
-  );
-}
-```
-
-### Async Effect Pattern
-```typescript
-export function createAsyncEffect(): Effect.Effect<string> {
-  return Effect.async<string>((resume) => {
-    fetch("/api/data")
-      .then(response => response.text())
-      .then(data => resume(Effect.succeed(data)))
-      .catch(error => resume(Effect.fail(new NetworkError({ error }))));
-  });
-}
-```
-
-## Debugging Guidelines
-
-### Effect-TS Debugging
-- Use Effect.log for debugging
-- Use Effect.tap for side effects
-- Use Effect.catchAll for error inspection
-- Use Effect.provide for dependency debugging
-
-### Next.js Debugging
-- Use console.log in server components
-- Use React DevTools for client components
-- Use Next.js built-in debugging tools
-- Monitor server-side logs
-
-## Migration Guidelines
-
-### Effect-TS Updates
-- Review breaking changes in Effect-TS releases
-- Update service patterns when needed
-- Migrate deprecated Effect methods
-- Test thoroughly after updates
-
-### Next.js Updates
-- Follow Next.js migration guides
-- Update App Router patterns
-- Test server component behavior
-- Verify build and deployment processes
-
-Remember: This project emphasizes functional programming with Effect-TS. Always prefer composable, type-safe solutions over imperative code. Use Effect's powerful abstractions to build robust, maintainable applications.
+## Environment Variables
+- Copy `.env.example` to `.env.local` for local development
+- Set `MAPBOX_ACCESS_TOKEN` in your environment variables
+- Get Mapbox token from: https://account.mapbox.com/access-tokens/
+- Use `process.env.MAPBOX_ACCESS_TOKEN` in services
+- Never commit `.env*` files (except `.env.example`)

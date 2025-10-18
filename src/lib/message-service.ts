@@ -1,8 +1,8 @@
-import { Effect, Context, Layer } from "effect";
+import { Context, Effect, Layer } from "effect";
 
 /**
  * Message Service for Next.js Server Components
- * 
+ *
  * This service provides message functionality with proper Effect Context patterns.
  */
 
@@ -35,11 +35,14 @@ export interface CreateMessageData {
 export interface MessageService {
   readonly getMessage: (id: string) => Effect.Effect<Message, never>;
   readonly getAllMessages: () => Effect.Effect<ReadonlyArray<Message>, never>;
-  readonly createMessage: (data: CreateMessageData) => Effect.Effect<Message, never>;
+  readonly createMessage: (
+    data: CreateMessageData,
+  ) => Effect.Effect<Message, never>;
 }
 
 // Service tag for dependency injection
-export const MessageServiceTag = Context.GenericTag<MessageService>("MessageService");
+export const MessageServiceTag =
+  Context.GenericTag<MessageService>("MessageService");
 
 // Service implementation
 export class MessageServiceImpl implements MessageService {
@@ -48,36 +51,36 @@ export class MessageServiceImpl implements MessageService {
       id: "1",
       text: "Welcome to Effect-TS with Next.js!",
       timestamp: new Date(),
-      type: "success"
+      type: "success",
     },
     {
-      id: "2", 
+      id: "2",
       text: "This message is powered by Effect Context!",
       timestamp: new Date(),
-      type: "info"
+      type: "info",
     },
     {
       id: "3",
       text: "Server components with Effect-TS are awesome!",
       timestamp: new Date(),
-      type: "success"
-    }
+      type: "success",
+    },
   ];
 
   getMessage = (id: string): Effect.Effect<Message, never> => {
     const self = this;
     return Effect.gen(function* () {
       yield* Effect.log(`Fetching message with id: ${id}`);
-      
+
       // Use synchronous operation for better performance
       const found = self.messages.find((m: Message) => m.id === id);
       const message = found || {
         id,
         text: "Message not found",
         timestamp: new Date(),
-        type: "error" as const
+        type: "error" as const,
       };
-      
+
       yield* Effect.log(`Retrieved message: ${message.text}`);
       return message;
     });
@@ -87,10 +90,10 @@ export class MessageServiceImpl implements MessageService {
     const self = this;
     return Effect.gen(function* () {
       yield* Effect.log("Fetching all messages");
-      
+
       // Use synchronous operation for better performance
       const messages = self.messages;
-      
+
       yield* Effect.log(`Retrieved ${messages.length} messages`);
       return messages;
     });
@@ -100,17 +103,17 @@ export class MessageServiceImpl implements MessageService {
     const self = this;
     return Effect.gen(function* () {
       yield* Effect.log(`Creating message: ${data.text}`);
-      
+
       const message: Message = {
         id: Math.random().toString(),
         text: data.text,
         timestamp: new Date(),
-        type: data.type ?? "info"
+        type: data.type ?? "info",
       };
-      
+
       // Add to messages array
       self.messages.push(message);
-      
+
       yield* Effect.log(`Created message with id: ${message.id}`);
       return message;
     });
@@ -120,13 +123,15 @@ export class MessageServiceImpl implements MessageService {
 // Layer for the service
 export const MessageServiceLive = Layer.succeed(
   MessageServiceTag,
-  new MessageServiceImpl()
+  new MessageServiceImpl(),
 );
 
 /**
  * Effect function to get a message by ID
  */
-export const getMessageEffect = (id: string): Effect.Effect<Message, never, MessageService> => {
+export const getMessageEffect = (
+  id: string,
+): Effect.Effect<Message, never, MessageService> => {
   return Effect.gen(function* () {
     const messageService = yield* MessageServiceTag;
     return yield* messageService.getMessage(id);
@@ -136,7 +141,11 @@ export const getMessageEffect = (id: string): Effect.Effect<Message, never, Mess
 /**
  * Effect function to get all messages
  */
-export const getAllMessagesEffect = (): Effect.Effect<ReadonlyArray<Message>, never, MessageService> => {
+export const getAllMessagesEffect = (): Effect.Effect<
+  ReadonlyArray<Message>,
+  never,
+  MessageService
+> => {
   return Effect.gen(function* () {
     const messageService = yield* MessageServiceTag;
     return yield* messageService.getAllMessages();
@@ -146,7 +155,9 @@ export const getAllMessagesEffect = (): Effect.Effect<ReadonlyArray<Message>, ne
 /**
  * Effect function to create a new message
  */
-export const createMessageEffect = (data: CreateMessageData): Effect.Effect<Message, never, MessageService> => {
+export const createMessageEffect = (
+  data: CreateMessageData,
+): Effect.Effect<Message, never, MessageService> => {
   return Effect.gen(function* () {
     const messageService = yield* MessageServiceTag;
     return yield* messageService.createMessage(data);
