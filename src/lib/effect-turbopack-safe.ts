@@ -1,18 +1,24 @@
 import { Effect } from "effect";
 
 /**
- * Turbopack-safe Effect-TS runtime
+ * Effect-TS runtime for Next.js server components
  * 
  * This module provides a runtime that's specifically designed to work
- * with Turbopack and Next.js server components by avoiding complex
- * runtime initialization at module load time.
+ * with Next.js server components by avoiding complex runtime initialization.
  */
 
+// Simple message type for our application
+export interface Message {
+  text: string;
+  timestamp: Date;
+  level: "info" | "success" | "warning" | "error";
+}
+
 /**
- * Turbopack-safe Effect runner
- * Uses Effect.runSync directly without custom runtime to avoid module evaluation issues
+ * Simple Effect runner
+ * Uses Effect.runSync directly without custom runtime
  */
-export function runTurbopackSafeEffect<A, E>(
+export function runEffect<A, E>(
   program: Effect.Effect<A, E>
 ): A {
   try {
@@ -24,9 +30,9 @@ export function runTurbopackSafeEffect<A, E>(
 }
 
 /**
- * Turbopack-safe async Effect runner
+ * Async Effect runner
  */
-export async function runTurbopackSafeEffectAsync<A, E>(
+export async function runEffectAsync<A, E>(
   program: Effect.Effect<A, E>
 ): Promise<A> {
   try {
@@ -38,83 +44,69 @@ export async function runTurbopackSafeEffectAsync<A, E>(
 }
 
 /**
- * Create a hello world Effect that's safe for Turbopack
+ * Create a hello world Effect with Effect.log
  */
-export function createTurbopackSafeHelloWorldEffect(): Effect.Effect<string> {
+export function createHelloEffect(): Effect.Effect<string, never, never> {
   return Effect.gen(function* () {
-    // Simple logging without complex service injection
-    yield* Effect.sync(() => {
-      console.log("[Effect-TS] Creating hello world message");
-    });
+    yield* Effect.log("Creating hello world message");
     
     const message = "Hello World from Effect-TS!";
     
-    yield* Effect.sync(() => {
-      console.log(`[Effect-TS] Generated message: ${message}`);
-    });
+    yield* Effect.log(`Generated message: ${message}`);
     
     return message;
   });
 }
 
 /**
- * Create a greeting Effect that's safe for Turbopack
+ * Create a greeting Effect with type validation
  */
-export function createTurbopackSafeGreetingEffect(name: string): Effect.Effect<string> {
+export function createGreetingEffect(name: string): Effect.Effect<string, never, never> {
   return Effect.gen(function* () {
-    yield* Effect.sync(() => {
-      console.log(`[Effect-TS] Creating greeting for: ${name}`);
-    });
+    yield* Effect.log(`Creating greeting for: ${name}`);
     
-    const greeting = `Hello, ${name}! Welcome to Effect-TS in Next.js!`;
+    // Create a message object with proper typing
+    const messageData: Message = {
+      text: `Hello, ${name}! Welcome to Effect-TS in Next.js!`,
+      timestamp: new Date(),
+      level: "success"
+    };
     
-    yield* Effect.sync(() => {
-      console.log(`[Effect-TS] Generated greeting: ${greeting}`);
-    });
+    yield* Effect.log(`Generated greeting: ${messageData.text}`);
     
-    return greeting;
+    return messageData.text;
   });
 }
 
 /**
- * Create a demonstration Effect with error handling
+ * Create a demo Effect with Effect.log
  */
-export function createTurbopackSafeDemoEffect(): Effect.Effect<string> {
+export function createDemoEffect(): Effect.Effect<string, never, never> {
   return Effect.gen(function* () {
-    yield* Effect.sync(() => {
-      console.log("[Effect-TS] Starting demo effect");
-    });
+    yield* Effect.log("Starting demo effect");
     
     // Simulate some work
-    yield* Effect.sync(() => {
-      console.log("[Effect-TS] Processing...");
-    });
+    yield* Effect.log("Processing...");
     
-    const result = "Effect-TS is working perfectly with Turbopack!";
+    const result = "Effect-TS is working perfectly!";
     
-    yield* Effect.sync(() => {
-      console.log(`[Effect-TS] Demo completed: ${result}`);
-    });
+    yield* Effect.log(`Demo completed: ${result}`);
     
     return result;
   });
 }
 
 /**
- * Create an Effect that demonstrates error handling
+ * Create an Effect that demonstrates error handling with Effect.log
  */
-export function createTurbopackSafeErrorHandlingEffect(): Effect.Effect<string> {
+export function createErrorHandlingEffect(): Effect.Effect<string, never, never> {
   return Effect.gen(function* () {
-    yield* Effect.sync(() => {
-      console.log("[Effect-TS] Starting error handling demo");
-    });
+    yield* Effect.log("Starting error handling demo");
     
     // This will always succeed, but demonstrates the pattern
     const result = yield* Effect.succeed("Error handling works correctly!");
     
-    yield* Effect.sync(() => {
-      console.log(`[Effect-TS] Error handling demo result: ${result}`);
-    });
+    yield* Effect.log(`Error handling demo result: ${result}`);
     
     return result;
   });
