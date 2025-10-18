@@ -2,16 +2,25 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+### Environment Setup
+
+1. Copy the environment example file:
+```bash
+cp .env.example .env.local
+```
+
+2. Get your Mapbox access token:
+   - Go to [Mapbox Account](https://account.mapbox.com/access-tokens/)
+   - Create a new access token or use an existing one
+   - Copy the token and paste it in `.env.local`:
+   ```
+   MAPBOX_ACCESS_TOKEN=pk.your_actual_token_here
+   ```
+
+3. Run the development server:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
 pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
