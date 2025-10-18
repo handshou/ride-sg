@@ -1,5 +1,7 @@
 "use client";
 
+import { useTheme } from "next-themes";
+import { useCallback, useRef, useState } from "react";
 import { ErrorToastHandler } from "@/components/error-toast-handler";
 import { LocateMeButton } from "@/components/locate-me-button";
 import { MapStyleSelector } from "@/components/map-style-selector";
@@ -11,8 +13,6 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { MAPBOX_STYLES } from "@/lib/map-styles";
 import type { GeocodeResult } from "@/lib/mapbox-service";
 import type { SearchResult } from "@/lib/search-state-service";
-import { useTheme } from "next-themes";
-import { useCallback, useRef, useState } from "react";
 
 interface SingaporeMapExplorerProps {
   initialRandomCoords: { latitude: number; longitude: number };
@@ -250,11 +250,11 @@ export function SingaporeMapExplorer({
 
       {/* Coordinates Display */}
       <div className="absolute bottom-4 right-4 z-10">
-        <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm p-3 rounded-lg shadow-lg text-right">
-          <div className="text-sm font-medium text-gray-800 dark:text-gray-200">
+        <div className="bg-gray-900/95 dark:bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-lg text-right border border-gray-700 dark:border-gray-200">
+          <div className="text-sm font-medium text-white dark:text-gray-900">
             {isUserLocation ? "Your Location" : "Random Location"}
           </div>
-          <div className="text-xs text-gray-500 dark:text-gray-400">
+          <div className="text-xs text-gray-300 dark:text-gray-600">
             {randomCoords.latitude.toFixed(6)},{" "}
             {randomCoords.longitude.toFixed(6)}
           </div>

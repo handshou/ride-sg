@@ -1,7 +1,7 @@
 "use client";
 
-import { toastNotifications } from "@/lib/toast-hook";
 import mapboxgl from "mapbox-gl";
+import { toastNotifications } from "@/lib/toast-hook";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { useEffect, useRef, useState } from "react";
 

@@ -59,7 +59,7 @@ export function RandomCoordinatesButton({
       onClick={generateRandomCoordinates}
       disabled={isGenerating}
       variant="outline"
-      className="w-full"
+      className="w-full bg-gray-900/95 text-white border-gray-700 hover:bg-gray-800/95 dark:bg-white/95 dark:text-gray-900 dark:border-gray-200 dark:hover:bg-gray-100/95"
     >
       {isGenerating ? (
         <>
