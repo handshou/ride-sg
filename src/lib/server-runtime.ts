@@ -5,6 +5,7 @@ import {
   getSingaporeLocationEffect,
   getStaticMapEffect,
   MapboxServiceLive,
+  MapboxServiceTag,
 } from "./mapbox-service";
 import {
   type CreateMessageData,
@@ -183,6 +184,27 @@ export const getStaticMap = (
       Effect.succeed(
         "https://via.placeholder.com/400x300?text=Map+Not+Available",
       ),
+    ),
+  );
+};
+
+/**
+ * Helper function to get random Singapore coordinates with proper context
+ */
+export const getRandomSingaporeCoords = (): Effect.Effect<
+  { latitude: number; longitude: number },
+  never
+> => {
+  return Effect.gen(function* () {
+    const mapboxService = yield* MapboxServiceTag;
+    return yield* mapboxService.getRandomSingaporeCoords();
+  }).pipe(
+    Effect.provide(ServerLayer),
+    Effect.catchAll(() =>
+      Effect.succeed({
+        latitude: 1.351616,
+        longitude: 103.808053,
+      }),
     ),
   );
 };

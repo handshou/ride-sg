@@ -33,6 +33,14 @@ export interface MapboxService {
     zoom: number,
     size: { width: number; height: number },
   ): Effect.Effect<string, MapboxError>;
+
+  /**
+   * Generate random coordinates within Singapore bounds
+   */
+  getRandomSingaporeCoords(): Effect.Effect<
+    { latitude: number; longitude: number },
+    never
+  >;
 }
 
 /**
@@ -117,6 +125,24 @@ export class MapboxServiceImpl implements MapboxService {
 
       const url = `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/${longitude},${latitude},${zoom}/${width}x${height}?access_token=${mapboxToken}`;
       return url;
+    });
+  }
+
+  getRandomSingaporeCoords(): Effect.Effect<
+    { latitude: number; longitude: number },
+    never
+  > {
+    return Effect.sync(() => {
+      // Singapore approximate bounds: 1.16°N to 1.47°N, 103.6°E to 104.0°E
+      const minLat = 1.16;
+      const maxLat = 1.47;
+      const minLng = 103.6;
+      const maxLng = 104.0;
+
+      return {
+        latitude: minLat + Math.random() * (maxLat - minLat),
+        longitude: minLng + Math.random() * (maxLng - minLng),
+      };
     });
   }
 }

@@ -1,4 +1,3 @@
-import Image from "next/image";
 import {
   createDemoEffect,
   createGreetingEffect,
@@ -6,10 +5,12 @@ import {
   getAllMessages,
   getCurrentLocation,
   getMessage,
+  getRandomSingaporeCoords,
   getSingaporeLocation,
   getStaticMap,
   runServerEffect,
 } from "@/lib/server-runtime";
+import Image from "next/image";
 
 export default function Home() {
   // Run Effect-TS programs with service layer in server component
@@ -24,11 +25,14 @@ export default function Home() {
   const infoMessage = runServerEffect(getMessage("2"));
   const allMessages = runServerEffect(getAllMessages());
 
+  // Get random coordinates from MapboxService
+  const randomCoords = runServerEffect(getRandomSingaporeCoords());
+
   // Get Mapbox location data
   const singaporeLocations = runServerEffect(getSingaporeLocation());
   const currentLocation = runServerEffect(getCurrentLocation());
   const staticMapUrl = runServerEffect(
-    getStaticMap({ longitude: 103.808053, latitude: 1.351616 }, 12, {
+    getStaticMap(randomCoords, 12, {
       width: 400,
       height: 300,
     }),
@@ -133,12 +137,15 @@ export default function Home() {
             {/* Static Map */}
             <div className="mb-4">
               <h4 className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2">
-                Static Map:
+                Random Singapore Map:
               </h4>
+              <div className="text-xs text-purple-600 dark:text-purple-400 mb-2">
+                🎲 Random coordinates: {randomCoords.latitude.toFixed(6)}, {randomCoords.longitude.toFixed(6)}
+              </div>
               <div className="bg-white dark:bg-gray-800 rounded border p-2">
                 <Image
                   src={staticMapUrl}
-                  alt="Singapore Map"
+                  alt="Random Singapore Map"
                   width={400}
                   height={300}
                   className="w-full h-48 object-cover rounded"
@@ -154,7 +161,7 @@ export default function Home() {
 
             <p className="text-xs text-purple-600 dark:text-purple-400">
               🚀 <strong>Mapbox MCP</strong> integration working with{" "}
-              <strong>Effect-TS</strong>!
+              <strong>Effect-TS</strong>! 🎲 <strong>Random map</strong> on each refresh!
             </p>
           </div>
         </div>
