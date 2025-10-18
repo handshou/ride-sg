@@ -7,15 +7,6 @@ import {
   MapboxServiceLive,
   MapboxServiceTag,
 } from "./mapbox-service";
-import {
-  type CreateMessageData,
-  createMessageEffect,
-  getAllMessagesEffect,
-  getMessageEffect,
-  type Message,
-  type MessageService,
-  MessageServiceLive,
-} from "./message-service";
 
 /**
  * Next.js Server Component Runtime
@@ -27,10 +18,7 @@ import {
  */
 
 // Combined layer with all services
-export const ServerLayer = Layer.mergeAll(
-  MessageServiceLive,
-  MapboxServiceLive,
-);
+export const ServerLayer = Layer.mergeAll(MapboxServiceLive);
 
 /**
  * Run an Effect program in a Next.js server component context
@@ -57,95 +45,6 @@ export async function runServerEffectAsync<A, E, R>(
     program.pipe(Effect.provide(ServerLayer)) as Effect.Effect<A, E, never>,
   );
 }
-
-/**
- * Create a simple hello world Effect using the message service
- */
-export const createHelloWorldEffect = (): Effect.Effect<
-  string,
-  never,
-  MessageService
-> => {
-  return Effect.gen(function* () {
-    yield* Effect.log("Creating hello world message");
-
-    // Use the message service to get a message
-    const message = yield* getMessageEffect("1");
-
-    yield* Effect.log(`Retrieved message: ${message.text}`);
-
-    return message.text;
-  });
-};
-
-/**
- * Create a greeting Effect using the message service
- */
-export const createGreetingEffect = (
-  name: string,
-): Effect.Effect<string, never, MessageService> => {
-  return Effect.gen(function* () {
-    yield* Effect.log(`Creating greeting for: ${name}`);
-
-    // Create a new message using the service
-    const message = yield* createMessageEffect({
-      text: `Hello, ${name}! Welcome to Effect-TS with Next.js!`,
-      type: "success",
-    });
-
-    yield* Effect.log(`Created greeting message: ${message.text}`);
-
-    return message.text;
-  });
-};
-
-/**
- * Create a demo Effect that shows all messages
- */
-export const createDemoEffect = (): Effect.Effect<
-  string,
-  never,
-  MessageService
-> => {
-  return Effect.gen(function* () {
-    yield* Effect.log("Creating demo effect");
-
-    // Get all messages
-    const messages = yield* getAllMessagesEffect();
-
-    yield* Effect.log(`Retrieved ${messages.length} messages`);
-
-    return `Found ${messages.length} messages in the system!`;
-  });
-};
-
-// Message service functions are imported above
-
-/**
- * Helper function to get a message with proper context
- */
-export const getMessage = (id: string): Effect.Effect<Message, never> => {
-  return getMessageEffect(id).pipe(Effect.provide(ServerLayer));
-};
-
-/**
- * Helper function to get all messages with proper context
- */
-export const getAllMessages = (): Effect.Effect<
-  ReadonlyArray<Message>,
-  never
-> => {
-  return getAllMessagesEffect().pipe(Effect.provide(ServerLayer));
-};
-
-/**
- * Helper function to create a message with proper context
- */
-export const createMessage = (
-  data: CreateMessageData,
-): Effect.Effect<Message, never> => {
-  return createMessageEffect(data).pipe(Effect.provide(ServerLayer));
-};
 
 /**
  * Helper function to get Singapore location data with proper context

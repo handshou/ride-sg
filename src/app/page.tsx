@@ -29,7 +29,8 @@ export default function Home() {
             🗺️ Singapore Map Explorer
           </h1>
           <p className="text-lg text-gray-600 dark:text-gray-300 text-center">
-            Powered by <strong>Effect-TS</strong> and <strong>Mapbox MCP</strong>
+            Powered by <strong>Effect-TS</strong> and{" "}
+            <strong>Mapbox MCP</strong>
           </p>
         </div>
 
@@ -39,77 +40,79 @@ export default function Home() {
             🗺️ Mapbox Integration
           </h2>
 
-            {/* Singapore Locations */}
-            <div className="mb-4">
-              <h4 className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2">
-                Singapore Locations:
-              </h4>
-              <div className="space-y-1">
-                {singaporeLocations.map((location) => (
-                  <div
-                    key={`${location.coordinates.latitude}-${location.coordinates.longitude}`}
-                    className="text-xs text-purple-600 dark:text-purple-400"
-                  >
-                    <span className="font-medium">{location.address}</span>
-                    <br />
-                    <span className="text-gray-500">
-                      📍 {location.coordinates.latitude.toFixed(6)},{" "}
-                      {location.coordinates.longitude.toFixed(6)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Current Location */}
-            <div className="mb-4">
-              <h4 className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2">
-                Current Location:
-              </h4>
-              <div className="text-xs text-purple-600 dark:text-purple-400">
-                {currentLocation.map((location) => (
-                  <div
-                    key={`current-${location.coordinates.latitude}-${location.coordinates.longitude}`}
-                  >
-                    <span className="font-medium">{location.address}</span>
-                    <br />
-                    <span className="text-gray-500">
-                      📍 {location.coordinates.latitude.toFixed(6)},{" "}
-                      {location.coordinates.longitude.toFixed(6)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Static Map */}
-            <div className="mb-4">
-              <h4 className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2">
-                Random Singapore Map:
-              </h4>
-              <div className="text-xs text-purple-600 dark:text-purple-400 mb-2">
-                🎲 Random coordinates: {randomCoords.latitude.toFixed(6)}, {randomCoords.longitude.toFixed(6)}
-              </div>
-              <div className="bg-white dark:bg-gray-800 rounded border p-2">
-                <Image
-                  src={staticMapUrl}
-                  alt="Random Singapore Map"
-                  width={400}
-                  height={300}
-                  className="w-full h-48 object-cover rounded"
-                />
-                <div className="text-xs text-gray-500 text-center py-2">
-                  Note: Map may not load without a valid Mapbox token
+          {/* Singapore Locations */}
+          <div className="mb-4">
+            <h4 className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2">
+              Singapore Locations:
+            </h4>
+            <div className="space-y-1">
+              {singaporeLocations.map((location) => (
+                <div
+                  key={`${location.coordinates.latitude}-${location.coordinates.longitude}`}
+                  className="text-xs text-purple-600 dark:text-purple-400"
+                >
+                  <span className="font-medium">{location.address}</span>
+                  <br />
+                  <span className="text-gray-500">
+                    📍 {location.coordinates.latitude.toFixed(6)},{" "}
+                    {location.coordinates.longitude.toFixed(6)}
+                  </span>
                 </div>
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Map URL: {staticMapUrl.substring(0, 80)}...
-              </p>
+              ))}
             </div>
+          </div>
+
+          {/* Current Location */}
+          <div className="mb-4">
+            <h4 className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2">
+              Current Location:
+            </h4>
+            <div className="text-xs text-purple-600 dark:text-purple-400">
+              {currentLocation.map((location) => (
+                <div
+                  key={`current-${location.coordinates.latitude}-${location.coordinates.longitude}`}
+                >
+                  <span className="font-medium">{location.address}</span>
+                  <br />
+                  <span className="text-gray-500">
+                    📍 {location.coordinates.latitude.toFixed(6)},{" "}
+                    {location.coordinates.longitude.toFixed(6)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Static Map */}
+          <div className="mb-4">
+            <h4 className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2">
+              Random Singapore Map:
+            </h4>
+            <div className="text-xs text-purple-600 dark:text-purple-400 mb-2">
+              🎲 Random coordinates: {randomCoords.latitude.toFixed(6)},{" "}
+              {randomCoords.longitude.toFixed(6)}
+            </div>
+            <div className="bg-white dark:bg-gray-800 rounded border p-2">
+              <Image
+                src={staticMapUrl}
+                alt="Random Singapore Map"
+                width={400}
+                height={300}
+                className="w-full h-48 object-cover rounded"
+              />
+              <div className="text-xs text-gray-500 text-center py-2">
+                Note: Map may not load without a valid Mapbox token
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Map URL: {staticMapUrl.substring(0, 80)}...
+            </p>
+          </div>
 
           <p className="text-sm text-purple-600 dark:text-purple-400 mt-4">
             🚀 <strong>Mapbox MCP</strong> integration working with{" "}
-            <strong>Effect-TS</strong>! 🎲 <strong>Random map</strong> on each refresh!
+            <strong>Effect-TS</strong>! 🎲 <strong>Random map</strong> on each
+            refresh!
           </p>
         </div>
       </main>
