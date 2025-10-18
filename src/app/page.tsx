@@ -1,3 +1,4 @@
+import { ErrorToastHandler } from "@/components/error-toast-handler";
 import {
   getCurrentLocation,
   getRandomSingaporeCoords,
@@ -23,6 +24,11 @@ export default function Home() {
 
   return (
     <div className="font-sans min-h-screen p-8">
+      <ErrorToastHandler
+        singaporeLocationsCount={singaporeLocations.length}
+        currentLocationCount={currentLocation.length}
+        staticMapUrl={staticMapUrl}
+      />
       <main className="max-w-4xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-center mb-4">
@@ -39,6 +45,31 @@ export default function Home() {
           <h2 className="text-xl font-semibold text-purple-800 dark:text-purple-200 mb-4">
             🗺️ Mapbox Integration
           </h2>
+
+          {/* Error State Indicators */}
+          {singaporeLocations.length === 0 && (
+            <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+              <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                ⚠️ Singapore locations service unavailable - using fallback data
+              </p>
+            </div>
+          )}
+
+          {currentLocation.length === 0 && (
+            <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+              <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                ⚠️ Current location service unavailable - using fallback data
+              </p>
+            </div>
+          )}
+
+          {staticMapUrl.includes("placeholder") && (
+            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+              <p className="text-sm text-red-800 dark:text-red-200">
+                🚨 Map service unavailable - showing placeholder image
+              </p>
+            </div>
+          )}
 
           {/* Singapore Locations */}
           <div className="mb-4">

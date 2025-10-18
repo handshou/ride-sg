@@ -7,6 +7,11 @@ import {
   MapboxServiceLive,
   MapboxServiceTag,
 } from "./mapbox-service";
+import {
+  showErrorToast,
+  showWarningToast,
+  ToastServiceLive,
+} from "./toast-service";
 
 /**
  * Next.js Server Component Runtime
@@ -18,7 +23,7 @@ import {
  */
 
 // Combined layer with all services
-export const ServerLayer = Layer.mergeAll(MapboxServiceLive);
+export const ServerLayer = Layer.mergeAll(MapboxServiceLive, ToastServiceLive);
 
 /**
  * Run an Effect program in a Next.js server component context
@@ -55,7 +60,15 @@ export const getSingaporeLocation = (): Effect.Effect<
 > => {
   return getSingaporeLocationEffect().pipe(
     Effect.provide(ServerLayer),
-    Effect.catchAll(() => Effect.succeed([])),
+    Effect.catchAll((error) =>
+      Effect.gen(function* () {
+        yield* Effect.logError("Failed to get Singapore locations", error);
+        yield* showWarningToast(
+          "Singapore locations service unavailable - using fallback data",
+        );
+        return [] as GeocodeResult[];
+      }),
+    ),
   );
 };
 
@@ -65,7 +78,15 @@ export const getSingaporeLocation = (): Effect.Effect<
 export const getCurrentLocation = (): Effect.Effect<GeocodeResult[], never> => {
   return getCurrentLocationEffect().pipe(
     Effect.provide(ServerLayer),
-    Effect.catchAll(() => Effect.succeed([])),
+    Effect.catchAll((error) =>
+      Effect.gen(function* () {
+        yield* Effect.logError("Failed to get current location", error);
+        yield* showWarningToast(
+          "Current location service unavailable - using fallback data",
+        );
+        return [] as GeocodeResult[];
+      }),
+    ),
   );
 };
 
@@ -79,10 +100,14 @@ export const getStaticMap = (
 ): Effect.Effect<string, never> => {
   return getStaticMapEffect(center, zoom, size).pipe(
     Effect.provide(ServerLayer),
-    Effect.catchAll(() =>
-      Effect.succeed(
-        "https://via.placeholder.com/400x300?text=Map+Not+Available",
-      ),
+    Effect.catchAll((error) =>
+      Effect.gen(function* () {
+        yield* Effect.logError("Failed to generate static map", error);
+        yield* showErrorToast(
+          "Map service unavailable - showing placeholder image",
+        );
+        return "https://via.placeholder.com/400x300?text=Map+Not+Available";
+      }),
     ),
   );
 };
@@ -99,10 +124,16 @@ export const getRandomSingaporeCoords = (): Effect.Effect<
     return yield* mapboxService.getRandomSingaporeCoords();
   }).pipe(
     Effect.provide(ServerLayer),
-    Effect.catchAll(() =>
-      Effect.succeed({
-        latitude: 1.351616,
-        longitude: 103.808053,
+    Effect.catchAll((error) =>
+      Effect.gen(function* () {
+        yield* Effect.logError("Failed to get random coordinates", error);
+        yield* showWarningToast(
+          "Random coordinates service unavailable - using Marina Bay coordinates",
+        );
+        return {
+          latitude: 1.351616,
+          longitude: 103.808053,
+        };
       }),
     ),
   );
