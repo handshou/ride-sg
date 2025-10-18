@@ -1,16 +1,16 @@
 import Image from "next/image";
 import { 
-  runTurbopackSafeEffect, 
-  createTurbopackSafeHelloWorldEffect, 
-  createTurbopackSafeGreetingEffect,
-  createTurbopackSafeDemoEffect
+  runEffect, 
+  createHelloEffect, 
+  createGreetingEffect,
+  createDemoEffect
 } from "@/lib/effect-turbopack-safe";
 
 export default function Home() {
-  // Run Effect-TS programs in server component using Turbopack-safe approach
-  const helloMessage = runTurbopackSafeEffect(createTurbopackSafeHelloWorldEffect());
-  const greetingMessage = runTurbopackSafeEffect(createTurbopackSafeGreetingEffect("Effect-TS Developer"));
-  const demoMessage = runTurbopackSafeEffect(createTurbopackSafeDemoEffect());
+  // Run Effect-TS programs in server component
+  const helloMessage = runEffect(createHelloEffect());
+  const greetingMessage = runEffect(createGreetingEffect("Effect-TS Developer"));
+  const demoMessage = runEffect(createDemoEffect());
 
   return (
     <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
@@ -35,6 +35,11 @@ export default function Home() {
           <p className="text-base text-blue-600 dark:text-blue-400 text-center sm:text-left">
             {demoMessage}
           </p>
+          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 max-w-md">
+            <p className="text-sm text-green-800 dark:text-green-200">
+              ✨ This page is powered by <strong>Effect-TS</strong> with schema validation and proper logging!
+            </p>
+          </div>
         </div>
 
         <div className="flex gap-4 items-center flex-col sm:flex-row">
