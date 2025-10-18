@@ -1,14 +1,5 @@
 "use client";
 
-import {
-  Layers,
-  Map as MapIcon,
-  Moon,
-  Mountain,
-  Satellite,
-  Sun,
-} from "lucide-react";
-import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -17,12 +8,23 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { getMapStyleForStyle, type MapStyle } from "@/lib/map-styles";
+import {
+  Layers,
+  Map as MapIcon,
+  Moon,
+  Mountain,
+  Satellite,
+  Sun,
+} from "lucide-react";
+import { useTheme } from "next-themes";
+import { useEffect, useState } from "react";
 
 interface MapStyleSelectorProps {
   onStyleChange: (style: string) => void;
 }
 
 export function MapStyleSelector({ onStyleChange }: MapStyleSelectorProps) {
+  const { setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [currentStyle, setCurrentStyle] = useState<MapStyle>("light");
 
@@ -42,6 +44,18 @@ export function MapStyleSelector({ onStyleChange }: MapStyleSelectorProps) {
     setCurrentStyle(style);
     const mapStyle = getMapStyleForStyle(style);
     onStyleChange(mapStyle);
+
+    // Inverse theme relationship for visual contrast
+    // Dark map → Light UI theme
+    // Light map → Dark UI theme
+    // Other maps → Light UI theme
+    if (style === "dark") {
+      setTheme("light");
+    } else if (style === "light") {
+      setTheme("dark");
+    } else {
+      setTheme("light");
+    }
   };
 
   const getStyleIcon = (style: MapStyle) => {

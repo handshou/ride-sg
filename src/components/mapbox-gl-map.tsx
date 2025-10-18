@@ -1,5 +1,6 @@
 "use client";
 
+import { toastNotifications } from "@/lib/toast-hook";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { useEffect, useRef, useState } from "react";
@@ -25,6 +26,7 @@ export function MapboxGLMap({
   const map = useRef<mapboxgl.Map | null>(null);
   const currentStyleRef = useRef<string>(style);
   const [isLoaded, setIsLoaded] = useState(false);
+  const lastErrorRef = useRef<string>("");
 
   // Store initial props in refs so they don't trigger re-initialization
   const initialPropsRef = useRef({
@@ -84,8 +86,49 @@ export function MapboxGLMap({
         }
       });
 
-      // Handle map errors
+      // Handle map errors with user-friendly toasts
       map.current.on("error", (e) => {
+        const errorMessage = e.error?.message || "Unknown error";
+
+        // Prevent duplicate toasts for the same error
+        if (lastErrorRef.current === errorMessage) {
+          console.error("Mapbox GL error (duplicate):", e);
+          return;
+        }
+        lastErrorRef.current = errorMessage;
+
+        // Token-related errors
+        if (
+          errorMessage.includes("secret access token") ||
+          errorMessage.includes("sk.")
+        ) {
+          toastNotifications.error(
+            "Invalid Mapbox token - please use a public token (pk.*)",
+          );
+        }
+        // Tile loading errors
+        else if (
+          errorMessage.includes("tile") ||
+          errorMessage.includes("Tile")
+        ) {
+          toastNotifications.warning(
+            "Map tiles failed to load - check your internet connection",
+          );
+        }
+        // Style loading errors
+        else if (
+          errorMessage.includes("style") ||
+          errorMessage.includes("Style")
+        ) {
+          toastNotifications.error("Failed to load map style");
+        }
+        // Generic errors
+        else {
+          toastNotifications.error(
+            "Map error occurred - see console for details",
+          );
+        }
+
         console.error("Mapbox GL error:", e);
       });
     }
