@@ -9,19 +9,19 @@ import {
 } from "./search-orchestrator";
 import type { SearchResult } from "./services/search-state-service";
 
-describe("Search Orchestrator - Effect Atom Coordination", () => {
+describe("Search Orchestrator - Convex-First Search Strategy", () => {
   describe("Coordinated Search", () => {
-    it("should search across multiple data sources and accumulate results", async () => {
+    it("should search Convex first, fallback to Exa if empty, and save results", async () => {
       const program = coordinatedSearchEffect("marina").pipe(
         Effect.provide(SearchLayer),
       );
 
       const results = await Effect.runPromise(program);
 
-      // Should have results from both Exa and Database
+      // Should have results from either Convex or Exa (fallback)
       expect(results.length).toBeGreaterThan(0);
 
-      // Verify sources
+      // Verify at least one source returned results
       const sources = new Set(results.map((r) => r.source));
       expect(sources.size).toBeGreaterThan(0); // At least one source
     });
@@ -117,15 +117,15 @@ describe("Search Orchestrator - Effect Atom Coordination", () => {
   });
 
   describe("State Sharing Between Services", () => {
-    it("should share search state between Exa and Database services", async () => {
+    it("should implement Convex-first strategy with Exa fallback", async () => {
       const program = Effect.gen(function* () {
         // Start a search
         yield* coordinatedSearchEffect("test");
 
-        // Get results (accumulated from both services via Atom)
+        // Get results (from Convex first, or Exa if Convex empty)
         const results = yield* getSearchResultsEffect();
 
-        // Verify we got results from both sources
+        // Verify we got results from at least one source
         const hasExaResults = results.some((r) => r.source === "exa");
         const hasDbResults = results.some((r) => r.source === "database");
 
@@ -174,9 +174,10 @@ describe("Search Orchestrator - Effect Atom Coordination", () => {
   });
 
   describe("Error Handling", () => {
-    it("should handle search errors gracefully and update state", async () => {
-      // This test demonstrates that even if one service fails,
-      // the search should continue with available results
+    it("should handle search errors gracefully with Convex-first fallback", async () => {
+      // This test demonstrates the fallback strategy:
+      // If Convex fails → try Exa
+      // If Exa fails → return empty array
       const program = coordinatedSearchEffect("error-trigger").pipe(
         Effect.provide(SearchLayer),
       );

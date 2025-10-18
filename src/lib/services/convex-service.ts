@@ -1,5 +1,8 @@
+import { ConvexHttpClient } from "convex/browser";
+import type { GenericId } from "convex/values";
 import { Context, Effect, Layer } from "effect";
-import { convexDeploymentConfig } from "./config-service";
+import { api } from "../../../convex/_generated/api";
+import { convexPublicDeploymentConfig } from "./config-service";
 import type { SearchResult } from "./search-state-service";
 
 /**
@@ -55,37 +58,103 @@ export const ConvexServiceTag =
  * Live implementation of ConvexService
  */
 export class ConvexServiceImpl implements ConvexService {
+  private client: ConvexHttpClient | null = null;
+
+  /**
+   * Get or create the Convex client
+   */
+  private getClient() {
+    return Effect.gen(
+      function* (this: ConvexServiceImpl) {
+        if (this.client) {
+          return this.client;
+        }
+
+        const deployment = yield* convexPublicDeploymentConfig;
+
+        if (!deployment || deployment === "") {
+          yield* Effect.logWarning(
+            "NEXT_PUBLIC_CONVEX_URL not configured, Convex client unavailable",
+          );
+          return null;
+        }
+
+        // Create and cache the client
+        this.client = new ConvexHttpClient(deployment);
+        yield* Effect.log(
+          `Convex client initialized with deployment: ${deployment}`,
+        );
+        return this.client;
+      }.bind(this),
+    );
+  }
+
   isConfigured(): Effect.Effect<boolean> {
     return Effect.gen(function* () {
-      const deployment = yield* convexDeploymentConfig;
+      const deployment = yield* convexPublicDeploymentConfig;
       return deployment !== "" && deployment !== undefined;
     }).pipe(Effect.catchAll(() => Effect.succeed(false)));
   }
 
   searchLocations(query: string): Effect.Effect<SearchResult[], ConvexError> {
-    return Effect.gen(function* () {
-      const deployment = yield* convexDeploymentConfig;
+    return Effect.gen(
+      function* (this: ConvexServiceImpl) {
+        const client = yield* this.getClient();
 
-      if (!deployment || deployment === "") {
-        yield* Effect.logWarning(
-          "CONVEX_DEPLOYMENT not configured, using empty results",
+        if (!client) {
+          yield* Effect.logWarning(
+            "Convex client not available, returning empty results",
+          );
+          return [];
+        }
+
+        yield* Effect.log(`Searching Convex for: "${query}"`);
+
+        // Call the Convex query
+        const locations = yield* Effect.tryPromise({
+          try: () => client.query(api.locations.searchLocations, { query }),
+          catch: (error) =>
+            new ConvexError("Failed to search Convex database", error),
+        });
+
+        // Convert Convex locations to SearchResults
+        const results: SearchResult[] = locations.map(
+          (loc: {
+            _id: string;
+            _creationTime: number;
+            title: string;
+            description: string;
+            latitude: number;
+            longitude: number;
+            source: "mapbox" | "exa" | "database";
+            timestamp: number;
+          }) => ({
+            id: loc._id,
+            title: loc.title,
+            description: loc.description,
+            location: {
+              latitude: loc.latitude,
+              longitude: loc.longitude,
+            },
+            source: loc.source,
+            timestamp: loc.timestamp,
+          }),
         );
-        return [];
-      }
 
-      // TODO: Implement actual Convex query using MCP tools
-      // For now, return empty array indicating Convex is ready but no data
-      yield* Effect.log(
-        `Convex search for "${query}" (deployment configured, awaiting implementation)`,
-      );
+        yield* Effect.log(
+          `Convex search completed: ${results.length} results found`,
+        );
 
-      return [];
-    }).pipe(
+        return results;
+      }.bind(this),
+    ).pipe(
       Effect.catchAll((error) =>
         Effect.gen(function* () {
           yield* Effect.logError("Convex search error", error);
           return yield* Effect.fail(
-            new ConvexError("Failed to search Convex database", error),
+            error instanceof ConvexError
+              ? error
+              : new ConvexError("Failed to search Convex database", error),
           );
         }),
       ),
@@ -93,26 +162,46 @@ export class ConvexServiceImpl implements ConvexService {
   }
 
   saveLocation(result: SearchResult): Effect.Effect<void, ConvexError> {
-    return Effect.gen(function* () {
-      const deployment = yield* convexDeploymentConfig;
+    return Effect.gen(
+      function* (this: ConvexServiceImpl) {
+        const client = yield* this.getClient();
 
-      if (!deployment || deployment === "") {
-        yield* Effect.logWarning(
-          "CONVEX_DEPLOYMENT not configured, skipping save",
+        if (!client) {
+          yield* Effect.logWarning(
+            "Convex client not available, skipping save",
+          );
+          return;
+        }
+
+        yield* Effect.log(`Saving location to Convex: ${result.title}`);
+
+        // Call the Convex mutation
+        yield* Effect.tryPromise({
+          try: () =>
+            client.mutation(api.locations.saveLocation, {
+              title: result.title,
+              description: result.description,
+              latitude: result.location.latitude,
+              longitude: result.location.longitude,
+              source: result.source,
+              timestamp: result.timestamp,
+            }),
+          catch: (error) =>
+            new ConvexError("Failed to save to Convex database", error),
+        });
+
+        yield* Effect.log(
+          `Successfully saved location to Convex: ${result.title}`,
         );
-        return;
-      }
-
-      // TODO: Implement actual Convex mutation using MCP tools
-      yield* Effect.log(
-        `Convex save location: ${result.title} (awaiting implementation)`,
-      );
-    }).pipe(
+      }.bind(this),
+    ).pipe(
       Effect.catchAll((error) =>
         Effect.gen(function* () {
           yield* Effect.logError("Convex save error", error);
           return yield* Effect.fail(
-            new ConvexError("Failed to save to Convex database", error),
+            error instanceof ConvexError
+              ? error
+              : new ConvexError("Failed to save to Convex database", error),
           );
         }),
       ),
@@ -120,26 +209,62 @@ export class ConvexServiceImpl implements ConvexService {
   }
 
   getAllLocations(): Effect.Effect<SearchResult[], ConvexError> {
-    return Effect.gen(function* () {
-      const deployment = yield* convexDeploymentConfig;
+    return Effect.gen(
+      function* (this: ConvexServiceImpl) {
+        const client = yield* this.getClient();
 
-      if (!deployment || deployment === "") {
-        yield* Effect.logWarning(
-          "CONVEX_DEPLOYMENT not configured, returning empty list",
+        if (!client) {
+          yield* Effect.logWarning(
+            "Convex client not available, returning empty list",
+          );
+          return [];
+        }
+
+        yield* Effect.log("Getting all locations from Convex");
+
+        // Call the Convex query
+        const locations = yield* Effect.tryPromise({
+          try: () => client.query(api.locations.getAllLocations, {}),
+          catch: (error) =>
+            new ConvexError("Failed to get locations from Convex", error),
+        });
+
+        // Convert Convex locations to SearchResults
+        const results: SearchResult[] = locations.map(
+          (loc: {
+            _id: string;
+            _creationTime: number;
+            title: string;
+            description: string;
+            latitude: number;
+            longitude: number;
+            source: "mapbox" | "exa" | "database";
+            timestamp: number;
+          }) => ({
+            id: loc._id,
+            title: loc.title,
+            description: loc.description,
+            location: {
+              latitude: loc.latitude,
+              longitude: loc.longitude,
+            },
+            source: loc.source,
+            timestamp: loc.timestamp,
+          }),
         );
-        return [];
-      }
 
-      // TODO: Implement actual Convex query using MCP tools
-      yield* Effect.log("Convex get all locations (awaiting implementation)");
+        yield* Effect.log(`Retrieved ${results.length} locations from Convex`);
 
-      return [];
-    }).pipe(
+        return results;
+      }.bind(this),
+    ).pipe(
       Effect.catchAll((error) =>
         Effect.gen(function* () {
           yield* Effect.logError("Convex get all error", error);
           return yield* Effect.fail(
-            new ConvexError("Failed to get locations from Convex", error),
+            error instanceof ConvexError
+              ? error
+              : new ConvexError("Failed to get locations from Convex", error),
           );
         }),
       ),
@@ -147,26 +272,40 @@ export class ConvexServiceImpl implements ConvexService {
   }
 
   deleteLocation(id: string): Effect.Effect<void, ConvexError> {
-    return Effect.gen(function* () {
-      const deployment = yield* convexDeploymentConfig;
+    return Effect.gen(
+      function* (this: ConvexServiceImpl) {
+        const client = yield* this.getClient();
 
-      if (!deployment || deployment === "") {
-        yield* Effect.logWarning(
-          "CONVEX_DEPLOYMENT not configured, skipping delete",
-        );
-        return;
-      }
+        if (!client) {
+          yield* Effect.logWarning(
+            "Convex client not available, skipping delete",
+          );
+          return;
+        }
 
-      // TODO: Implement actual Convex mutation using MCP tools
-      yield* Effect.log(
-        `Convex delete location: ${id} (awaiting implementation)`,
-      );
-    }).pipe(
+        yield* Effect.log(`Deleting location from Convex: ${id}`);
+
+        // Call the Convex mutation
+        // Cast string id to Convex GenericId type
+        yield* Effect.tryPromise({
+          try: () =>
+            client.mutation(api.locations.deleteLocation, {
+              id: id as GenericId<"locations">,
+            }),
+          catch: (error) =>
+            new ConvexError("Failed to delete from Convex", error),
+        });
+
+        yield* Effect.log(`Successfully deleted location from Convex: ${id}`);
+      }.bind(this),
+    ).pipe(
       Effect.catchAll((error) =>
         Effect.gen(function* () {
           yield* Effect.logError("Convex delete error", error);
           return yield* Effect.fail(
-            new ConvexError("Failed to delete from Convex", error),
+            error instanceof ConvexError
+              ? error
+              : new ConvexError("Failed to delete from Convex", error),
           );
         }),
       ),
