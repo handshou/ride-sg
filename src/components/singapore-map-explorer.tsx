@@ -68,12 +68,15 @@ export function SingaporeMapExplorer({
       const newStaticMapUrl = `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/${newCoords.longitude},${newCoords.latitude},12/400x300?access_token=${mapboxPublicToken}`;
       setStaticMapUrlState(newStaticMapUrl);
 
-      // Update map center if map is ready
+      // Fly to new random coordinates with smooth animation
       if (mapInstanceRef.current) {
         mapInstanceRef.current.flyTo({
           center: [newCoords.longitude, newCoords.latitude],
-          zoom: 12,
-          duration: 1000,
+          zoom: 14, // Zoom in a bit closer
+          duration: 1500, // 1.5 second smooth animation
+          essential: true, // Animation won't be interrupted
+          curve: 1.42, // Smoother arc
+          easing: (t) => t * (2 - t), // Ease out for natural deceleration
         });
       }
     },
@@ -89,12 +92,17 @@ export function SingaporeMapExplorer({
       const newStaticMapUrl = `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/${coords.longitude},${coords.latitude},12/400x300?access_token=${mapboxPublicToken}`;
       setStaticMapUrlState(newStaticMapUrl);
 
-      // Update map center if map is ready
+      // Fly to user's location with dramatic animation
       if (mapInstanceRef.current) {
         mapInstanceRef.current.flyTo({
           center: [coords.longitude, coords.latitude],
-          zoom: 12,
-          duration: 1000,
+          zoom: 16, // Zoom in close to see user's area
+          duration: 2000, // 2 second dramatic animation
+          essential: true,
+          curve: 1.5, // Higher arc for more dramatic effect
+          easing: (t) => t * (2 - t), // Ease out for natural deceleration
+          pitch: 45, // Tilt map for 3D effect
+          bearing: 0, // Reset rotation
         });
       }
     },
@@ -108,17 +116,53 @@ export function SingaporeMapExplorer({
 
   // Handle search result selection - flyTo the selected location
   const handleSearchResultSelect = useCallback((result: SearchResult) => {
-    setMapLocation(result.location);
-    setIsUserLocation(false);
+    console.log("🔍 Search result selected:", result.title, result.location);
 
-    // Fly to the search result on the map
+    // Fly to the search result with cinematic animation
     if (mapInstanceRef.current) {
-      mapInstanceRef.current.flyTo({
-        center: [result.location.longitude, result.location.latitude],
-        zoom: 15, // Zoom in closer for search results
-        duration: 2000, // Slower animation for search results
-        essential: true,
-      });
+      console.log("✈️ Flying to:", result.location);
+      console.log(
+        "📍 Map instance:",
+        mapInstanceRef.current ? "Ready" : "Not ready",
+      );
+
+      const map = mapInstanceRef.current;
+
+      // Function to execute flyTo
+      const executeFlyTo = () => {
+        map.flyTo({
+          center: [result.location.longitude, result.location.latitude],
+          zoom: 17, // Zoom in very close for POIs
+          duration: 2500, // 2.5 second cinematic animation
+          essential: true,
+          curve: 1.6, // High arc for sweeping motion
+          easing: (t) => {
+            // Custom easing: slow start, fast middle, slow end
+            return t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
+          },
+          pitch: 50, // Tilt for dramatic 3D view
+          bearing: 30, // Slight rotation for visual interest
+        });
+        console.log("✅ flyTo called successfully");
+
+        // Update marker location AFTER flyTo starts (to avoid re-render before animation)
+        setMapLocation(result.location);
+        setIsUserLocation(false);
+      };
+
+      // If map style is still loading, wait for it to finish
+      if (!map.isStyleLoaded()) {
+        console.log("⏳ Map style loading, waiting for 'styledata' event...");
+        map.once("styledata", () => {
+          console.log("✅ Map style loaded, executing flyTo");
+          executeFlyTo();
+        });
+      } else {
+        console.log("✅ Map style already loaded, executing flyTo immediately");
+        executeFlyTo();
+      }
+    } else {
+      console.warn("⚠️ Map instance not ready yet");
     }
   }, []);
 
