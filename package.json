@@ -10,8 +10,8 @@
     "lint": "biome check",
     "format": "biome format --write",
     "type-check": "tsc --noEmit",
-    "test": "vitest run src/lib/*.spec.ts",
-    "test:watch": "vitest src/lib/*.spec.ts",
+    "test": "vitest run src/lib/*.spec.ts src/lib/services/*.spec.ts",
+    "test:watch": "vitest src/lib/*.spec.ts src/lib/services/*.spec.ts",
     "test:e2e": "playwright test",
     "check-all": "pnpm run lint && pnpm run type-check && pnpm run test && pnpm run build",
     "pre-commit": "pnpm run check-all"

@@ -227,7 +227,7 @@ pnpm test src/lib/search-orchestrator.spec.ts
 
 ```typescript
 // In a React component
-import { useSearchState } from "@/lib/use-search-state";
+import { useSearchState } from "@/hooks/use-search-state";
 
 function SearchComponent() {
   const { search, results, isLoading, selectResult } = useSearchState();

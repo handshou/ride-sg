@@ -1,7 +1,5 @@
 "use client";
 
-import { useTheme } from "next-themes";
-import { useCallback, useRef, useState } from "react";
 import { ErrorToastHandler } from "@/components/error-toast-handler";
 import { LocateMeButton } from "@/components/locate-me-button";
 import { MapStyleSelector } from "@/components/map-style-selector";
@@ -11,8 +9,10 @@ import { RandomCoordinatesButton } from "@/components/random-coordinates-button"
 import { SearchPanel } from "@/components/search-panel";
 import { logger } from "@/lib/client-logger";
 import { MAPBOX_STYLES } from "@/lib/map-styles";
-import type { GeocodeResult } from "@/lib/mapbox-service";
-import type { SearchResult } from "@/lib/search-state-service";
+import type { GeocodeResult } from "@/lib/services/mapbox-service";
+import type { SearchResult } from "@/lib/services/search-state-service";
+import { useTheme } from "next-themes";
+import { useCallback, useRef, useState } from "react";
 
 interface SingaporeMapExplorerProps {
   initialRandomCoords: { latitude: number; longitude: number };

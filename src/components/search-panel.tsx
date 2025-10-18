@@ -1,11 +1,11 @@
 "use client";
 
-import { Loader2, MapPin, Search, X } from "lucide-react";
-import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import type { SearchResult } from "@/lib/search-state-service";
-import { useSearchState } from "@/lib/use-search-state";
+import { useSearchState } from "@/hooks/use-search-state";
+import type { SearchResult } from "@/lib/services/search-state-service";
+import { Loader2, MapPin, Search, X } from "lucide-react";
+import { useState } from "react";
 
 interface SearchPanelProps {
   onResultSelect: (result: SearchResult) => void;

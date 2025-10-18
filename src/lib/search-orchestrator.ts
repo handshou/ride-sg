@@ -1,18 +1,18 @@
 import { Effect, Layer } from "effect";
-import { ConvexServiceLive } from "./convex-service";
+import { ConvexServiceLive } from "./services/convex-service";
 import {
   DatabaseSearchServiceLive,
   DatabaseSearchServiceTag,
-} from "./database-search-service";
+} from "./services/database-search-service";
 import {
   ExaSearchServiceLive,
   ExaSearchServiceTag,
-} from "./exa-search-service";
+} from "./services/exa-search-service";
 import {
   type SearchResult,
   SearchStateServiceLive,
   SearchStateServiceTag,
-} from "./search-state-service";
+} from "./services/search-state-service";
 
 /**
  * Search Orchestrator

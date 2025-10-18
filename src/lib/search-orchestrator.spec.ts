@@ -7,7 +7,7 @@ import {
   selectResultEffect,
   watchSelectedResultEffect,
 } from "./search-orchestrator";
-import type { SearchResult } from "./search-state-service";
+import type { SearchResult } from "./services/search-state-service";
 
 describe("Search Orchestrator - Effect Atom Coordination", () => {
   describe("Coordinated Search", () => {

@@ -1,10 +1,10 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
+import { getCurrentPositionEffect } from "@/lib/services/geolocation-service";
 import { Effect } from "effect";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { getCurrentPositionEffect } from "@/lib/geolocation-service";
 
 interface LocateMeButtonProps {
   onLocationFound: (coords: { latitude: number; longitude: number }) => void;

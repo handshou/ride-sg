@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { toastNotifications } from "@/lib/toast-hook";
+import { toastNotifications } from "@/hooks/use-toast";
 
 interface ErrorToastHandlerProps {
   singaporeLocationsCount: number;

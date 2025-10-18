@@ -1,14 +1,17 @@
 "use client";
 
-import { Effect } from "effect";
-import { useState } from "react";
-import { logger } from "./client-logger";
+import { logger } from "@/lib/client-logger";
 import {
   runCoordinatedSearch,
   runGetSearchResults,
   runSelectResult,
-} from "./search-orchestrator";
-import type { SearchResult, SearchState } from "./search-state-service";
+} from "@/lib/search-orchestrator";
+import type {
+  SearchResult,
+  SearchState,
+} from "@/lib/services/search-state-service";
+import { Effect } from "effect";
+import { useState } from "react";
 
 /**
  * React Hook to interact with Effect Atom-based search state
