@@ -1,5 +1,6 @@
 import { Effect, Layer } from "effect";
-import { mapboxPublicTokenConfig } from "./config-service";
+import { mapboxPublicTokenConfig } from "./services/config-service";
+import { MapReadinessServiceLive } from "./services/map-readiness-service";
 import {
   type GeocodeResult,
   getCurrentLocationEffect,
@@ -7,12 +8,12 @@ import {
   getStaticMapEffect,
   MapboxServiceLive,
   MapboxServiceTag,
-} from "./mapbox-service";
+} from "./services/mapbox-service";
 import {
   showErrorToast,
   showWarningToast,
   ToastServiceLive,
-} from "./toast-service";
+} from "./services/toast-service";
 
 /**
  * Next.js Server Component Runtime
@@ -24,7 +25,11 @@ import {
  */
 
 // Combined layer with all services
-export const ServerLayer = Layer.mergeAll(MapboxServiceLive, ToastServiceLive);
+export const ServerLayer = Layer.mergeAll(
+  MapboxServiceLive,
+  ToastServiceLive,
+  MapReadinessServiceLive,
+);
 
 /**
  * Run an Effect program in a Next.js server component context

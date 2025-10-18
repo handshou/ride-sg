@@ -1,10 +1,10 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
+import { getCurrentPositionEffect } from "@/lib/services/geolocation-service";
 import { Effect } from "effect";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { getCurrentPositionEffect } from "@/lib/geolocation-service";
 
 interface LocateMeButtonProps {
   onLocationFound: (coords: { latitude: number; longitude: number }) => void;
@@ -51,9 +51,9 @@ export function LocateMeButton({ onLocationFound }: LocateMeButtonProps) {
       toast.success(
         `Location found: ${result.latitude.toFixed(4)}, ${result.longitude.toFixed(4)}`,
       );
-    } catch (error) {
-      // Error is already handled in the Effect.catchAll above
-      console.error("Location detection failed:", error);
+    } catch (_error) {
+      // Error is already handled and logged in the Effect.catchAll above
+      // No additional logging needed here
     } finally {
       setIsLocating(false);
     }
@@ -64,7 +64,7 @@ export function LocateMeButton({ onLocationFound }: LocateMeButtonProps) {
       onClick={locateMe}
       disabled={isLocating}
       variant="outline"
-      className="w-full"
+      className="w-full bg-gray-900/95 text-white border-gray-700 hover:bg-gray-800/95 dark:bg-white/95 dark:text-gray-900 dark:border-gray-200 dark:hover:bg-gray-100/95"
     >
       {isLocating ? (
         <>
