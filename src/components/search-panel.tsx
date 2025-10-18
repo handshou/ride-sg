@@ -1,11 +1,12 @@
 "use client";
 
-import { Loader2, MapPin, Search, X } from "lucide-react";
-import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useSearchState } from "@/hooks/use-search-state";
+import { refreshLocationAction } from "@/lib/actions/refresh-location-action";
 import type { SearchResult } from "@/lib/services/search-state-service";
+import { Loader2, MapPin, RefreshCw, Search, X } from "lucide-react";
+import { useState } from "react";
 
 interface SearchPanelProps {
   onResultSelect: (result: SearchResult) => void;
@@ -15,6 +16,7 @@ export function SearchPanel({ onResultSelect }: SearchPanelProps) {
   const { search, results, isLoading, error, selectResult, selectedResult } =
     useSearchState();
   const [query, setQuery] = useState("");
+  const [refreshingId, setRefreshingId] = useState<string | null>(null);
 
   const handleSearch = async () => {
     if (!query.trim()) return;
@@ -29,6 +31,28 @@ export function SearchPanel({ onResultSelect }: SearchPanelProps) {
   const handleClear = () => {
     setQuery("");
     selectResult(null);
+  };
+
+  const handleRefresh = async (result: SearchResult, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent selecting the result
+    setRefreshingId(result.id);
+
+    try {
+      const { result: refreshedResult, error: refreshError } =
+        await refreshLocationAction(result.title, result.id);
+
+      if (refreshError) {
+        console.error("Refresh failed:", refreshError);
+      } else if (refreshedResult) {
+        // Trigger a new search to refresh the results list
+        await search(query);
+        onResultSelect(refreshedResult);
+      }
+    } catch (error) {
+      console.error("Refresh error:", error);
+    } finally {
+      setRefreshingId(null);
+    }
   };
 
   return (
@@ -103,45 +127,79 @@ export function SearchPanel({ onResultSelect }: SearchPanelProps) {
           <div className="divide-y divide-gray-700 dark:divide-gray-200">
             {results.map((result) => {
               const isSelected = selectedResult?.id === result.id;
+              const isRefreshing = refreshingId === result.id;
 
               return (
-                <button
+                <div
                   key={result.id}
-                  type="button"
-                  onClick={() => handleResultClick(result)}
-                  className={`w-full p-4 text-left transition-colors ${
+                  className={`flex items-center transition-colors ${
                     isSelected
                       ? "bg-purple-900/20 dark:bg-purple-50 border-l-4 border-purple-500"
                       : "hover:bg-gray-800/50 dark:hover:bg-gray-50"
                   }`}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <MapPin className="h-4 w-4 text-purple-500 flex-shrink-0" />
-                        <h3 className="font-medium text-white dark:text-gray-900 truncate">
-                          {result.title}
-                        </h3>
-                      </div>
-                      <p className="text-sm text-gray-400 dark:text-gray-600 line-clamp-2">
-                        {result.description}
-                      </p>
-                      <div className="flex items-center gap-2 mt-2">
-                        <Badge
-                          variant={
-                            result.source === "exa" ? "default" : "secondary"
-                          }
-                        >
-                          {result.source === "exa" ? "🔍 Exa" : "💾 Saved"}
-                        </Badge>
-                        <span className="text-xs text-gray-400 dark:text-gray-500">
-                          {result.location.latitude.toFixed(4)},{" "}
-                          {result.location.longitude.toFixed(4)}
-                        </span>
+                  <button
+                    type="button"
+                    onClick={() => handleResultClick(result)}
+                    className="flex-1 p-4 text-left"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <MapPin className="h-4 w-4 text-purple-500 flex-shrink-0" />
+                          <h3 className="font-medium text-white dark:text-gray-900 truncate">
+                            {result.title}
+                          </h3>
+                        </div>
+                        <p className="text-sm text-gray-400 dark:text-gray-600 line-clamp-2">
+                          {result.description}
+                        </p>
+                        {result.url && (
+                          <a
+                            href={result.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-xs text-purple-400 hover:text-purple-300 dark:text-purple-600 dark:hover:text-purple-500 mt-1 inline-flex items-center gap-1 hover:underline"
+                          >
+                            <span>🔗</span>
+                            <span className="truncate max-w-[200px]">
+                              {new URL(result.url).hostname}
+                            </span>
+                          </a>
+                        )}
+                        <div className="flex items-center gap-2 mt-2">
+                          <Badge
+                            variant={
+                              result.source === "exa" ? "default" : "secondary"
+                            }
+                          >
+                            {result.source === "exa" ? "🔍 Exa" : "💾 Convex"}
+                          </Badge>
+                          <span className="text-xs text-gray-400 dark:text-gray-500">
+                            {result.location.latitude.toFixed(4)},{" "}
+                            {result.location.longitude.toFixed(4)}
+                          </span>
+                        </div>
                       </div>
                     </div>
+                  </button>
+
+                  {/* Refresh Button */}
+                  <div className="pr-3">
+                    <button
+                      type="button"
+                      onClick={(e) => handleRefresh(result, e)}
+                      disabled={isRefreshing}
+                      className="p-2 rounded-md text-gray-400 hover:text-white dark:text-gray-500 dark:hover:text-gray-900 hover:bg-gray-700/50 dark:hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Refresh from Exa"
+                    >
+                      <RefreshCw
+                        className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
+                      />
+                    </button>
                   </div>
-                </button>
+                </div>
               );
             })}
           </div>

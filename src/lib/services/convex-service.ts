@@ -118,6 +118,7 @@ export class ConvexServiceImpl implements ConvexService {
         });
 
         // Convert Convex locations to SearchResults
+        // Mark all results as "database" source to indicate they came from Convex cache
         const results: SearchResult[] = locations.map(
           (loc: {
             _id: string;
@@ -136,7 +137,7 @@ export class ConvexServiceImpl implements ConvexService {
               latitude: loc.latitude,
               longitude: loc.longitude,
             },
-            source: loc.source,
+            source: "database" as const, // Override to show they came from Convex
             timestamp: loc.timestamp,
           }),
         );
@@ -230,6 +231,7 @@ export class ConvexServiceImpl implements ConvexService {
         });
 
         // Convert Convex locations to SearchResults
+        // Mark all results as "database" source to indicate they came from Convex
         const results: SearchResult[] = locations.map(
           (loc: {
             _id: string;
@@ -248,7 +250,7 @@ export class ConvexServiceImpl implements ConvexService {
               latitude: loc.latitude,
               longitude: loc.longitude,
             },
-            source: loc.source,
+            source: "database" as const, // Override to show they came from Convex
             timestamp: loc.timestamp,
           }),
         );

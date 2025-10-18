@@ -91,32 +91,46 @@ export const coordinatedSearchEffect = (query: string) =>
       ),
     );
 
-    // Step 3: If Exa returned results, save them to Convex
+    // Step 3: Filter and save high-confidence results to Convex
     if (exaResults.length > 0) {
-      yield* Effect.log(
-        `Found ${exaResults.length} results from Exa, saving to Convex...`,
-      );
+      // Filter for high confidence results (>= 70%)
+      const CONFIDENCE_THRESHOLD = 0.7;
+      const highConfidenceResults = exaResults.filter((result) => {
+        const confidence =
+          (result as SearchResult & { confidence?: number }).confidence || 0;
+        return confidence >= CONFIDENCE_THRESHOLD;
+      });
 
-      // Save all Exa results to Convex in parallel
-      yield* Effect.all(
-        exaResults.map((result) => dbService.saveLocation(result)),
-        { concurrency: 3 }, // Limit concurrent saves
-      ).pipe(
-        Effect.catchAll((error) =>
-          Effect.gen(function* () {
-            yield* Effect.logError(
-              "Failed to save some Exa results to Convex",
-              error,
-            );
-            // Don't fail the search if save fails
-            return [];
-          }),
-        ),
-      );
+      if (highConfidenceResults.length > 0) {
+        yield* Effect.log(
+          `Found ${exaResults.length} results from Exa, saving ${highConfidenceResults.length} high-confidence results to Convex...`,
+        );
 
-      yield* Effect.log(
-        `Successfully saved ${exaResults.length} Exa results to Convex`,
-      );
+        // Save only high-confidence results to Convex in parallel
+        yield* Effect.all(
+          highConfidenceResults.map((result) => dbService.saveLocation(result)),
+          { concurrency: 3 }, // Limit concurrent saves
+        ).pipe(
+          Effect.catchAll((error) =>
+            Effect.gen(function* () {
+              yield* Effect.logError(
+                "Failed to save some Exa results to Convex",
+                error,
+              );
+              // Don't fail the search if save fails
+              return [];
+            }),
+          ),
+        );
+
+        yield* Effect.log(
+          `Successfully saved ${highConfidenceResults.length} high-confidence results to Convex`,
+        );
+      } else {
+        yield* Effect.logWarning(
+          `Found ${exaResults.length} results from Exa, but none met confidence threshold (>= ${CONFIDENCE_THRESHOLD * 100}%)`,
+        );
+      }
     } else {
       yield* Effect.log("No results found from Exa");
     }

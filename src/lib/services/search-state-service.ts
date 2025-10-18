@@ -13,6 +13,8 @@ export interface SearchResult {
   };
   source: "mapbox" | "exa" | "database";
   timestamp: number;
+  address?: string;
+  url?: string;
 }
 
 export interface SearchState {
