@@ -31,3 +31,25 @@ export const exaApiKeyConfig = Config.string("EXA_API_KEY").pipe(
     "Exa API key for semantic search - server-side only, never expose to client",
   ),
 );
+
+/**
+ * Configuration for Convex deployment URL (server-side)
+ */
+export const convexDeploymentConfig = Config.string("CONVEX_DEPLOYMENT").pipe(
+  Config.withDefault(""),
+  Config.withDescription(
+    "Convex deployment URL for database operations - server-side only",
+  ),
+);
+
+/**
+ * Configuration for Convex deployment URL (client-side)
+ */
+export const convexPublicDeploymentConfig = Config.string(
+  "NEXT_PUBLIC_CONVEX_URL",
+).pipe(
+  Config.withDefault(""),
+  Config.withDescription(
+    "Convex deployment URL for client-side database queries",
+  ),
+);

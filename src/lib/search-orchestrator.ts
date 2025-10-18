@@ -1,4 +1,5 @@
 import { Effect, Layer } from "effect";
+import { ConvexServiceLive } from "./convex-service";
 import {
   DatabaseSearchServiceLive,
   DatabaseSearchServiceTag,
@@ -26,6 +27,7 @@ import {
 // Combined layer with all search-related services
 export const SearchLayer = Layer.mergeAll(
   SearchStateServiceLive,
+  ConvexServiceLive,
   ExaSearchServiceLive,
   DatabaseSearchServiceLive,
 );

@@ -1,4 +1,5 @@
 import { Context, Effect, Layer } from "effect";
+import { type ConvexService, ConvexServiceTag } from "./convex-service";
 import type { SearchResult, SearchStateService } from "./search-state-service";
 import { SearchStateServiceTag } from "./search-state-service";
 
@@ -14,14 +15,21 @@ export class DatabaseError {
  * Database Search Service
  *
  * Searches local database for saved locations, user favorites, etc.
+ * Uses Convex when configured, falls back to mock data otherwise.
  * Coordinates with SearchStateService to update shared state.
  */
 export interface DatabaseSearchService {
   search: (
     query: string,
-  ) => Effect.Effect<SearchResult[], DatabaseError, SearchStateService>;
+  ) => Effect.Effect<
+    SearchResult[],
+    DatabaseError,
+    SearchStateService | ConvexService
+  >;
 
-  saveLocation: (result: SearchResult) => Effect.Effect<void, DatabaseError>;
+  saveLocation: (
+    result: SearchResult,
+  ) => Effect.Effect<void, DatabaseError, ConvexService>;
 }
 
 export const DatabaseSearchServiceTag =
@@ -34,57 +42,74 @@ export class DatabaseSearchServiceImpl implements DatabaseSearchService {
   search(query: string) {
     return Effect.gen(function* () {
       const searchState = yield* SearchStateServiceTag;
+      const convexService = yield* ConvexServiceTag;
 
-      // TODO: Replace with actual database query
-      // For now, return mock saved locations
-      const dbResults: SearchResult[] = yield* Effect.sync(() => [
-        {
-          id: `db-${Date.now()}-1`,
-          title: "Saved: Orchard Road",
-          description: "Shopping district - saved by user",
-          location: {
-            latitude: 1.3048,
-            longitude: 103.8318,
-          },
-          source: "database" as const,
-          timestamp: Date.now() - 86400000, // 1 day ago
-        },
-        {
-          id: `db-${Date.now()}-2`,
-          title: "Saved: Sentosa Island",
-          description: "Resort island - frequently visited",
-          location: {
-            latitude: 1.2494,
-            longitude: 103.8303,
-          },
-          source: "database" as const,
-          timestamp: Date.now() - 172800000, // 2 days ago
-        },
-      ]);
+      // Check if Convex is configured
+      const isConvexConfigured = yield* convexService.isConfigured();
 
-      // Filter results based on query (simple mock filter)
-      const filteredResults = dbResults.filter(
-        (result) =>
-          result.title.toLowerCase().includes(query.toLowerCase()) ||
-          result.description.toLowerCase().includes(query.toLowerCase()),
-      );
+      let dbResults: SearchResult[];
+
+      if (isConvexConfigured) {
+        // Use Convex for search
+        dbResults = yield* convexService.searchLocations(query);
+        yield* Effect.log(
+          `Convex search completed: ${dbResults.length} results`,
+        );
+      } else {
+        // Fall back to mock data when Convex not configured
+        yield* Effect.logWarning(
+          "Convex not configured, using mock database results",
+        );
+
+        const mockResults: SearchResult[] = yield* Effect.sync(() => [
+          {
+            id: `db-${Date.now()}-1`,
+            title: "Saved: Orchard Road",
+            description: "Shopping district - saved by user (mock data)",
+            location: {
+              latitude: 1.3048,
+              longitude: 103.8318,
+            },
+            source: "database" as const,
+            timestamp: Date.now() - 86400000, // 1 day ago
+          },
+          {
+            id: `db-${Date.now()}-2`,
+            title: "Saved: Sentosa Island",
+            description: "Resort island - frequently visited (mock data)",
+            location: {
+              latitude: 1.2494,
+              longitude: 103.8303,
+            },
+            source: "database" as const,
+            timestamp: Date.now() - 172800000, // 2 days ago
+          },
+        ]);
+
+        // Filter results based on query (simple mock filter)
+        dbResults = mockResults.filter(
+          (result) =>
+            result.title.toLowerCase().includes(query.toLowerCase()) ||
+            result.description.toLowerCase().includes(query.toLowerCase()),
+        );
+      }
 
       // Get current results and append database results
       const currentResults = yield* searchState.getResults();
-      yield* searchState.setResults([...currentResults, ...filteredResults]);
+      yield* searchState.setResults([...currentResults, ...dbResults]);
 
       yield* Effect.log(
-        `Database search completed: ${filteredResults.length} results`,
+        `Database search completed: ${dbResults.length} results`,
       );
 
-      return filteredResults;
+      return dbResults;
     }).pipe(
       Effect.catchAll((error) =>
         Effect.gen(function* () {
           const searchState = yield* SearchStateServiceTag;
           const errorMessage =
             error && typeof error === "object" && "message" in error
-              ? (error as Error).message
+              ? String((error as { message: unknown }).message)
               : "Database search failed";
 
           yield* searchState.setError(errorMessage);
@@ -98,28 +123,35 @@ export class DatabaseSearchServiceImpl implements DatabaseSearchService {
 
   saveLocation(result: SearchResult) {
     return Effect.gen(function* () {
-      // TODO: Replace with actual database save
-      yield* Effect.sync(() => {
-        // Mock save to localStorage
-        const saved = JSON.parse(
-          localStorage.getItem("savedLocations") || "[]",
-        );
-        saved.push(result);
-        localStorage.setItem("savedLocations", JSON.stringify(saved));
-      });
+      const convexService = yield* ConvexServiceTag;
 
-      yield* Effect.log(`Saved location: ${result.title}`);
+      // Check if Convex is configured
+      const isConvexConfigured = yield* convexService.isConfigured();
+
+      if (isConvexConfigured) {
+        // Save to Convex
+        yield* convexService.saveLocation(result);
+        yield* Effect.log(`Saved location to Convex: ${result.title}`);
+      } else {
+        // Fall back to mock localStorage save
+        yield* Effect.logWarning(
+          "Convex not configured, skipping database save",
+        );
+        yield* Effect.log(
+          `Mock save location: ${result.title} (Convex not configured)`,
+        );
+      }
     }).pipe(
       Effect.catchAll((error) =>
         Effect.gen(function* () {
           const errorMessage =
             error && typeof error === "object" && "message" in error
-              ? (error as Error).message
+              ? String((error as { message: unknown }).message)
               : "Failed to save location";
 
           yield* Effect.logError("Database save error", error);
 
-          return Effect.fail(new DatabaseError(errorMessage));
+          return yield* Effect.fail(new DatabaseError(errorMessage));
         }),
       ),
     );
