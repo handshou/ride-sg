@@ -1,7 +1,13 @@
 "use client";
 
+<<<<<<< Updated upstream
 import { Moon, Sun, Monitor } from "lucide-react";
 import { useTheme } from "next-themes";
+=======
+import { Monitor, Moon, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
+import { useEffect, useState } from "react";
+>>>>>>> Stashed changes
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -9,7 +15,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+<<<<<<< Updated upstream
 import { useEffect, useState } from "react";
+=======
+>>>>>>> Stashed changes
 
 export function ThemeToggle() {
   const { setTheme, theme } = useTheme();

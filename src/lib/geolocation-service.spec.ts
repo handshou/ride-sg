@@ -13,7 +13,8 @@ const mockGeolocation = {
 
 // Ensure navigator exists in the global scope
 if (typeof global.navigator === "undefined") {
-  (global as typeof globalThis & { navigator: any }).navigator = {};
+  (global as typeof globalThis & { navigator: Navigator }).navigator =
+    {} as Navigator;
 }
 
 Object.defineProperty(global.navigator, "geolocation", {
