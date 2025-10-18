@@ -96,3 +96,10 @@
 - Get Mapbox token from: https://account.mapbox.com/access-tokens/
 - Use `process.env.MAPBOX_ACCESS_TOKEN` in services
 - Never commit `.env*` files (except `.env.example`)
+
+## Commit Messages
+- Use concise, descriptive commit messages
+- Keep commit suggestions under 50 characters when possible
+- Use imperative mood (e.g., "Add feature" not "Added feature")
+- Focus on what changed, not why
+- Use conventional commit format: `type(scope): description`

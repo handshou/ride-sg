@@ -1,4 +1,5 @@
 import { Context, Effect, Layer } from "effect";
+import { mapboxTokenConfig } from "./config-service";
 
 /**
  * Mapbox Service Interface
@@ -108,9 +109,9 @@ export class MapboxServiceImpl implements MapboxService {
     zoom: number,
     size: { width: number; height: number },
   ): Effect.Effect<string, MapboxError> {
-    return Effect.sync(() => {
-      // Generate a Mapbox static map URL
-      const mapboxToken = process.env.MAPBOX_ACCESS_TOKEN || "pk.test";
+    return Effect.gen(function* () {
+      const mapboxToken = yield* mapboxTokenConfig;
+
       const { longitude, latitude } = center;
       const { width, height } = size;
 
