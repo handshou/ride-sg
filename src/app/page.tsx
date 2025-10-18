@@ -35,25 +35,7 @@ export default function Home() {
           <p className="text-base text-blue-600 dark:text-blue-400 text-center sm:text-left">
             {demoMessage}
           </p>
-          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 max-w-md">
-            <p className="text-sm text-green-800 dark:text-green-200">
-              ✨ This page is powered by <strong>Effect-TS</strong> running in a Next.js server component with <strong>Turbopack-safe</strong> runtime!
-            </p>
-          </div>
         </div>
-
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
 
         <div className="flex gap-4 items-center flex-col sm:flex-row">
           <a
