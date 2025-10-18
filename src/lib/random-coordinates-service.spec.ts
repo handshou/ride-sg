@@ -1,9 +1,9 @@
 import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
 import {
-    RandomCoordinatesServiceLive,
-    RandomCoordinatesServiceTag,
-    generateRandomCoordinatesEffect,
+  generateRandomCoordinatesEffect,
+  RandomCoordinatesServiceLive,
+  RandomCoordinatesServiceTag,
 } from "./random-coordinates-service";
 
 describe("Random Coordinates Service - Live Functionality", () => {

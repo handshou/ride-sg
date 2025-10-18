@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import { ErrorToastHandler } from "@/components/error-toast-handler";
+import { LocateMeButton } from "@/components/locate-me-button";
 import { MapboxGLMap } from "@/components/mapbox-gl-map";
 import { RandomCoordinatesButton } from "@/components/random-coordinates-button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -47,6 +48,16 @@ export function SingaporeMapExplorer({
     setRandomCoords(newCoords);
     // Update static map URL with new coordinates
     const newStaticMapUrl = `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/${newCoords.longitude},${newCoords.latitude},12/400x300?access_token=${mapboxPublicToken}`;
+    setStaticMapUrlState(newStaticMapUrl);
+  };
+
+  const handleLocationFound = (coords: {
+    latitude: number;
+    longitude: number;
+  }) => {
+    setRandomCoords(coords);
+    // Update static map URL with new coordinates
+    const newStaticMapUrl = `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/${coords.longitude},${coords.latitude},12/400x300?access_token=${mapboxPublicToken}`;
     setStaticMapUrlState(newStaticMapUrl);
   };
 
@@ -149,21 +160,30 @@ export function SingaporeMapExplorer({
               </CardContent>
             </Card>
 
-            {/* Random Coordinates Generator */}
+            {/* Location Controls */}
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm">
-                  🎲 Random Coordinates Generator
-                </CardTitle>
+                <CardTitle className="text-sm">🎯 Location Controls</CardTitle>
                 <CardDescription>
-                  Generate new random coordinates within Singapore bounds
+                  Generate random coordinates or use your current location
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <RandomCoordinatesButton
-                  onCoordinatesGenerated={handleCoordinatesGenerated}
-                />
-                <div className="mt-3 text-sm text-muted-foreground">
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <h4 className="text-sm font-medium mb-2">
+                      🎲 Random Coordinates
+                    </h4>
+                    <RandomCoordinatesButton
+                      onCoordinatesGenerated={handleCoordinatesGenerated}
+                    />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium mb-2">📍 My Location</h4>
+                    <LocateMeButton onLocationFound={handleLocationFound} />
+                  </div>
+                </div>
+                <div className="text-sm text-muted-foreground">
                   Current: {randomCoords.latitude.toFixed(6)},{" "}
                   {randomCoords.longitude.toFixed(6)}
                 </div>

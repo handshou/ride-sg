@@ -1,10 +1,10 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { generateRandomCoordinatesEffect } from "@/lib/random-coordinates-service";
 import { Effect } from "effect";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { generateRandomCoordinatesEffect } from "@/lib/random-coordinates-service";
 
 interface RandomCoordinatesButtonProps {
   onCoordinatesGenerated: (coords: {
