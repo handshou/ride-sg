@@ -8,8 +8,13 @@
   },
   "typescript.preferences.importModuleSpecifier": "relative",
   "editor.formatOnSave": true,
-  "editor.defaultFormatter": "biomejs.biome",
-  "biome.lspBin": "./node_modules/@biomejs/biome/bin/biome",
+  "[typescript]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "biome.lsp.bin": "./node_modules/@biomejs/biome/bin/biome",
   "files.associations": {
     "*.ts": "typescript",
     "*.tsx": "typescriptreact"
