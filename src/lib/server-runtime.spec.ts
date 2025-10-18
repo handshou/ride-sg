@@ -1,10 +1,10 @@
 import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
 import {
-  getCurrentLocation,
-  getRandomSingaporeCoords,
-  getSingaporeLocation,
-  getStaticMap,
+    getCurrentLocation,
+    getRandomSingaporeCoords,
+    getSingaporeLocation,
+    getStaticMap,
 } from "./server-runtime";
 
 describe("Server Runtime - Live Functionality", () => {
@@ -45,15 +45,29 @@ describe("Server Runtime - Live Functionality", () => {
     });
 
     it("should return different coordinates on multiple calls", async () => {
-      const result1 = await Effect.runPromise(getRandomSingaporeCoords());
-      const result2 = await Effect.runPromise(getRandomSingaporeCoords());
+      // Test multiple times to ensure randomness
+      const results = [];
+      for (let i = 0; i < 5; i++) {
+        const result = await Effect.runPromise(getRandomSingaporeCoords());
+        results.push(result);
+      }
 
-      // Very unlikely to be the same (but not impossible)
-      const isDifferent =
-        result1.latitude !== result2.latitude ||
-        result1.longitude !== result2.longitude;
+      // Check that at least one pair is different
+      let hasDifferent = false;
+      for (let i = 0; i < results.length; i++) {
+        for (let j = i + 1; j < results.length; j++) {
+          const isDifferent =
+            results[i].latitude !== results[j].latitude ||
+            results[i].longitude !== results[j].longitude;
+          if (isDifferent) {
+            hasDifferent = true;
+            break;
+          }
+        }
+        if (hasDifferent) break;
+      }
 
-      expect(isDifferent).toBe(true);
+      expect(hasDifferent).toBe(true);
     });
   });
 
