@@ -97,6 +97,35 @@
 - Use `process.env.MAPBOX_ACCESS_TOKEN` in services
 - Never commit `.env*` files (except `.env.example`)
 
+## Testing Standards
+
+### Test File Naming and Locality
+- Use `*.spec.ts` naming convention for all test files
+- Co-locate test files with their implementations:
+  - `src/lib/server-runtime.ts` ↔️ `src/lib/server-runtime.spec.ts`
+  - `src/lib/toast-service.ts` ↔️ `src/lib/toast-service.spec.ts`
+  - `src/lib/mapbox-service.ts` ↔️ `src/lib/mapbox-service.spec.ts`
+- Place e2e tests in `tests/e2e/` directory with `*.spec.ts` naming
+- Use `tests/e2e/` for Playwright tests, not `src/app/`
+
+### Test Types
+- **Unit Tests**: Test individual functions and services (Vitest)
+- **E2E Tests**: Test real user interactions and browser behavior (Playwright)
+- **Integration Tests**: Test service interactions and error scenarios
+
+### Test Organization
+- Keep tests focused on live functionality only
+- Avoid excessive mocking and stubbing
+- Test real error scenarios in e2e tests, not unit tests
+- Use `describe()` blocks to group related tests
+- Use descriptive test names that explain the expected behavior
+
+### Test Scripts
+- `pnpm run test` - Run unit tests (Vitest)
+- `pnpm run test:e2e` - Run e2e tests (Playwright)
+- `pnpm run test:e2e:ui` - Run e2e tests with UI
+- `pnpm run test:e2e:headed` - Run e2e tests in headed mode
+
 ## Commit Messages
 - Use concise, descriptive commit messages
 - Keep commit suggestions under 50 characters when possible

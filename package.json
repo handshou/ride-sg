@@ -10,7 +10,13 @@
     "lint": "biome check",
     "format": "biome format --write",
     "type-check": "tsc --noEmit",
-    "check-all": "pnpm run lint && pnpm run type-check && pnpm run build",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run --exclude 'tests/e2e/**'",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "check-all": "pnpm run lint && pnpm run type-check && pnpm run test:run && pnpm run build",
     "pre-commit": "pnpm run check-all"
   },
   "dependencies": {
@@ -22,11 +28,14 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.0",
+    "@playwright/test": "^1.56.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/ui": "^3.2.4",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.4"
   }
 }
