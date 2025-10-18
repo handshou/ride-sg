@@ -1,23 +1,20 @@
 "use client";
 
-import { Effect } from "effect";
-import { useState } from "react";
+import { searchLandmarksAction } from "@/lib/actions/search-actions";
 import { logger } from "@/lib/client-logger";
-import {
-  runCoordinatedSearch,
-  runGetSearchResults,
-  runSelectResult,
-} from "@/lib/search-orchestrator";
+import { runSelectResult } from "@/lib/search-orchestrator";
 import type {
   SearchResult,
   SearchState,
 } from "@/lib/services/search-state-service";
+import { Effect } from "effect";
+import { useState } from "react";
 
 /**
- * React Hook to interact with Effect Atom-based search state
+ * React Hook to interact with server-side search
  *
- * This hook bridges Effect-TS Atom state with React components,
- * allowing you to use the coordinated search functionality in your UI.
+ * This hook uses Next.js Server Actions to keep API keys secure on the server.
+ * The search runs server-side and returns results to the client.
  */
 export function useSearchState() {
   const [searchState, setSearchState] = useState<SearchState>({
@@ -29,12 +26,25 @@ export function useSearchState() {
   });
 
   /**
-   * Perform a coordinated search across Exa and Database
+   * Perform a coordinated search using server action
+   * This keeps API keys (EXA, Mapbox) secure on the server
    */
   const search = async (query: string) => {
     try {
-      // Run the coordinated search effect
-      const results = await Effect.runPromise(runCoordinatedSearch(query));
+      // Set loading state
+      setSearchState((prev) => ({
+        ...prev,
+        query,
+        isLoading: true,
+        error: null,
+      }));
+
+      // Call server action (keeps API keys server-side)
+      const { results, error } = await searchLandmarksAction(query);
+
+      if (error) {
+        throw new Error(error);
+      }
 
       // Update local React state with results
       setSearchState((prev) => ({
@@ -77,22 +87,11 @@ export function useSearchState() {
   };
 
   /**
-   * Get current search results
+   * Refresh search results from current state
+   * (In the new server action architecture, just returns current state)
    */
   const refreshResults = async () => {
-    try {
-      const results = await Effect.runPromise(runGetSearchResults());
-
-      setSearchState((prev) => ({
-        ...prev,
-        results,
-      }));
-
-      return results;
-    } catch (error) {
-      logger.error("Failed to refresh results", error);
-      return [];
-    }
+    return searchState.results;
   };
 
   return {
