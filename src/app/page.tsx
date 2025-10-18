@@ -2,6 +2,7 @@ import { ErrorToastHandler } from "@/components/error-toast-handler";
 import { MapboxGLMap } from "@/components/mapbox-gl-map";
 import {
   getCurrentLocation,
+  getMapboxPublicToken,
   getRandomSingaporeCoords,
   getSingaporeLocation,
   getStaticMap,
@@ -22,6 +23,9 @@ export default function Home() {
       height: 300,
     }),
   );
+
+  // Get Mapbox public token for client-side use
+  const mapboxPublicToken = runServerEffect(getMapboxPublicToken());
 
   return (
     <div className="font-sans min-h-screen p-8">
@@ -129,6 +133,7 @@ export default function Home() {
                 center={[randomCoords.longitude, randomCoords.latitude]}
                 zoom={12}
                 className="h-96"
+                accessToken={mapboxPublicToken}
               />
               <div className="text-xs text-gray-500 text-center py-2">
                 Interactive map with navigation, geolocation, and fullscreen controls

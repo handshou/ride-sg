@@ -8,9 +8,10 @@ interface MapboxGLMapProps {
   center: [number, number];
   zoom: number;
   className?: string;
+  accessToken: string;
 }
 
-export function MapboxGLMap({ center, zoom, className = "" }: MapboxGLMapProps) {
+export function MapboxGLMap({ center, zoom, className = "", accessToken }: MapboxGLMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -18,8 +19,8 @@ export function MapboxGLMap({ center, zoom, className = "" }: MapboxGLMapProps) 
   useEffect(() => {
     if (map.current) return; // Initialize map only once
 
-    // Set Mapbox access token
-    mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || "pk.test";
+    // Set Mapbox access token from props
+    mapboxgl.accessToken = accessToken;
 
     if (mapContainer.current) {
       map.current = new mapboxgl.Map({

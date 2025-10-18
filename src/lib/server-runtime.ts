@@ -1,4 +1,5 @@
 import { Effect, Layer } from "effect";
+import { mapboxPublicTokenConfig } from "./config-service";
 import {
   type GeocodeResult,
   getCurrentLocationEffect,
@@ -134,6 +135,21 @@ export const getRandomSingaporeCoords = (): Effect.Effect<
           latitude: 1.351616,
           longitude: 103.808053,
         };
+      }),
+    ),
+  );
+};
+
+/**
+ * Helper function to get Mapbox public token for client-side use
+ */
+export const getMapboxPublicToken = (): Effect.Effect<string, never> => {
+  return mapboxPublicTokenConfig.pipe(
+    Effect.catchAll((error) =>
+      Effect.gen(function* () {
+        yield* Effect.logError("Failed to get Mapbox public token", error);
+        yield* showWarningToast("Mapbox public token unavailable - using fallback");
+        return "pk.test";
       }),
     ),
   );
