@@ -22,9 +22,6 @@ test.describe("Singapore Map Explorer E2E", () => {
     // Check for map style selector
     await expect(page.getByTestId("map-style-selector")).toBeVisible();
 
-    // Check for theme toggle
-    await expect(page.getByTestId("theme-toggle")).toBeVisible();
-
     // Check for random coordinates button
     await expect(
       page.getByRole("button", { name: /🎲 Generate Random Coordinates/ }),
@@ -88,17 +85,6 @@ test.describe("Singapore Map Explorer E2E", () => {
     // This is a mock implementation, so we should see "Search for locations in Singapore" or results
     const searchPanel = page.locator(".absolute.top-20.left-4");
     await expect(searchPanel).toBeVisible();
-  });
-
-  test("should handle theme toggle", async ({ page }) => {
-    const themeToggle = page.getByTestId("theme-toggle");
-    await themeToggle.click({ force: true });
-
-    // Wait for theme to change
-    await page.waitForTimeout(500);
-
-    // Map should still be visible
-    await expect(page.getByTestId("mapbox-gl-map")).toBeVisible();
   });
 
   test("should handle map style changes", async ({ page }) => {

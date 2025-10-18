@@ -1,8 +1,8 @@
 "use client";
 
-import { logger } from "@/lib/client-logger";
 import mapboxgl from "mapbox-gl";
 import { useEffect, useRef } from "react";
+import { logger } from "@/lib/client-logger";
 
 interface MapboxSimpleOverlayProps {
   map: mapboxgl.Map | null;

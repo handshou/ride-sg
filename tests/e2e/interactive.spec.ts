@@ -18,7 +18,6 @@ test.describe("Interactive E2E Testing", () => {
     await expect(searchInput).toBeVisible();
 
     // Verify map controls
-    await expect(page.getByTestId("theme-toggle")).toBeVisible();
     await expect(page.getByTestId("map-style-selector")).toBeVisible();
 
     // Verify action buttons
@@ -39,7 +38,6 @@ test.describe("Interactive E2E Testing", () => {
     console.log("  3. Search for 'garden' or 'marina'");
     console.log("  4. Click on search results to see flyTo animation");
     console.log("  5. Change map style (Light/Dark/Satellite)");
-    console.log("  6. Toggle theme (Light/Dark/System)");
 
     // PAUSE FOR MANUAL INTERACTION
     // This will open a headed browser and pause for you to interact manually
