@@ -1,4 +1,5 @@
 import { ErrorToastHandler } from "@/components/error-toast-handler";
+import { MapboxGLMap } from "@/components/mapbox-gl-map";
 import {
   getCurrentLocation,
   getRandomSingaporeCoords,
@@ -114,15 +115,32 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Static Map */}
-          <div className="mb-4">
+          {/* Interactive Mapbox GL Map */}
+          <div className="mb-6">
             <h4 className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2">
-              Random Singapore Map:
+              Interactive Singapore Map:
             </h4>
             <div className="text-xs text-purple-600 dark:text-purple-400 mb-2">
               🎲 Random coordinates: {randomCoords.latitude.toFixed(6)},{" "}
               {randomCoords.longitude.toFixed(6)}
             </div>
+            <div className="bg-white dark:bg-gray-800 rounded border p-2">
+              <MapboxGLMap
+                center={[randomCoords.longitude, randomCoords.latitude]}
+                zoom={12}
+                className="h-96"
+              />
+              <div className="text-xs text-gray-500 text-center py-2">
+                Interactive map with navigation, geolocation, and fullscreen controls
+              </div>
+            </div>
+          </div>
+
+          {/* Static Map */}
+          <div className="mb-4">
+            <h4 className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2">
+              Static Map (Fallback):
+            </h4>
             <div className="bg-white dark:bg-gray-800 rounded border p-2">
               <Image
                 src={staticMapUrl}
@@ -143,7 +161,7 @@ export default function Home() {
           <p className="text-sm text-purple-600 dark:text-purple-400 mt-4">
             🚀 <strong>Mapbox MCP</strong> integration working with{" "}
             <strong>Effect-TS</strong>! 🎲 <strong>Random map</strong> on each
-            refresh!
+            refresh! 🗺️ <strong>Interactive Mapbox GL</strong> with full controls!
           </p>
         </div>
       </main>

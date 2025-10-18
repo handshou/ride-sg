@@ -36,12 +36,21 @@ test.describe('Singapore Map Explorer E2E', () => {
     await expect(locationText.first()).toBeVisible();
   });
 
-  test('should display random Singapore map', async ({ page }) => {
-    // Check for random map heading
-    await expect(page.getByText('Random Singapore Map:')).toBeVisible();
+  test('should display interactive Singapore map', async ({ page }) => {
+    // Check for interactive map heading
+    await expect(page.getByText('Interactive Singapore Map:')).toBeVisible();
     
     // Check for random coordinates display
     await expect(page.getByText(/🎲 Random coordinates:/)).toBeVisible();
+    
+    // Check for interactive map container
+    const interactiveMap = page.getByTestId('mapbox-gl-map');
+    await expect(interactiveMap).toBeVisible();
+  });
+
+  test('should display static map fallback', async ({ page }) => {
+    // Check for static map heading
+    await expect(page.getByText('Static Map (Fallback):')).toBeVisible();
     
     // Check for map image
     const mapImage = page.locator('img[alt="Random Singapore Map"]');
@@ -82,7 +91,11 @@ test.describe('Singapore Map Explorer E2E', () => {
     // Check that the main heading is still visible on mobile
     await expect(page.getByRole('heading', { name: '🗺️ Singapore Map Explorer' })).toBeVisible();
     
-    // Check that map is still visible on mobile
+    // Check that interactive map is still visible on mobile
+    const interactiveMap = page.getByTestId('mapbox-gl-map');
+    await expect(interactiveMap).toBeVisible();
+    
+    // Check that static map fallback is also visible
     const mapImage = page.locator('img[alt="Random Singapore Map"]');
     await expect(mapImage).toBeVisible();
   });
