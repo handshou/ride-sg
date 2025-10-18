@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
+    "build:vercel": "npx convex deploy --cmd 'pnpm run build' --cmd-url-env-var-name NEXT_PUBLIC_CONVEX_URL --deploy-key \"$CONVEX_DEPLOY_KEY\"",
     "start": "next start",
     "lint": "biome check",
     "format": "biome format --write",
