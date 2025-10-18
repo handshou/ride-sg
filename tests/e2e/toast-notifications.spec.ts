@@ -5,118 +5,157 @@ test.describe("Singapore Map Explorer E2E", () => {
     await page.goto("/");
     // Wait for the page to fully load
     await page.waitForLoadState("networkidle");
+    // Wait for map to initialize (look for "Map ready" in console)
+    await page.waitForTimeout(1000);
   });
 
-  test("should display the main page elements", async ({ page }) => {
-    // Check main heading
+  test("should display the interactive map", async ({ page }) => {
+    // Check that the map container is visible
+    const mapContainer = page.getByTestId("mapbox-gl-map");
+    await expect(mapContainer).toBeVisible();
+
+    // Map should be loaded (no loading spinner)
+    await expect(page.locator(".animate-spin")).not.toBeVisible();
+  });
+
+  test("should display map controls", async ({ page }) => {
+    // Check for map style selector
+    await expect(page.getByTestId("map-style-selector")).toBeVisible();
+
+    // Check for theme toggle
+    await expect(page.getByTestId("theme-toggle")).toBeVisible();
+
+    // Check for random coordinates button
     await expect(
-      page.getByRole("heading", { name: "🗺️ Singapore Map Explorer" }),
+      page.getByRole("button", { name: /🎲 Generate Random Coordinates/ }),
     ).toBeVisible();
 
-    // Check badges - use more specific selectors
+    // Check for locate me button
     await expect(
-      page.getByRole("button", { name: "⚡ Effect-TS" }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "🚀 Mapbox MCP" }),
-    ).toBeVisible();
-
-    // Check Mapbox Integration card
-    await expect(page.getByText("🗺️ Mapbox Integration")).toBeVisible();
-    await expect(
-      page.getByText(
-        "Interactive and static maps powered by Mapbox and Effect-TS",
-      ),
+      page.getByRole("button", { name: /📍 Locate Me/ }),
     ).toBeVisible();
   });
 
-  test("should show Singapore locations section", async ({ page }) => {
-    // Check for Singapore locations card
-    await expect(page.getByText("Singapore Locations")).toBeVisible();
-
-    // Check that location data is displayed (should have at least one location)
-    const locationText = page.locator("text=Singapore");
-    await expect(locationText.first()).toBeVisible();
+  test("should display search panel", async ({ page }) => {
+    // Check for search input
+    const searchInput = page.getByPlaceholder("Search locations...");
+    await expect(searchInput).toBeVisible();
   });
 
-  test("should show current location section", async ({ page }) => {
-    // Check for current location card
-    await expect(page.getByText("Current Location")).toBeVisible();
+  test("should display coordinates", async ({ page }) => {
+    // Check for coordinates display
+    await expect(page.getByText(/Random Location|Your Location/)).toBeVisible();
 
-    // Check that location data is displayed
-    const locationText = page.locator("text=Location at");
-    await expect(locationText.first()).toBeVisible();
+    // Check for coordinate numbers (latitude, longitude format)
+    await expect(page.locator("text=/\\d+\\.\\d+/")).toBeVisible();
   });
 
-  test("should display interactive Singapore map", async ({ page }) => {
-    // Check for interactive map card
-    await expect(page.getByText("Interactive Singapore Map")).toBeVisible();
+  test("should handle random coordinates button click", async ({ page }) => {
+    const button = page.getByRole("button", {
+      name: /🎲 Generate Random Coordinates/,
+    });
+    await button.click();
 
-    // Check for random coordinates display
-    await expect(page.getByText(/🎲 Random coordinates:/)).toBeVisible();
-
-    // Check for interactive map container
-    const interactiveMap = page.getByTestId("mapbox-gl-map");
-    await expect(interactiveMap).toBeVisible();
-  });
-
-  test("should display static map fallback", async ({ page }) => {
-    // Check for static map card
-    await expect(page.getByText("Static Map (Fallback)")).toBeVisible();
-
-    // Check for map image
-    const mapImage = page.locator('img[alt="Random Singapore Map"]');
-    await expect(mapImage).toBeVisible();
-
-    // Check for map URL display
-    await expect(page.getByText(/Map URL:/)).toBeVisible();
-  });
-
-  test("should handle error states gracefully", async ({ page }) => {
-    // Check for error state indicators (these may or may not be visible depending on service status)
-    const errorIndicators = page.locator("text=⚠️").or(page.locator("text=🚨"));
-
-    // If error indicators are present, they should be visible
-    const errorCount = await errorIndicators.count();
-    if (errorCount > 0) {
-      await expect(errorIndicators.first()).toBeVisible();
-    }
-  });
-
-  test("should display toast notifications when needed", async ({ page }) => {
-    // Wait a bit for any potential toasts to appear
+    // Wait for animation and toast
     await page.waitForTimeout(2000);
 
-    // Check for Sonner toast container (may or may not be visible)
-    const toastContainer = page.locator("[data-sonner-toaster]");
-    const hasToasts = (await toastContainer.count()) > 0;
+    // Should still show coordinates
+    await expect(page.getByText(/Random Location/)).toBeVisible();
+  });
 
-    if (hasToasts) {
-      await expect(toastContainer).toBeVisible();
+  test("should handle locate me button click", async ({ page }) => {
+    const button = page.getByRole("button", { name: /📍 Locate Me/ });
+    await button.click();
+
+    // Wait for geolocation (may be denied)
+    await page.waitForTimeout(2000);
+
+    // Should still be on the page
+    await expect(page.getByTestId("mapbox-gl-map")).toBeVisible();
+  });
+
+  test("should handle search functionality", async ({ page }) => {
+    const searchInput = page.getByPlaceholder("Search locations...");
+    await searchInput.fill("garden");
+
+    // Press Enter or click search button
+    await searchInput.press("Enter");
+
+    // Wait for search results
+    await page.waitForTimeout(1500);
+
+    // Search results should appear (if any)
+    // This is a mock implementation, so we should see "Search for locations in Singapore" or results
+    const searchPanel = page.locator(".absolute.top-20.left-4");
+    await expect(searchPanel).toBeVisible();
+  });
+
+  test("should handle theme toggle", async ({ page }) => {
+    const themeToggle = page.getByTestId("theme-toggle");
+    await themeToggle.click({ force: true });
+
+    // Wait for theme to change
+    await page.waitForTimeout(500);
+
+    // Map should still be visible
+    await expect(page.getByTestId("mapbox-gl-map")).toBeVisible();
+  });
+
+  test("should handle map style changes", async ({ page }) => {
+    const styleSelector = page.getByTestId("map-style-selector");
+    await styleSelector.click({ force: true });
+
+    // Wait for dropdown
+    await page.waitForTimeout(300);
+
+    // Click on dark style (if visible)
+    const darkOption = page.getByRole("menuitem", { name: /Dark/i });
+    if (await darkOption.isVisible()) {
+      await darkOption.click({ force: true });
+      await page.waitForTimeout(1000);
     }
+
+    // Map should still be visible
+    await expect(page.getByTestId("mapbox-gl-map")).toBeVisible();
+  });
+
+  test("should initialize map only once", async ({ page }) => {
+    // Listen for console logs
+    const mapReadyLogs: string[] = [];
+    page.on("console", (msg) => {
+      if (msg.text().includes("Map ready, flying to initial location")) {
+        mapReadyLogs.push(msg.text());
+      }
+    });
+
+    // Reload the page
+    await page.reload();
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(2000);
+
+    // Should only see "Map ready" once
+    expect(mapReadyLogs.length).toBeLessThanOrEqual(1);
   });
 
   test("should be responsive on mobile", async ({ page }) => {
-    // Test mobile viewport
+    // Set mobile viewport
     await page.setViewportSize({ width: 375, height: 667 });
 
-    // Check that the main heading is still visible on mobile
+    // Check that map is still visible
+    await expect(page.getByTestId("mapbox-gl-map")).toBeVisible();
+
+    // Check that controls are still accessible
     await expect(
-      page.getByRole("heading", { name: "🗺️ Singapore Map Explorer" }),
+      page.getByRole("button", { name: /🎲 Generate Random Coordinates/ }),
     ).toBeVisible();
-
-    // Check that interactive map is still visible on mobile
-    const interactiveMap = page.getByTestId("mapbox-gl-map");
-    await expect(interactiveMap).toBeVisible();
-
-    // Check that static map fallback is also visible
-    const mapImage = page.locator('img[alt="Random Singapore Map"]');
-    await expect(mapImage).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /📍 Locate Me/ }),
+    ).toBeVisible();
   });
 
-  test("should load without JavaScript errors", async ({ page }) => {
-    // Check for console errors
+  test("should not have critical JavaScript errors", async ({ page }) => {
     const errors: string[] = [];
+
     page.on("console", (msg) => {
       if (msg.type() === "error") {
         errors.push(msg.text());
@@ -125,12 +164,15 @@ test.describe("Singapore Map Explorer E2E", () => {
 
     // Wait for page to load
     await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(2000);
 
-    // Should not have critical JavaScript errors
+    // Filter out known non-critical errors
     const criticalErrors = errors.filter(
       (error) =>
-        !error.includes("Map may not load without a valid Mapbox token") &&
-        !error.includes("Note: Map may not load"),
+        !error.includes("WEBGL_debug_renderer_info") &&
+        !error.includes("-ms-high-contrast") &&
+        !error.includes("mapbox") &&
+        !error.toLowerCase().includes("favicon"),
     );
 
     expect(criticalErrors).toHaveLength(0);

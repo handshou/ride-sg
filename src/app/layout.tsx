@@ -1,7 +1,7 @@
-import { ThemeProvider } from "@/components/theme-provider";
-import { ToastProvider } from "@/components/toast-provider";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { ThemeProvider } from "@/components/theme-provider";
+import { ToastProvider } from "@/components/toast-provider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -16,12 +16,21 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "🚴 Ride-SG - Singapore Map Explorer",
-  description: "Explore Singapore with interactive maps powered by Effect-TS and Mapbox. Generate random locations or use your current position.",
-  keywords: ["Singapore", "maps", "Effect-TS", "Mapbox", "geolocation", "ride-sg"],
+  description:
+    "Explore Singapore with interactive maps powered by Effect-TS and Mapbox. Generate random locations or use your current position.",
+  keywords: [
+    "Singapore",
+    "maps",
+    "Effect-TS",
+    "Mapbox",
+    "geolocation",
+    "ride-sg",
+  ],
   authors: [{ name: "Ride-SG Team" }],
   openGraph: {
     title: "🚴 Ride-SG - Singapore Map Explorer",
-    description: "Explore Singapore with interactive maps powered by Effect-TS and Mapbox.",
+    description:
+      "Explore Singapore with interactive maps powered by Effect-TS and Mapbox.",
     type: "website",
   },
 };

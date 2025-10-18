@@ -7,94 +7,71 @@ test.describe("Interactive E2E Testing", () => {
 
     // Wait for page to fully load
     await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(1500);
 
-    // Verify main page elements are visible
+    // Verify interactive map is visible
+    const mapContainer = page.getByTestId("mapbox-gl-map");
+    await expect(mapContainer).toBeVisible();
+
+    // Verify search panel
+    const searchInput = page.getByPlaceholder("Search locations...");
+    await expect(searchInput).toBeVisible();
+
+    // Verify map controls
+    await expect(page.getByTestId("theme-toggle")).toBeVisible();
+    await expect(page.getByTestId("map-style-selector")).toBeVisible();
+
+    // Verify action buttons
     await expect(
-      page.getByRole("heading", { name: "🗺️ Singapore Map Explorer" }),
+      page.getByRole("button", { name: /🎲 Generate Random Coordinates/ }),
     ).toBeVisible();
     await expect(
-      page.getByRole("button", { name: "⚡ Effect-TS" }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "🚀 Mapbox MCP" }),
+      page.getByRole("button", { name: /📍 Locate Me/ }),
     ).toBeVisible();
 
-    // Check Mapbox Integration card
-    await expect(page.getByText("🗺️ Mapbox Integration")).toBeVisible();
-    await expect(
-      page.getByText(
-        "Interactive and static maps powered by Mapbox and Effect-TS",
-      ),
-    ).toBeVisible();
+    // Verify coordinates display
+    await expect(page.getByText(/Random Location|Your Location/)).toBeVisible();
 
-    // Verify Singapore locations card
-    await expect(page.getByText("Singapore Locations")).toBeVisible();
-    const singaporeLocation = page.locator("text=Singapore").first();
-    await expect(singaporeLocation).toBeVisible();
-
-    // Verify current location card
-    await expect(page.getByText("Current Location")).toBeVisible();
-    const currentLocation = page.locator("text=Location at").first();
-    await expect(currentLocation).toBeVisible();
-
-    // Verify interactive map card
-    await expect(page.getByText("Interactive Singapore Map")).toBeVisible();
-    await expect(page.getByText(/🎲 Random coordinates:/)).toBeVisible();
-
-    // Check interactive map container
-    const interactiveMap = page.getByTestId("mapbox-gl-map");
-    await expect(interactiveMap).toBeVisible();
-
-    // Verify static map fallback card
-    await expect(page.getByText("Static Map (Fallback)")).toBeVisible();
-
-    // Check static map image
-    const mapImage = page.locator('img[alt="Random Singapore Map"]');
-    await expect(mapImage).toBeVisible();
-
-    // Check map URL display
-    await expect(page.getByText(/Map URL:/)).toBeVisible();
+    console.log("✅ All main elements verified");
+    console.log("🎮 Manual interaction guide:");
+    console.log("  1. Try the random coordinates button");
+    console.log("  2. Try the locate me button");
+    console.log("  3. Search for 'garden' or 'marina'");
+    console.log("  4. Click on search results to see flyTo animation");
+    console.log("  5. Change map style (Light/Dark/Satellite)");
+    console.log("  6. Toggle theme (Light/Dark/System)");
 
     // PAUSE FOR MANUAL INTERACTION
     // This will open a headed browser and pause for you to interact manually
     await page.pause();
 
-    // After you close the browser or continue, these assertions will run
-    console.log(
-      "Interactive test completed - you can now interact with the page manually",
-    );
+    console.log("Interactive test completed");
   });
 
-  test("interactive toast testing", async ({ page }) => {
+  test("interactive search and flyTo testing", async ({ page }) => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(1500);
 
-    // Check for any error indicators that might trigger toasts
-    const errorIndicators = page.locator("text=⚠️").or(page.locator("text=🚨"));
-    const errorCount = await errorIndicators.count();
+    // Search for locations
+    const searchInput = page.getByPlaceholder("Search locations...");
+    await searchInput.fill("garden");
+    await searchInput.press("Enter");
 
-    if (errorCount > 0) {
-      console.log(
-        `Found ${errorCount} error indicators - these should trigger toasts`,
-      );
-      await expect(errorIndicators.first()).toBeVisible();
-    }
+    // Wait for results
+    await page.waitForTimeout(2000);
 
-    // Check for Sonner toast container
-    const toastContainer = page.locator("[data-sonner-toaster]");
-    const hasToasts = (await toastContainer.count()) > 0;
+    console.log("🔍 Search completed");
+    console.log("🎮 Try clicking on search results to test flyTo animation:");
+    console.log("  - Should see smooth camera movement");
+    console.log("  - Should see pitch (tilt) and bearing (rotation)");
+    console.log("  - Duration should be ~2.5 seconds");
+    console.log("  - Marker should appear at target location");
 
-    if (hasToasts) {
-      console.log("Toast notifications are present");
-      await expect(toastContainer).toBeVisible();
-    }
-
-    // PAUSE FOR MANUAL TOAST TESTING
+    // PAUSE FOR MANUAL FLYTO TESTING
     await page.pause();
 
-    console.log(
-      "Toast testing completed - check for toast notifications manually",
-    );
+    console.log("FlyTo testing completed");
   });
 
   test("mobile responsive testing", async ({ page }) => {
@@ -103,23 +80,29 @@ test.describe("Interactive E2E Testing", () => {
 
     await page.goto("/");
     await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(1500);
 
     // Verify mobile layout
+    const mapContainer = page.getByTestId("mapbox-gl-map");
+    await expect(mapContainer).toBeVisible();
+
+    // Check that controls are accessible
     await expect(
-      page.getByRole("heading", { name: "🗺️ Singapore Map Explorer" }),
+      page.getByRole("button", { name: /🎲 Generate Random Coordinates/ }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /📍 Locate Me/ }),
     ).toBeVisible();
 
-    // Check interactive map is still visible on mobile
-    const interactiveMap = page.getByTestId("mapbox-gl-map");
-    await expect(interactiveMap).toBeVisible();
-
-    // Check static map fallback is also visible
-    const mapImage = page.locator('img[alt="Random Singapore Map"]');
-    await expect(mapImage).toBeVisible();
+    console.log("📱 Mobile testing guide:");
+    console.log("  1. Verify search panel is accessible");
+    console.log("  2. Verify all buttons are tappable");
+    console.log("  3. Try pinch-to-zoom on the map");
+    console.log("  4. Test landscape orientation");
 
     // PAUSE FOR MOBILE TESTING
     await page.pause();
 
-    console.log("Mobile testing completed - verify responsive design manually");
+    console.log("Mobile testing completed");
   });
 });

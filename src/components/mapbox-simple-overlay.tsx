@@ -112,7 +112,7 @@ export function MapboxSimpleOverlay({
         markerRef.current = null;
       }
     };
-  }, [map, coordinates?.latitude, coordinates?.longitude, isUserLocation]);
+  }, [map, coordinates, isUserLocation]);
 
   return null;
 }

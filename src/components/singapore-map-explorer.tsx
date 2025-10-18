@@ -1,5 +1,7 @@
 "use client";
 
+import { useTheme } from "next-themes";
+import { useCallback, useRef, useState } from "react";
 import { ErrorToastHandler } from "@/components/error-toast-handler";
 import { LocateMeButton } from "@/components/locate-me-button";
 import { MapStyleSelector } from "@/components/map-style-selector";
@@ -11,8 +13,6 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { MAPBOX_STYLES } from "@/lib/map-styles";
 import type { GeocodeResult } from "@/lib/mapbox-service";
 import type { SearchResult } from "@/lib/search-state-service";
-import { useTheme } from "next-themes";
-import { useCallback, useRef, useState } from "react";
 
 interface SingaporeMapExplorerProps {
   initialRandomCoords: { latitude: number; longitude: number };
@@ -42,14 +42,10 @@ export function SingaporeMapExplorer({
 
   // Get the appropriate map style based on theme
   const getMapStyleForTheme = (currentTheme: string | undefined) => {
-    switch (currentTheme) {
-      case "dark":
-        return MAPBOX_STYLES.dark;
-      case "light":
-      case "system":
-      default:
-        return MAPBOX_STYLES.light;
+    if (currentTheme === "dark") {
+      return MAPBOX_STYLES.dark;
     }
+    return MAPBOX_STYLES.light;
   };
 
   const [mapStyle, setMapStyle] = useState(getMapStyleForTheme(theme));
