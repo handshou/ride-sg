@@ -1,5 +1,16 @@
+import Image from "next/image";
 import { ErrorToastHandler } from "@/components/error-toast-handler";
 import { MapboxGLMap } from "@/components/mapbox-gl-map";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   getCurrentLocation,
   getMapboxPublicToken,
@@ -8,7 +19,6 @@ import {
   getStaticMap,
   runServerEffect,
 } from "@/lib/server-runtime";
-import Image from "next/image";
 
 export default function Home() {
   // Get random coordinates from MapboxService
@@ -35,140 +45,164 @@ export default function Home() {
         staticMapUrl={staticMapUrl}
       />
       <main className="max-w-4xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-center mb-4">
-            🗺️ Singapore Map Explorer
-          </h1>
-          <p className="text-lg text-gray-600 dark:text-gray-300 text-center">
-            Powered by <strong>Effect-TS</strong> and{" "}
-            <strong>Mapbox MCP</strong>
+        <div className="mb-8 text-center">
+          <h1 className="text-4xl font-bold mb-4">🗺️ Singapore Map Explorer</h1>
+          <p className="text-lg text-muted-foreground mb-4">
+            Powered by <Badge variant="secondary">Effect-TS</Badge> and{" "}
+            <Badge variant="secondary">Mapbox MCP</Badge>
           </p>
         </div>
 
         {/* Mapbox Integration Section */}
-        <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-6">
-          <h2 className="text-xl font-semibold text-purple-800 dark:text-purple-200 mb-4">
-            🗺️ Mapbox Integration
-          </h2>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              🗺️ Mapbox Integration
+            </CardTitle>
+            <CardDescription>
+              Interactive and static maps powered by Mapbox and Effect-TS
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Error State Indicators */}
+            {singaporeLocations.length === 0 && (
+              <Alert variant="destructive">
+                <AlertDescription>
+                  ⚠️ Singapore locations service unavailable - using fallback
+                  data
+                </AlertDescription>
+              </Alert>
+            )}
 
-          {/* Error State Indicators */}
-          {singaporeLocations.length === 0 && (
-            <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-              <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                ⚠️ Singapore locations service unavailable - using fallback data
-              </p>
-            </div>
-          )}
+            {currentLocation.length === 0 && (
+              <Alert variant="destructive">
+                <AlertDescription>
+                  ⚠️ Current location service unavailable - using fallback data
+                </AlertDescription>
+              </Alert>
+            )}
 
-          {currentLocation.length === 0 && (
-            <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-              <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                ⚠️ Current location service unavailable - using fallback data
-              </p>
-            </div>
-          )}
+            {staticMapUrl.includes("placeholder") && (
+              <Alert variant="destructive">
+                <AlertDescription>
+                  🚨 Map service unavailable - showing placeholder image
+                </AlertDescription>
+              </Alert>
+            )}
 
-          {staticMapUrl.includes("placeholder") && (
-            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-              <p className="text-sm text-red-800 dark:text-red-200">
-                🚨 Map service unavailable - showing placeholder image
-              </p>
-            </div>
-          )}
-
-          {/* Singapore Locations */}
-          <div className="mb-4">
-            <h4 className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2">
-              Singapore Locations:
-            </h4>
-            <div className="space-y-1">
-              {singaporeLocations.map((location) => (
-                <div
-                  key={`${location.coordinates.latitude}-${location.coordinates.longitude}`}
-                  className="text-xs text-purple-600 dark:text-purple-400"
-                >
-                  <span className="font-medium">{location.address}</span>
-                  <br />
-                  <span className="text-gray-500">
-                    📍 {location.coordinates.latitude.toFixed(6)},{" "}
-                    {location.coordinates.longitude.toFixed(6)}
-                  </span>
+            {/* Singapore Locations */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Singapore Locations</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {singaporeLocations.map((location) => (
+                    <div
+                      key={`${location.coordinates.latitude}-${location.coordinates.longitude}`}
+                      className="text-sm"
+                    >
+                      <div className="font-medium">{location.address}</div>
+                      <div className="text-muted-foreground text-xs">
+                        📍 {location.coordinates.latitude.toFixed(6)},{" "}
+                        {location.coordinates.longitude.toFixed(6)}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
+              </CardContent>
+            </Card>
 
-          {/* Current Location */}
-          <div className="mb-4">
-            <h4 className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2">
-              Current Location:
-            </h4>
-            <div className="text-xs text-purple-600 dark:text-purple-400">
-              {currentLocation.map((location) => (
-                <div
-                  key={`current-${location.coordinates.latitude}-${location.coordinates.longitude}`}
-                >
-                  <span className="font-medium">{location.address}</span>
-                  <br />
-                  <span className="text-gray-500">
-                    📍 {location.coordinates.latitude.toFixed(6)},{" "}
-                    {location.coordinates.longitude.toFixed(6)}
-                  </span>
+            {/* Current Location */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Current Location</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {currentLocation.map((location) => (
+                    <div
+                      key={`current-${location.coordinates.latitude}-${location.coordinates.longitude}`}
+                      className="text-sm"
+                    >
+                      <div className="font-medium">{location.address}</div>
+                      <div className="text-muted-foreground text-xs">
+                        📍 {location.coordinates.latitude.toFixed(6)},{" "}
+                        {location.coordinates.longitude.toFixed(6)}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
+              </CardContent>
+            </Card>
 
-          {/* Interactive Mapbox GL Map */}
-          <div className="mb-6">
-            <h4 className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2">
-              Interactive Singapore Map:
-            </h4>
-            <div className="text-xs text-purple-600 dark:text-purple-400 mb-2">
-              🎲 Random coordinates: {randomCoords.latitude.toFixed(6)},{" "}
-              {randomCoords.longitude.toFixed(6)}
-            </div>
-            <div className="bg-white dark:bg-gray-800 rounded border p-2">
-              <MapboxGLMap
-                center={[randomCoords.longitude, randomCoords.latitude]}
-                zoom={12}
-                className="h-96"
-                accessToken={mapboxPublicToken}
-              />
-              <div className="text-xs text-gray-500 text-center py-2">
-                Interactive map with navigation, geolocation, and fullscreen controls
-              </div>
-            </div>
-          </div>
+            {/* Interactive Mapbox GL Map */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">
+                  Interactive Singapore Map
+                </CardTitle>
+                <CardDescription>
+                  🎲 Random coordinates: {randomCoords.latitude.toFixed(6)},{" "}
+                  {randomCoords.longitude.toFixed(6)}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="border rounded-lg overflow-hidden">
+                  <MapboxGLMap
+                    center={[randomCoords.longitude, randomCoords.latitude]}
+                    zoom={12}
+                    className="h-96"
+                    accessToken={mapboxPublicToken}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground text-center mt-2">
+                  Interactive map with navigation, geolocation, and fullscreen
+                  controls
+                </p>
+              </CardContent>
+            </Card>
 
-          {/* Static Map */}
-          <div className="mb-4">
-            <h4 className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2">
-              Static Map (Fallback):
-            </h4>
-            <div className="bg-white dark:bg-gray-800 rounded border p-2">
-              <Image
-                src={staticMapUrl}
-                alt="Random Singapore Map"
-                width={400}
-                height={300}
-                className="w-full h-48 object-cover rounded"
-              />
-              <div className="text-xs text-gray-500 text-center py-2">
-                Note: Map may not load without a valid Mapbox token
-              </div>
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Map URL: {staticMapUrl.substring(0, 80)}...
-            </p>
-          </div>
+            {/* Static Map */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Static Map (Fallback)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="border rounded-lg overflow-hidden">
+                  <Image
+                    src={staticMapUrl}
+                    alt="Random Singapore Map"
+                    width={400}
+                    height={300}
+                    className="w-full h-48 object-cover"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground text-center mt-2">
+                  Note: Map may not load without a valid Mapbox token
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Map URL: {staticMapUrl.substring(0, 80)}...
+                </p>
+              </CardContent>
+            </Card>
 
-          <p className="text-sm text-purple-600 dark:text-purple-400 mt-4">
-            🚀 <strong>Mapbox MCP</strong> integration working with{" "}
-            <strong>Effect-TS</strong>! 🎲 <strong>Random map</strong> on each
-            refresh! 🗺️ <strong>Interactive Mapbox GL</strong> with full controls!
-          </p>
-        </div>
+            <div className="flex items-center justify-center gap-2 pt-4">
+              <Button variant="outline" size="sm">
+                🚀 Mapbox MCP
+              </Button>
+              <Button variant="outline" size="sm">
+                ⚡ Effect-TS
+              </Button>
+              <Button variant="outline" size="sm">
+                🎲 Random Map
+              </Button>
+              <Button variant="outline" size="sm">
+                🗺️ Interactive GL
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </main>
     </div>
   );

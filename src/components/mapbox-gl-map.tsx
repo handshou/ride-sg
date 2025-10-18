@@ -11,7 +11,12 @@ interface MapboxGLMapProps {
   accessToken: string;
 }
 
-export function MapboxGLMap({ center, zoom, className = "", accessToken }: MapboxGLMapProps) {
+export function MapboxGLMap({
+  center,
+  zoom,
+  className = "",
+  accessToken,
+}: MapboxGLMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -46,7 +51,7 @@ export function MapboxGLMap({ center, zoom, className = "", accessToken }: Mapbo
           trackUserLocation: true,
           showUserHeading: true,
         }),
-        "top-right"
+        "top-right",
       );
 
       // Add marker for the center point
@@ -72,7 +77,7 @@ export function MapboxGLMap({ center, zoom, className = "", accessToken }: Mapbo
         map.current = null;
       }
     };
-  }, [center, zoom]);
+  }, [center, zoom, accessToken]);
 
   return (
     <div className={`relative ${className}`} data-testid="mapbox-gl-map">
@@ -81,7 +86,9 @@ export function MapboxGLMap({ center, zoom, className = "", accessToken }: Mapbo
         <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-lg">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-2"></div>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Loading map...</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Loading map...
+            </p>
           </div>
         </div>
       )}

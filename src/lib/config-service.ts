@@ -13,7 +13,9 @@ export const mapboxTokenConfig = Config.string("MAPBOX_ACCESS_TOKEN").pipe(
 /**
  * Configuration for Mapbox access token (client-side)
  */
-export const mapboxPublicTokenConfig = Config.string("NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN").pipe(
+export const mapboxPublicTokenConfig = Config.string(
+  "NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN",
+).pipe(
   Config.withDefault("pk.test"),
   Config.withDescription(
     "Mapbox access token for client-side interactive maps",

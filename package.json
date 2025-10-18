@@ -11,19 +11,24 @@
     "format": "biome format --write",
     "type-check": "tsc --noEmit",
     "test": "vitest",
-    "test:run": "vitest run --exclude 'tests/**'",
+    "test:run": "vitest run src/lib/*.spec.ts",
     "test:e2e": "playwright test",
     "check-all": "pnpm run lint && pnpm run type-check && pnpm run test:run && pnpm run build",
     "pre-commit": "pnpm run check-all"
   },
   "dependencies": {
+    "@radix-ui/react-slot": "^1.2.3",
     "@types/mapbox-gl": "^3.4.1",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "effect": "^3.18.4",
+    "lucide-react": "^0.546.0",
     "mapbox-gl": "^3.15.0",
     "next": "15.5.6",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "sonner": "^2.0.7"
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.0",

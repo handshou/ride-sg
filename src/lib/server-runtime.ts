@@ -148,7 +148,9 @@ export const getMapboxPublicToken = (): Effect.Effect<string, never> => {
     Effect.catchAll((error) =>
       Effect.gen(function* () {
         yield* Effect.logError("Failed to get Mapbox public token", error);
-        yield* showWarningToast("Mapbox public token unavailable - using fallback");
+        yield* showWarningToast(
+          "Mapbox public token unavailable - using fallback",
+        );
         return "pk.test";
       }),
     ),
