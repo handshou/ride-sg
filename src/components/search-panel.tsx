@@ -1,7 +1,5 @@
 "use client";
 
-import { Loader2, MapPin, RefreshCw, Save, Search, X } from "lucide-react";
-import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useSearchState } from "@/hooks/use-search-state";
@@ -10,6 +8,8 @@ import { refreshLocationAction } from "@/lib/actions/refresh-location-action";
 import { saveLocationToConvexAction } from "@/lib/actions/save-location-action";
 import type { SearchResult } from "@/lib/services/search-state-service";
 import { cleanAndTruncateDescription } from "@/lib/text-utils";
+import { Loader2, MapPin, RefreshCw, Save, Search, X } from "lucide-react";
+import { useState } from "react";
 
 interface SearchPanelProps {
   onResultSelect: (result: SearchResult) => void;
@@ -117,7 +117,7 @@ export function SearchPanel({ onResultSelect }: SearchPanelProps) {
     <div className="absolute top-20 left-4 z-20 w-96 bg-gray-900/95 dark:bg-white/95 backdrop-blur-sm rounded-lg shadow-lg border border-gray-700 dark:border-gray-200">
       {/* Search Input */}
       <div className="p-4 border-b border-gray-700 dark:border-gray-200">
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-stretch">
           <div className="relative flex-1">
             <input
               type="text"
@@ -125,7 +125,7 @@ export function SearchPanel({ onResultSelect }: SearchPanelProps) {
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
               placeholder="Search locations..."
-              className="w-full px-4 py-2 pr-10 rounded-md border border-gray-600 dark:border-gray-300 bg-gray-800 dark:bg-white text-white dark:text-gray-900 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full h-10 px-4 pr-10 rounded-md border border-gray-600 dark:border-gray-300 bg-gray-800 dark:bg-white text-white dark:text-gray-900 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
               disabled={isLoading}
             />
             {query && (
@@ -141,7 +141,7 @@ export function SearchPanel({ onResultSelect }: SearchPanelProps) {
           <Button
             onClick={handleSearch}
             disabled={isLoading || !query.trim()}
-            size="default"
+            className="h-10 w-10 p-0"
           >
             {isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
