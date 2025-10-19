@@ -1,6 +1,5 @@
 "use client";
 
-import { useTheme } from "next-themes";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BicycleParkingOverlay } from "@/components/bicycle-parking-overlay";
 import { BicycleParkingPanel } from "@/components/bicycle-parking-panel";
@@ -32,7 +31,6 @@ export function SingaporeMapExplorer({
   staticMapUrl,
   mapboxPublicToken,
 }: SingaporeMapExplorerProps) {
-  const { theme } = useTheme();
   const [randomCoords, setRandomCoords] = useState(initialRandomCoords);
   const [staticMapUrlState, setStaticMapUrlState] = useState(staticMapUrl);
   const mapInstanceRef = useRef<mapboxgl.Map | null>(null);
@@ -51,15 +49,8 @@ export function SingaporeMapExplorer({
   const [selectedParking, setSelectedParking] =
     useState<BicycleParkingResult | null>(null);
 
-  // Get the appropriate map style based on theme
-  const getMapStyleForTheme = (currentTheme: string | undefined) => {
-    if (currentTheme === "dark") {
-      return MAPBOX_STYLES.dark;
-    }
-    return MAPBOX_STYLES.light;
-  };
-
-  const [mapStyle, setMapStyle] = useState(getMapStyleForTheme(theme));
+  // Always use satellite-streets as default map style
+  const [mapStyle, setMapStyle] = useState(MAPBOX_STYLES.satelliteStreets);
 
   // Fetch bicycle parking for a location
   const fetchBicycleParking = useCallback(async (lat: number, long: number) => {
@@ -327,6 +318,7 @@ export function SingaporeMapExplorer({
             <BicycleParkingOverlay
               map={mapInstanceRef.current}
               parkingLocations={bicycleParkingResults}
+              onParkingSelect={handleParkingSelect}
             />
           </>
         )}
@@ -338,19 +330,6 @@ export function SingaporeMapExplorer({
           onCoordinatesGenerated={handleCoordinatesGenerated}
         />
         <LocateMeButton onLocationFound={handleLocationFound} />
-      </div>
-
-      {/* Coordinates Display */}
-      <div className="absolute bottom-4 right-4 z-10">
-        <div className="bg-gray-900/95 dark:bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-lg text-right border border-gray-700 dark:border-gray-200">
-          <div className="text-sm font-medium text-white dark:text-gray-900">
-            {isUserLocation ? "Your Location" : "Random Location"}
-          </div>
-          <div className="text-xs text-gray-300 dark:text-gray-600">
-            {randomCoords.latitude.toFixed(6)},{" "}
-            {randomCoords.longitude.toFixed(6)}
-          </div>
-        </div>
       </div>
     </div>
   );

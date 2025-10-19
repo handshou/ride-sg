@@ -1,8 +1,9 @@
 "use client";
 
-import { Bike, CircleDot, Home } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { BicycleParkingResult } from "@/lib/schema/bicycle-parking.schema";
+import { Bike, CircleDot, Home } from "lucide-react";
+import { useEffect, useRef } from "react";
 
 interface BicycleParkingPanelProps {
   parkingResults: BicycleParkingResult[];
@@ -17,17 +18,32 @@ export function BicycleParkingPanel({
   onParkingSelect,
   selectedParking,
 }: BicycleParkingPanelProps) {
+  const itemRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+
+  // Scroll to selected item when it changes
+  useEffect(() => {
+    if (selectedParking) {
+      const element = itemRefs.current.get(selectedParking.id);
+      if (element) {
+        element.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+        });
+      }
+    }
+  }, [selectedParking]);
+
   if (parkingResults.length === 0 && !isLoading) {
     return null; // Hide panel when no results
   }
 
   return (
-    <div className="absolute top-20 right-4 z-20 w-80 bg-gray-900/95 dark:bg-white/95 backdrop-blur-sm rounded-lg shadow-lg border border-gray-700 dark:border-gray-200 max-h-[calc(100vh-120px)] overflow-hidden flex flex-col">
+    <div className="absolute top-20 right-[95px] z-20 w-80 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 max-h-[calc(100vh-120px)] overflow-hidden flex flex-col">
       {/* Header */}
-      <div className="p-4 border-b border-gray-700 dark:border-gray-200">
+      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-2">
           <Bike className="h-5 w-5 text-green-500" />
-          <h2 className="font-semibold text-white dark:text-gray-900">
+          <h2 className="font-semibold text-gray-900 dark:text-white">
             Bicycle Parking
           </h2>
         </div>
@@ -36,14 +52,14 @@ export function BicycleParkingPanel({
       {/* Results List */}
       <div className="overflow-y-auto flex-1">
         {isLoading && (
-          <div className="p-8 text-center text-gray-400 dark:text-gray-500">
+          <div className="p-8 text-center text-gray-500 dark:text-gray-400">
             <CircleDot className="h-8 w-8 animate-spin mx-auto mb-2" />
             <p>Finding bicycle parking...</p>
           </div>
         )}
 
         {!isLoading && parkingResults.length > 0 && (
-          <div className="divide-y divide-gray-700 dark:divide-gray-200">
+          <div className="divide-y divide-gray-200 dark:divide-gray-700">
             {parkingResults.map((result) => {
               const isSelected = selectedParking?.id === result.id;
               const rackSizeLabel =
@@ -56,12 +72,19 @@ export function BicycleParkingPanel({
               return (
                 <button
                   key={result.id}
+                  ref={(el) => {
+                    if (el) {
+                      itemRefs.current.set(result.id, el);
+                    } else {
+                      itemRefs.current.delete(result.id);
+                    }
+                  }}
                   type="button"
                   onClick={() => onParkingSelect(result)}
                   className={`w-full p-4 text-left transition-colors ${
                     isSelected
-                      ? "bg-green-900/20 dark:bg-green-50 border-l-4 border-green-500"
-                      : "hover:bg-gray-800/50 dark:hover:bg-gray-50"
+                      ? "bg-green-50 dark:bg-green-900/20 border-l-4 border-green-500"
+                      : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
@@ -76,7 +99,7 @@ export function BicycleParkingPanel({
                                 : "h-5 w-5"
                           } text-green-500`}
                         />
-                        <h3 className="font-medium text-white dark:text-gray-900 truncate">
+                        <h3 className="font-medium text-gray-900 dark:text-white truncate">
                           {result.description}
                         </h3>
                       </div>
@@ -104,11 +127,11 @@ export function BicycleParkingPanel({
                         )}
                       </div>
 
-                      <p className="text-xs text-gray-400 dark:text-gray-600 mt-1">
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                         {result.rackType}
                       </p>
 
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
                         {result.latitude.toFixed(4)},{" "}
                         {result.longitude.toFixed(4)}
                       </p>
@@ -123,7 +146,7 @@ export function BicycleParkingPanel({
 
       {/* Footer */}
       {!isLoading && parkingResults.length > 0 && (
-        <div className="p-3 border-t border-gray-700 dark:border-gray-200 bg-gray-800/50 dark:bg-gray-50 text-sm text-gray-400 dark:text-gray-600">
+        <div className="p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-sm text-gray-600 dark:text-gray-400">
           Found {parkingResults.length} bicycle parking location
           {parkingResults.length !== 1 ? "s" : ""}
         </div>
