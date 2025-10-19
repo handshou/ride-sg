@@ -1,4 +1,4 @@
-import { Config } from "effect";
+import { Config, Effect } from "effect";
 
 /**
  * Configuration for Mapbox access token (server-side)
@@ -12,18 +12,14 @@ export const mapboxTokenConfig = Config.string("MAPBOX_ACCESS_TOKEN").pipe(
 
 /**
  * Configuration for Mapbox access token (client-side)
+ * Uses direct process.env access for client-side compatibility
  */
-export const mapboxPublicTokenConfig = Config.string(
-  "NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN",
-).pipe(
-  Config.withDefault("pk.test"),
-  Config.withDescription(
-    "Mapbox access token for client-side interactive maps",
-  ),
+export const mapboxPublicTokenConfig = Effect.sync(
+  () => process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || "pk.test",
 );
 
 /**
- * Configuration for Exa API key (server-side only)
+ * Configuration for Exa API key (server-side only - NEVER expose to client)
  */
 export const exaApiKeyConfig = Config.string("EXA_API_KEY").pipe(
   Config.withDefault(""),
@@ -44,12 +40,17 @@ export const convexDeploymentConfig = Config.string("CONVEX_DEPLOYMENT").pipe(
 
 /**
  * Configuration for Convex deployment URL (client-side)
+ * Uses direct process.env access for client-side compatibility
  */
-export const convexPublicDeploymentConfig = Config.string(
-  "NEXT_PUBLIC_CONVEX_URL",
-).pipe(
-  Config.withDefault(""),
-  Config.withDescription(
-    "Convex deployment URL for client-side database queries",
-  ),
+export const convexPublicDeploymentConfig = Effect.sync(
+  () => process.env.NEXT_PUBLIC_CONVEX_URL || "",
+);
+
+/**
+ * Configuration for LTA DataMall API AccountKey
+ * Used for accessing Singapore bicycle parking data
+ */
+export const ltaAccountKeyConfig = Config.string("LTA_ACCOUNT_KEY").pipe(
+  Config.withDefault("[LTA_KEY_REMOVED]="),
+  Config.withDescription("LTA DataMall AccountKey for API access"),
 );

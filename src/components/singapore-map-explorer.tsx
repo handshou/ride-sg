@@ -1,7 +1,9 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { BicycleParkingOverlay } from "@/components/bicycle-parking-overlay";
+import { BicycleParkingPanel } from "@/components/bicycle-parking-panel";
 import { ErrorToastHandler } from "@/components/error-toast-handler";
 import { LocateMeButton } from "@/components/locate-me-button";
 import { MapStyleSelector } from "@/components/map-style-selector";
@@ -11,6 +13,7 @@ import { RandomCoordinatesButton } from "@/components/random-coordinates-button"
 import { SearchPanel } from "@/components/search-panel";
 import { logger } from "@/lib/client-logger";
 import { MAPBOX_STYLES } from "@/lib/map-styles";
+import type { BicycleParkingResult } from "@/lib/schema/bicycle-parking.schema";
 import type { GeocodeResult } from "@/lib/services/mapbox-service";
 import type { SearchResult } from "@/lib/services/search-state-service";
 
@@ -40,6 +43,14 @@ export function SingaporeMapExplorer({
   } | null>(initialRandomCoords);
   const [isUserLocation, setIsUserLocation] = useState(false);
 
+  // Bicycle parking state
+  const [bicycleParkingResults, setBicycleParkingResults] = useState<
+    BicycleParkingResult[]
+  >([]);
+  const [isFetchingParking, setIsFetchingParking] = useState(false);
+  const [selectedParking, setSelectedParking] =
+    useState<BicycleParkingResult | null>(null);
+
   // Get the appropriate map style based on theme
   const getMapStyleForTheme = (currentTheme: string | undefined) => {
     if (currentTheme === "dark") {
@@ -49,6 +60,40 @@ export function SingaporeMapExplorer({
   };
 
   const [mapStyle, setMapStyle] = useState(getMapStyleForTheme(theme));
+
+  // Fetch bicycle parking for a location
+  const fetchBicycleParking = useCallback(async (lat: number, long: number) => {
+    setIsFetchingParking(true);
+    try {
+      const response = await fetch(
+        `/api/bicycle-parking?lat=${lat}&long=${long}`,
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setBicycleParkingResults(data.results || []);
+        logger.info(
+          `Found ${data.results?.length || 0} bicycle parking locations`,
+        );
+      } else {
+        logger.error("Failed to fetch bicycle parking", {
+          status: response.status,
+        });
+        setBicycleParkingResults([]);
+      }
+    } catch (error) {
+      logger.error("Error fetching bicycle parking", error);
+      setBicycleParkingResults([]);
+    } finally {
+      setIsFetchingParking(false);
+    }
+  }, []);
+
+  // Fetch bicycle parking when map location changes
+  useEffect(() => {
+    if (mapLocation) {
+      fetchBicycleParking(mapLocation.latitude, mapLocation.longitude);
+    }
+  }, [mapLocation, fetchBicycleParking]);
 
   const handleMapReady = useCallback(
     (map: mapboxgl.Map) => {
@@ -146,6 +191,38 @@ export function SingaporeMapExplorer({
     setMapStyle(newStyle);
   }, []);
 
+  // Handle bicycle parking selection - flyTo the parking location
+  const handleParkingSelect = useCallback((parking: BicycleParkingResult) => {
+    logger.info("Bicycle parking selected", {
+      description: parking.description,
+      location: { latitude: parking.latitude, longitude: parking.longitude },
+    });
+
+    setSelectedParking(parking);
+
+    // Fly to the parking location
+    if (mapInstanceRef.current) {
+      const map = mapInstanceRef.current;
+
+      const executeFlyTo = () => {
+        map.flyTo({
+          center: [parking.longitude, parking.latitude],
+          zoom: 18, // Zoom in very close
+          duration: 2000,
+          essential: true,
+          curve: 1.4,
+          easing: (t) => t * (2 - t),
+        });
+      };
+
+      if (!map.isStyleLoaded()) {
+        map.once("styledata", executeFlyTo);
+      } else {
+        executeFlyTo();
+      }
+    }
+  }, []);
+
   // Handle search result selection - flyTo the selected location
   const handleSearchResultSelect = useCallback((result: SearchResult) => {
     logger.info("Search result selected", {
@@ -221,6 +298,14 @@ export function SingaporeMapExplorer({
       {/* Search Panel */}
       <SearchPanel onResultSelect={handleSearchResultSelect} />
 
+      {/* Bicycle Parking Panel */}
+      <BicycleParkingPanel
+        parkingResults={bicycleParkingResults}
+        isLoading={isFetchingParking}
+        onParkingSelect={handleParkingSelect}
+        selectedParking={selectedParking}
+      />
+
       {/* Main Interactive Map */}
       <div className="relative w-full h-screen">
         <MapboxGLMap
@@ -232,12 +317,18 @@ export function SingaporeMapExplorer({
           style={mapStyle}
         />
         {isMapReady && mapInstanceRef.current && mapLocation && (
-          <MapboxSimpleOverlay
-            key={`${mapLocation.latitude}-${mapLocation.longitude}-${isUserLocation}`}
-            map={mapInstanceRef.current}
-            coordinates={mapLocation}
-            isUserLocation={isUserLocation}
-          />
+          <>
+            <MapboxSimpleOverlay
+              key={`${mapLocation.latitude}-${mapLocation.longitude}-${isUserLocation}`}
+              map={mapInstanceRef.current}
+              coordinates={mapLocation}
+              isUserLocation={isUserLocation}
+            />
+            <BicycleParkingOverlay
+              map={mapInstanceRef.current}
+              parkingLocations={bicycleParkingResults}
+            />
+          </>
         )}
       </div>
 

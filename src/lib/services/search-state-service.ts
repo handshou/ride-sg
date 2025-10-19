@@ -11,8 +11,10 @@ export interface SearchResult {
     latitude: number;
     longitude: number;
   };
-  source: "exa" | "database";
+  source: "mapbox" | "exa" | "database";
   timestamp: number;
+  address?: string;
+  url?: string;
 }
 
 export interface SearchState {

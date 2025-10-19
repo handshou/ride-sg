@@ -33,16 +33,19 @@ export const SearchLayer = Layer.mergeAll(
 );
 
 /**
- * Perform a coordinated search across all data sources
+ * Perform a coordinated search with Convex-first fallback strategy
  *
- * This effect:
- * 1. Starts the search (updates state to loading)
- * 2. Searches Exa API (results added to state)
- * 3. Searches Database (results appended to state)
- * 4. Completes the search (updates state to not loading)
+ * This effect implements the following search flow:
+ * 1. Search Convex database first
+ * 2. If Convex returns results → return them
+ * 3. If Convex returns nothing → search Exa API
+ * 4. If Exa returns results → save them to Convex for future searches
+ * 5. Return all results found
  *
- * All services share the same SearchState via Effect Atom,
- * so results accumulate as each source completes.
+ * This strategy ensures:
+ * - Fast responses from local database (Convex)
+ * - Automatic database population from external API (Exa)
+ * - Reduced API calls (only when no local data exists)
  */
 export const coordinatedSearchEffect = (query: string) =>
   Effect.gen(function* () {
@@ -54,35 +57,97 @@ export const coordinatedSearchEffect = (query: string) =>
     yield* searchState.startSearch(query);
     yield* Effect.log(`Starting coordinated search for: "${query}"`);
 
-    // Search both sources in parallel
-    // Results are automatically accumulated in SearchState via Atom
-    const results = yield* Effect.all(
-      [exaService.search(query), dbService.search(query)],
-      { concurrency: "unbounded" },
-    ).pipe(
+    // Step 1: Search Convex database first
+    const convexResults = yield* dbService.search(query).pipe(
+      Effect.catchAll((error) =>
+        Effect.gen(function* () {
+          yield* Effect.logError("Convex search failed, will try Exa", error);
+          return [];
+        }),
+      ),
+    );
+
+    // Check if Convex returned any results
+    if (convexResults.length > 0) {
+      yield* Effect.log(
+        `Found ${convexResults.length} results in Convex, skipping Exa search`,
+      );
+      yield* searchState.completeSearch();
+      return convexResults;
+    }
+
+    // Step 2: No results from Convex, search Exa API
+    yield* Effect.log("No results in Convex, searching Exa API...");
+
+    const exaResults = yield* exaService.search(query).pipe(
       Effect.catchAll((error) =>
         Effect.gen(function* () {
           yield* searchState.setError(
             `Search failed: ${error instanceof Error ? error.message : "Unknown error"}`,
           );
-          yield* Effect.logError("Coordinated search failed", error);
-          return [[], []] as [SearchResult[], SearchResult[]];
+          yield* Effect.logError("Exa search failed", error);
+          return [];
         }),
       ),
     );
 
-    const [exaResults, dbResults] = results;
+    // Step 3: Save only the highest confidence result to Convex
+    if (exaResults.length > 0) {
+      // Sort by confidence (highest first) and take the top result
+      const sortedResults = [...exaResults].sort((a, b) => {
+        const confidenceA =
+          (a as SearchResult & { confidence?: number }).confidence || 0;
+        const confidenceB =
+          (b as SearchResult & { confidence?: number }).confidence || 0;
+        return confidenceB - confidenceA;
+      });
+
+      const topResult = sortedResults[0];
+      const topConfidence =
+        (topResult as SearchResult & { confidence?: number }).confidence || 0;
+
+      // Minimum confidence threshold to save (70%)
+      const CONFIDENCE_THRESHOLD = 0.7;
+
+      if (topConfidence >= CONFIDENCE_THRESHOLD) {
+        yield* Effect.log(
+          `Found ${exaResults.length} results from Exa, saving top result (${(topConfidence * 100).toFixed(0)}% confidence) to Convex...`,
+        );
+
+        // Save only the top result to Convex
+        yield* dbService.saveLocation(topResult).pipe(
+          Effect.catchAll((error) =>
+            Effect.gen(function* () {
+              yield* Effect.logError(
+                "Failed to save top Exa result to Convex",
+                error,
+              );
+              // Don't fail the search if save fails
+              return;
+            }),
+          ),
+        );
+
+        yield* Effect.log(
+          `✓ Saved best result: ${topResult.title} [${(topConfidence * 100).toFixed(0)}% confidence]`,
+        );
+      } else {
+        yield* Effect.logWarning(
+          `Found ${exaResults.length} results from Exa, but top result only has ${(topConfidence * 100).toFixed(0)}% confidence (threshold: ${CONFIDENCE_THRESHOLD * 100}%)`,
+        );
+      }
+    } else {
+      yield* Effect.log("No results found from Exa");
+    }
 
     // Complete search
     yield* searchState.completeSearch();
 
-    const totalResults = exaResults.length + dbResults.length;
     yield* Effect.log(
-      `Coordinated search completed: ${totalResults} total results (${exaResults.length} from Exa, ${dbResults.length} from DB)`,
+      `Coordinated search completed: ${exaResults.length} total results`,
     );
 
-    // Return combined results
-    return [...exaResults, ...dbResults];
+    return exaResults;
   });
 
 /**

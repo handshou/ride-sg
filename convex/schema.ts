@@ -22,4 +22,19 @@ export default defineSchema({
   })
     .index("by_timestamp", ["timestamp"])
     .index("by_source", ["source"]),
+
+  // Bicycle parking table - stores cached bicycle parking locations
+  bicycleParking: defineTable({
+    description: v.string(),
+    latitude: v.number(),
+    longitude: v.number(),
+    rackType: v.string(),
+    rackCount: v.number(),
+    shelterIndicator: v.string(),
+    queryLatitude: v.number(), // For cache lookup
+    queryLongitude: v.number(), // For cache lookup
+    timestamp: v.number(),
+  })
+    .index("by_query_location", ["queryLatitude", "queryLongitude"])
+    .index("by_timestamp", ["timestamp"]),
 });
