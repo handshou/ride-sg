@@ -111,13 +111,13 @@ Display on Map (Markers) + Side Panel (List)
 
 ```bash
 # .env.local
-LTA_ACCOUNT_KEY=[LTA_KEY_REMOVED]=
+LTA_ACCOUNT_KEY=your-lta-api-key-here
 ```
 
 ### Config Service (`src/lib/services/config-service.ts`)
 ```typescript
 export const ltaAccountKeyConfig = Config.string("LTA_ACCOUNT_KEY").pipe(
-  Config.withDefault("[LTA_KEY_REMOVED]="),
+  Config.withDefault(""),
   Config.withDescription("LTA DataMall AccountKey for API access"),
 );
 ```
