@@ -1,8 +1,8 @@
 "use client";
 
+import type { BicycleParkingResult } from "@/lib/schema/bicycle-parking.schema";
 import mapboxgl from "mapbox-gl";
 import { useEffect, useRef } from "react";
-import type { BicycleParkingResult } from "@/lib/schema/bicycle-parking.schema";
 
 interface BicycleParkingOverlayProps {
   map: mapboxgl.Map;
@@ -52,11 +52,33 @@ export function BicycleParkingOverlay({
         `[BicycleParkingOverlay] setupLayers called, style loaded: ${map.isStyleLoaded()}, parking locations: ${currentParkingLocations.length}, layer exists: ${!!map.getLayer(LAYER_ID)}`,
       );
 
-      // Wait for style to be loaded before adding layers
+      // If style is not loaded yet, poll until it is (with timeout)
       if (!map.isStyleLoaded()) {
         console.log(
-          "[BicycleParkingOverlay] Map style not loaded yet, skipping setup",
+          "[BicycleParkingOverlay] Map style not loaded yet, polling until ready...",
         );
+
+        let attempts = 0;
+        const maxAttempts = 50; // 50 * 100ms = 5 seconds max
+
+        const pollStyleLoaded = () => {
+          attempts++;
+
+          if (map.isStyleLoaded()) {
+            console.log(
+              `[BicycleParkingOverlay] Style loaded after ${attempts} attempts, retrying setup`,
+            );
+            setupLayers();
+          } else if (attempts < maxAttempts) {
+            setTimeout(pollStyleLoaded, 100); // Check every 100ms
+          } else {
+            console.error(
+              "[BicycleParkingOverlay] Timeout waiting for style to load",
+            );
+          }
+        };
+
+        setTimeout(pollStyleLoaded, 100);
         return;
       }
 
@@ -221,35 +243,22 @@ export function BicycleParkingOverlay({
       });
     };
 
-    // Setup layers initially
+    // Setup layers initially - the polling mechanism will handle timing
     console.log("[BicycleParkingOverlay] Setting up layers initially");
     setupLayers();
 
-    // Listen for style changes and re-setup layers
-    // This is crucial for handling map style changes (e.g., switching from streets to satellite)
-    console.log("[BicycleParkingOverlay] Registering styledata event listener");
-    map.on("styledata", setupLayers);
-
-    // Check if style loaded while we were setting up
-    // This handles race condition where style loads between initial check and listener registration
-    if (map.isStyleLoaded()) {
-      console.log(
-        "[BicycleParkingOverlay] Style is now loaded, calling setupLayers again",
-      );
-      // Use setTimeout to ensure this runs after current call stack
-      setTimeout(() => setupLayers(), 0);
-    }
-
-    // Cleanup function - removing the layer automatically removes all event listeners
+    // Cleanup function
     return () => {
-      console.log("[BicycleParkingOverlay] Cleaning up event listeners");
-      map.off("styledata", setupLayers);
+      console.log("[BicycleParkingOverlay] Cleaning up layers");
 
-      if (map.getLayer(LAYER_ID)) {
-        map.removeLayer(LAYER_ID);
-      }
-      if (map.getSource(SOURCE_ID)) {
-        map.removeSource(SOURCE_ID);
+      // Only cleanup if style is loaded, otherwise we'll get errors
+      if (map.isStyleLoaded()) {
+        if (map.getLayer(LAYER_ID)) {
+          map.removeLayer(LAYER_ID);
+        }
+        if (map.getSource(SOURCE_ID)) {
+          map.removeSource(SOURCE_ID);
+        }
       }
     };
   }, [map, parkingLocations, onParkingSelect]);

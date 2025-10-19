@@ -122,6 +122,9 @@ export class BicycleParkingServiceImpl implements BicycleParkingService {
 
         const apiUrl = `https://datamall2.mytransport.sg/ltaodataservice/BicycleParkingv2?Lat=${lat}&Long=${long}`;
 
+        yield* Effect.log(`📍 LTA API URL: ${apiUrl}`);
+        yield* Effect.log(`🔑 Using AccountKey: ${ltaKey.substring(0, 5)}...`);
+
         const response = yield* Effect.tryPromise({
           try: () =>
             fetch(apiUrl, {
@@ -134,8 +137,17 @@ export class BicycleParkingServiceImpl implements BicycleParkingService {
             new BicycleParkingError(`LTA API fetch failed: ${error}`),
         });
 
+        yield* Effect.log(`📡 LTA API response status: ${response.status}`);
+
         if (!response.ok) {
-          yield* Effect.logError(`LTA API error: ${response.status}`);
+          yield* Effect.logError(
+            `LTA API error: ${response.status} - ${response.statusText}`,
+          );
+          const errorText = yield* Effect.tryPromise({
+            try: () => response.text(),
+            catch: () => "Could not read error response",
+          });
+          yield* Effect.logError(`LTA API error body: ${errorText}`);
           return yield* Effect.fail(
             new BicycleParkingError(`LTA API returned ${response.status}`),
           );
@@ -147,6 +159,10 @@ export class BicycleParkingServiceImpl implements BicycleParkingService {
           catch: (error) =>
             new BicycleParkingError(`Failed to parse LTA response: ${error}`),
         });
+
+        yield* Effect.log(
+          `📦 Raw API response: ${JSON.stringify(rawData).substring(0, 200)}...`,
+        );
 
         const apiResponse: BicycleParkingResponse = yield* Effect.try({
           try: () =>
@@ -160,6 +176,12 @@ export class BicycleParkingServiceImpl implements BicycleParkingService {
         yield* Effect.log(
           `LTA API returned ${apiResponse.value.length} bicycle parking locations`,
         );
+
+        if (apiResponse.value.length === 0) {
+          yield* Effect.logWarning(
+            `⚠️ No bicycle parking found near (${lat.toFixed(4)}, ${long.toFixed(4)}). This location may not have bicycle parking facilities nearby.`,
+          );
+        }
 
         // Step 4: Convert to internal format
         const timestamp = Date.now();
