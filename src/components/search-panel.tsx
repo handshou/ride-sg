@@ -3,9 +3,11 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useSearchState } from "@/hooks/use-search-state";
+import { deleteLocationFromConvexAction } from "@/lib/actions/delete-location-action";
 import { refreshLocationAction } from "@/lib/actions/refresh-location-action";
+import { saveLocationToConvexAction } from "@/lib/actions/save-location-action";
 import type { SearchResult } from "@/lib/services/search-state-service";
-import { Loader2, MapPin, RefreshCw, Search, X } from "lucide-react";
+import { Loader2, MapPin, RefreshCw, Save, Search, X } from "lucide-react";
 import { useState } from "react";
 
 interface SearchPanelProps {
@@ -17,6 +19,8 @@ export function SearchPanel({ onResultSelect }: SearchPanelProps) {
     useSearchState();
   const [query, setQuery] = useState("");
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const handleSearch = async () => {
     if (!query.trim()) return;
@@ -52,6 +56,56 @@ export function SearchPanel({ onResultSelect }: SearchPanelProps) {
       console.error("Refresh error:", error);
     } finally {
       setRefreshingId(null);
+    }
+  };
+
+  const handleSaveToConvex = async (
+    result: SearchResult,
+    e: React.MouseEvent,
+  ) => {
+    e.stopPropagation(); // Prevent selecting the result
+    setSavingId(result.id);
+
+    try {
+      const { success, error: saveError } =
+        await saveLocationToConvexAction(result);
+
+      if (saveError) {
+        console.error("Save failed:", saveError);
+      } else if (success) {
+        console.log(`✓ Saved to Convex: ${result.title}`);
+        // Trigger a new search to refresh the results list (will now show from Convex)
+        await search(query);
+      }
+    } catch (error) {
+      console.error("Save error:", error);
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  const handleDeleteFromConvex = async (
+    result: SearchResult,
+    e: React.MouseEvent,
+  ) => {
+    e.stopPropagation(); // Prevent selecting the result
+    setDeletingId(result.id);
+
+    try {
+      const { success, error: deleteError } =
+        await deleteLocationFromConvexAction(result.id);
+
+      if (deleteError) {
+        console.error("Delete failed:", deleteError);
+      } else if (success) {
+        console.log(`✓ Deleted from Convex: ${result.title}`);
+        // Trigger a new search to refresh the results list (will now search Exa)
+        await search(query);
+      }
+    } catch (error) {
+      console.error("Delete error:", error);
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -128,6 +182,10 @@ export function SearchPanel({ onResultSelect }: SearchPanelProps) {
             {results.map((result) => {
               const isSelected = selectedResult?.id === result.id;
               const isRefreshing = refreshingId === result.id;
+              const isSaving = savingId === result.id;
+              const isDeleting = deletingId === result.id;
+              const isFromExa = result.source === "exa";
+              const isFromConvex = result.source === "database";
 
               return (
                 <div
@@ -185,8 +243,39 @@ export function SearchPanel({ onResultSelect }: SearchPanelProps) {
                     </div>
                   </button>
 
-                  {/* Refresh Button */}
-                  <div className="pr-3">
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-1 pr-3">
+                    {/* Save to Convex Button - Only show for Exa results */}
+                    {isFromExa && (
+                      <button
+                        type="button"
+                        onClick={(e) => handleSaveToConvex(result, e)}
+                        disabled={isSaving}
+                        className="p-2 rounded-md text-green-400 hover:text-green-300 dark:text-green-600 dark:hover:text-green-500 hover:bg-gray-700/50 dark:hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Save to Convex (overrides existing)"
+                      >
+                        <Save
+                          className={`h-4 w-4 ${isSaving ? "animate-pulse" : ""}`}
+                        />
+                      </button>
+                    )}
+
+                    {/* Delete from Convex Button - Only show for Convex results */}
+                    {isFromConvex && (
+                      <button
+                        type="button"
+                        onClick={(e) => handleDeleteFromConvex(result, e)}
+                        disabled={isDeleting}
+                        className="p-2 rounded-md text-red-400 hover:text-red-300 dark:text-red-600 dark:hover:text-red-500 hover:bg-gray-700/50 dark:hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Delete from Convex"
+                      >
+                        <X
+                          className={`h-4 w-4 ${isDeleting ? "animate-pulse" : ""}`}
+                        />
+                      </button>
+                    )}
+
+                    {/* Refresh Button */}
                     <button
                       type="button"
                       onClick={(e) => handleRefresh(result, e)}

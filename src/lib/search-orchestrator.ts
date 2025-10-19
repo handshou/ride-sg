@@ -91,44 +91,49 @@ export const coordinatedSearchEffect = (query: string) =>
       ),
     );
 
-    // Step 3: Filter and save high-confidence results to Convex
+    // Step 3: Save only the highest confidence result to Convex
     if (exaResults.length > 0) {
-      // Filter for high confidence results (>= 70%)
-      const CONFIDENCE_THRESHOLD = 0.7;
-      const highConfidenceResults = exaResults.filter((result) => {
-        const confidence =
-          (result as SearchResult & { confidence?: number }).confidence || 0;
-        return confidence >= CONFIDENCE_THRESHOLD;
+      // Sort by confidence (highest first) and take the top result
+      const sortedResults = [...exaResults].sort((a, b) => {
+        const confidenceA =
+          (a as SearchResult & { confidence?: number }).confidence || 0;
+        const confidenceB =
+          (b as SearchResult & { confidence?: number }).confidence || 0;
+        return confidenceB - confidenceA;
       });
 
-      if (highConfidenceResults.length > 0) {
+      const topResult = sortedResults[0];
+      const topConfidence =
+        (topResult as SearchResult & { confidence?: number }).confidence || 0;
+
+      // Minimum confidence threshold to save (70%)
+      const CONFIDENCE_THRESHOLD = 0.7;
+
+      if (topConfidence >= CONFIDENCE_THRESHOLD) {
         yield* Effect.log(
-          `Found ${exaResults.length} results from Exa, saving ${highConfidenceResults.length} high-confidence results to Convex...`,
+          `Found ${exaResults.length} results from Exa, saving top result (${(topConfidence * 100).toFixed(0)}% confidence) to Convex...`,
         );
 
-        // Save only high-confidence results to Convex in parallel
-        yield* Effect.all(
-          highConfidenceResults.map((result) => dbService.saveLocation(result)),
-          { concurrency: 3 }, // Limit concurrent saves
-        ).pipe(
+        // Save only the top result to Convex
+        yield* dbService.saveLocation(topResult).pipe(
           Effect.catchAll((error) =>
             Effect.gen(function* () {
               yield* Effect.logError(
-                "Failed to save some Exa results to Convex",
+                "Failed to save top Exa result to Convex",
                 error,
               );
               // Don't fail the search if save fails
-              return [];
+              return;
             }),
           ),
         );
 
         yield* Effect.log(
-          `Successfully saved ${highConfidenceResults.length} high-confidence results to Convex`,
+          `✓ Saved best result: ${topResult.title} [${(topConfidence * 100).toFixed(0)}% confidence]`,
         );
       } else {
         yield* Effect.logWarning(
-          `Found ${exaResults.length} results from Exa, but none met confidence threshold (>= ${CONFIDENCE_THRESHOLD * 100}%)`,
+          `Found ${exaResults.length} results from Exa, but top result only has ${(topConfidence * 100).toFixed(0)}% confidence (threshold: ${CONFIDENCE_THRESHOLD * 100}%)`,
         );
       }
     } else {
