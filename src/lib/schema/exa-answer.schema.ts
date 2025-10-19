@@ -31,23 +31,17 @@ export const ExaAnswerResponseSchema = Schema.Struct({
 });
 
 /**
- * Location information extracted from Exa Answer
+ * Extracted location entry from Exa Answer (before geocoding)
+ * This is the intermediate structure after parsing but before geocoding
  */
-export const LocationInfoSchema = Schema.Struct({
-  name: Schema.String,
+export const ExtractedLocationEntrySchema = Schema.Struct({
+  name: Schema.String.pipe(Schema.minLength(3)),
+  searchQuery: Schema.String.pipe(Schema.minLength(3)),
   description: Schema.String,
-  address: Schema.optional(Schema.String),
-  latitude: Schema.optional(
-    Schema.Number.pipe(
-      Schema.greaterThanOrEqualTo(-90),
-      Schema.lessThanOrEqualTo(90),
-    ),
-  ),
-  longitude: Schema.optional(
-    Schema.Number.pipe(
-      Schema.greaterThanOrEqualTo(-180),
-      Schema.lessThanOrEqualTo(180),
-    ),
+  address: Schema.String,
+  confidence: Schema.Number.pipe(
+    Schema.greaterThanOrEqualTo(0),
+    Schema.lessThanOrEqualTo(1),
   ),
 });
 
@@ -58,4 +52,6 @@ export type ExaAnswerSource = Schema.Schema.Type<typeof ExaAnswerSourceSchema>;
 export type ExaAnswerResponse = Schema.Schema.Type<
   typeof ExaAnswerResponseSchema
 >;
-export type LocationInfo = Schema.Schema.Type<typeof LocationInfoSchema>;
+export type ExtractedLocationEntry = Schema.Schema.Type<
+  typeof ExtractedLocationEntrySchema
+>;

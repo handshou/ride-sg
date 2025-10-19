@@ -2,7 +2,10 @@ import { Context, Effect, Layer, Schema } from "effect";
 import {
   type ExaAnswerResponse,
   ExaAnswerResponseSchema,
+  type ExtractedLocationEntry,
+  ExtractedLocationEntrySchema,
 } from "../schema/exa-answer.schema";
+import { SearchResultSchema } from "../schema/search-result.schema";
 import { exaApiKeyConfig, mapboxTokenConfig } from "./config-service";
 import type { SearchResult, SearchStateService } from "./search-state-service";
 import { SearchStateServiceTag } from "./search-state-service";
@@ -163,102 +166,157 @@ export class ExaSearchServiceImpl implements ExaSearchService {
   }
 
   /**
+   * Validate and create an ExtractedLocationEntry
+   * Returns Effect that resolves to validated entry or null if validation fails
+   */
+  private validateEntry(
+    entry: unknown,
+  ): Effect.Effect<ExtractedLocationEntry | null> {
+    return Effect.gen(function* () {
+      try {
+        return Schema.decodeUnknownSync(ExtractedLocationEntrySchema)(entry);
+      } catch (error) {
+        // Log validation error for debugging but don't throw
+        yield* Effect.logWarning(
+          `Failed to validate extracted entry: ${error instanceof Error ? error.message : String(error)}`,
+        );
+        return null;
+      }
+    });
+  }
+
+  /**
+   * Validate and create a SearchResult
+   * Returns Effect that resolves to validated result or null if validation fails
+   */
+  private validateSearchResult(
+    result: unknown,
+  ): Effect.Effect<SearchResult | null> {
+    return Effect.gen(function* () {
+      try {
+        return Schema.decodeUnknownSync(SearchResultSchema)(result);
+      } catch (error) {
+        // Log validation error for debugging but don't throw
+        yield* Effect.logWarning(
+          `Failed to validate search result: ${error instanceof Error ? error.message : String(error)}`,
+        );
+        return null;
+      }
+    });
+  }
+
+  /**
    * Extract location entries from Exa Answer response
    * Parses structured format: "Name | Address | Description"
-   * Returns objects with name, searchQuery, description, address, and confidence score
+   * Returns validated objects with name, searchQuery, description, address, and confidence score
    */
-  extractLocationEntries(answer: string): Array<{
-    name: string;
-    searchQuery: string;
-    description: string;
-    address: string;
-    confidence: number;
-  }> {
-    // Split by numbered lines (1. 2. 3.) or bullet points
-    const lines = answer.split(/\n\s*[\d]+\.\s*|\n\s*[•-]\s*/);
+  extractLocationEntries(
+    answer: string,
+  ): Effect.Effect<ExtractedLocationEntry[]> {
+    const self = this;
+    return Effect.gen(function* () {
+      // Split by numbered lines (1. 2. 3.) or bullet points
+      const lines = answer.split(/\n\s*[\d]+\.\s*|\n\s*[•-]\s*/);
 
-    const entries: Array<{
-      name: string;
-      searchQuery: string;
-      description: string;
-      address: string;
-      confidence: number;
-    }> = [];
+      const entries: ExtractedLocationEntry[] = [];
 
-    for (const line of lines) {
-      if (line.trim().length < 10) continue; // Skip short lines
+      for (const line of lines) {
+        if (line.trim().length < 10) continue; // Skip short lines
 
-      // Try to parse structured format: "Name | Address | Description"
-      const parts = line.split("|").map((p) => p.trim());
+        // Try to parse structured format: "Name | Address | Description"
+        const parts = line.split("|").map((p) => p.trim());
 
-      if (parts.length >= 2) {
-        // Structured format found
-        const rawName = parts[0].trim();
-        const address = parts[1].trim();
-        const rawDescription = parts[2]?.trim() || "";
+        if (parts.length >= 2) {
+          // Structured format found
+          const rawName = parts[0].trim();
+          const address = parts[1].trim();
+          const rawDescription = parts[2]?.trim() || "";
 
-        // Clean markdown formatting from name
-        const name = this.cleanMarkdown(rawName);
+          // Clean markdown formatting from name
+          const name = self.cleanMarkdown(rawName);
 
-        if (name.length < 3) continue;
+          if (name.length < 3) continue;
 
-        // Clean description and calculate confidence
-        const description = this.cleanDescription(rawDescription);
-        const searchQuery = `${name}, ${address}`;
-        const confidence = this.calculateConfidence({
-          name,
-          searchQuery,
-          description,
-        });
-
-        entries.push({ name, searchQuery, description, address, confidence });
-      } else {
-        // Fallback: try to parse unstructured format
-        // Extract name (first part before comma, colon, dash, or "at")
-        const nameMatch = line.match(/^([^,:\-|]+?)(?:\s+at|\s+-|\s+,|\s+\|)/i);
-        if (!nameMatch) continue;
-
-        const rawName = nameMatch[1].trim();
-        const name = this.cleanMarkdown(rawName);
-
-        // Skip if too short or generic
-        if (
-          name.length < 3 ||
-          /^(and|or|the|in|at|near|Singapore|landmark|location|place|here|are|top|famous|find|list)$/i.test(
+          // Clean description and calculate confidence
+          const description = self.cleanDescription(rawDescription);
+          const searchQuery = `${name}, ${address}`;
+          const confidence = self.calculateConfidence({
             name,
-          )
-        ) {
-          continue;
+            searchQuery,
+            description,
+          });
+
+          // Validate and add entry
+          const validatedEntry = yield* self.validateEntry({
+            name,
+            searchQuery,
+            description,
+            address,
+            confidence,
+          });
+          if (validatedEntry) {
+            entries.push(validatedEntry);
+          }
+        } else {
+          // Fallback: try to parse unstructured format
+          // Extract name (first part before comma, colon, dash, or "at")
+          const nameMatch = line.match(
+            /^([^,:\-|]+?)(?:\s+at|\s+-|\s+,|\s+\|)/i,
+          );
+          if (!nameMatch) continue;
+
+          const rawName = nameMatch[1].trim();
+          const name = self.cleanMarkdown(rawName);
+
+          // Skip if too short or generic
+          if (
+            name.length < 3 ||
+            /^(and|or|the|in|at|near|Singapore|landmark|location|place|here|are|top|famous|find|list)$/i.test(
+              name,
+            )
+          ) {
+            continue;
+          }
+
+          // Extract address (look for street patterns, postal codes)
+          const addressMatch = line.match(
+            /(?:at|located|address|:)\s*([^,\n]+?(?:Road|Street|Avenue|Drive|Boulevard|Lane|Way|Singapore\s+\d{6}|\d{6}))/i,
+          );
+
+          // Extract description (remaining text, up to 100 chars)
+          const descMatch = line.match(/[:\-|]\s*(.+)$/);
+          const rawDescription = descMatch?.[1]?.trim().substring(0, 100) || "";
+          const description = self.cleanDescription(rawDescription);
+
+          // Use name + address for better geocoding
+          const address = addressMatch ? addressMatch[1].trim() : "Singapore";
+          const searchQuery = `${name}, ${address}, Singapore`;
+
+          const confidence = self.calculateConfidence({
+            name,
+            searchQuery,
+            description,
+          });
+
+          // Validate and add entry
+          const validatedEntry = yield* self.validateEntry({
+            name,
+            searchQuery,
+            description,
+            address,
+            confidence,
+          });
+          if (validatedEntry) {
+            entries.push(validatedEntry);
+          }
         }
 
-        // Extract address (look for street patterns, postal codes)
-        const addressMatch = line.match(
-          /(?:at|located|address|:)\s*([^,\n]+?(?:Road|Street|Avenue|Drive|Boulevard|Lane|Way|Singapore\s+\d{6}|\d{6}))/i,
-        );
-
-        // Extract description (remaining text, up to 100 chars)
-        const descMatch = line.match(/[:\-|]\s*(.+)$/);
-        const rawDescription = descMatch?.[1]?.trim().substring(0, 100) || "";
-        const description = this.cleanDescription(rawDescription);
-
-        // Use name + address for better geocoding
-        const address = addressMatch ? addressMatch[1].trim() : "Singapore";
-        const searchQuery = `${name}, ${address}, Singapore`;
-
-        const confidence = this.calculateConfidence({
-          name,
-          searchQuery,
-          description,
-        });
-
-        entries.push({ name, searchQuery, description, address, confidence });
+        // Limit to top 5
+        if (entries.length >= 5) break;
       }
 
-      // Limit to top 5
-      if (entries.length >= 5) break;
-    }
-
-    return entries;
+      return entries;
+    });
   }
 
   /**
@@ -279,7 +337,7 @@ export class ExaSearchServiceImpl implements ExaSearchService {
           yield* Effect.logWarning(
             "EXA_API_KEY not configured, using mock data",
           );
-          const mockResults: SearchResult[] = yield* Effect.sync(() => [
+          const mockData = [
             {
               id: `exa-${Date.now()}-1`,
               title: "Marina Bay Sands",
@@ -304,7 +362,14 @@ export class ExaSearchServiceImpl implements ExaSearchService {
               source: "exa" as const,
               timestamp: Date.now(),
             },
-          ]);
+          ];
+          // Validate mock results
+          const validatedMockResults = yield* Effect.all(
+            mockData.map((data) => this.validateSearchResult(data)),
+          );
+          const mockResults = validatedMockResults.filter(
+            (r): r is SearchResult => r !== null,
+          );
           yield* searchState.setResults(mockResults);
           yield* searchState.completeSearch();
           return mockResults;
@@ -379,7 +444,9 @@ Example format:
         }
 
         // Extract location entries from the answer
-        const locationEntries = this.extractLocationEntries(answerData.answer);
+        const locationEntries = yield* this.extractLocationEntries(
+          answerData.answer,
+        );
 
         yield* Effect.log(
           `Extracted ${locationEntries.length} locations from Exa: ${locationEntries.map((e) => e.name).join(", ")}`,
@@ -429,7 +496,8 @@ Example format:
             // Extract URL from sources if available
             const url = answerData.sources?.[0]?.url;
 
-            exaResults.push({
+            // Validate and add search result
+            const validatedResult = yield* this.validateSearchResult({
               id: `exa-${Date.now()}-${exaResults.length}`,
               title: entry.name,
               description,
@@ -438,8 +506,11 @@ Example format:
               timestamp: Date.now(),
               address: entry.address, // Add address including postal code
               url, // Add URL if available
-              confidence: entry.confidence, // Add confidence score
-            } as SearchResult & { confidence: number });
+            });
+
+            if (validatedResult) {
+              exaResults.push(validatedResult);
+            }
           }
         }
 
@@ -547,7 +618,7 @@ Name | Full Address | Brief description (max 8 words)`;
 
     // Extract location from answer
     const service = new ExaSearchServiceImpl();
-    const entries = service.extractLocationEntries(answerData.answer);
+    const entries = yield* service.extractLocationEntries(answerData.answer);
 
     if (entries.length === 0) {
       yield* Effect.logWarning(`No location data found for "${locationName}"`);
@@ -624,11 +695,17 @@ Name | Full Address | Brief description (max 8 words)`;
             timestamp: result.timestamp,
           });
         },
-        catch: (error) => {
-          console.error("Failed to update Convex:", error);
-          return null;
-        },
-      });
+        catch: (error) => new Error(String(error)),
+      }).pipe(
+        Effect.catchAll((error) =>
+          Effect.gen(function* () {
+            yield* Effect.logError(
+              `Failed to update Convex: ${error instanceof Error ? error.message : String(error)}`,
+            );
+            return null;
+          }),
+        ),
+      );
 
       yield* Effect.log(`✓ Updated Convex location: ${locationId}`);
     }

@@ -1,5 +1,7 @@
 "use client";
 
+import { Loader2, MapPin, RefreshCw, Save, Search, X } from "lucide-react";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useSearchState } from "@/hooks/use-search-state";
@@ -8,8 +10,6 @@ import { refreshLocationAction } from "@/lib/actions/refresh-location-action";
 import { saveLocationToConvexAction } from "@/lib/actions/save-location-action";
 import type { SearchResult } from "@/lib/services/search-state-service";
 import { cleanAndTruncateDescription } from "@/lib/text-utils";
-import { Loader2, MapPin, RefreshCw, Save, Search, X } from "lucide-react";
-import { useState } from "react";
 
 interface SearchPanelProps {
   onResultSelect: (result: SearchResult) => void;
