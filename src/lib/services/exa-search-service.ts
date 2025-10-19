@@ -110,6 +110,18 @@ export class ExaSearchServiceImpl implements ExaSearchService {
   }
 
   /**
+   * Clean markdown formatting from text (bold, italic, etc.)
+   */
+  cleanMarkdown(text: string): string {
+    return text
+      .replace(/\*\*(.+?)\*\*/g, "$1") // Remove bold **text**
+      .replace(/\*(.+?)\*/g, "$1") // Remove italic *text*
+      .replace(/__(.+?)__/g, "$1") // Remove bold __text__
+      .replace(/_(.+?)_/g, "$1") // Remove italic _text_
+      .trim();
+  }
+
+  /**
    * Calculate confidence score for a search result
    * Returns 0-1, where 1 is highest confidence
    */
@@ -179,9 +191,12 @@ export class ExaSearchServiceImpl implements ExaSearchService {
 
       if (parts.length >= 2) {
         // Structured format found
-        const name = parts[0].trim();
+        const rawName = parts[0].trim();
         const address = parts[1].trim();
         const rawDescription = parts[2]?.trim() || "";
+
+        // Clean markdown formatting from name
+        const name = this.cleanMarkdown(rawName);
 
         if (name.length < 3) continue;
 
@@ -201,7 +216,8 @@ export class ExaSearchServiceImpl implements ExaSearchService {
         const nameMatch = line.match(/^([^,:\-|]+?)(?:\s+at|\s+-|\s+,|\s+\|)/i);
         if (!nameMatch) continue;
 
-        const name = nameMatch[1].trim();
+        const rawName = nameMatch[1].trim();
+        const name = this.cleanMarkdown(rawName);
 
         // Skip if too short or generic
         if (
