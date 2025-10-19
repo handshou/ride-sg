@@ -1,5 +1,7 @@
 "use client";
 
+import { Loader2, MapPin, RefreshCw, Save, Search, X } from "lucide-react";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useSearchState } from "@/hooks/use-search-state";
@@ -7,8 +9,6 @@ import { deleteLocationFromConvexAction } from "@/lib/actions/delete-location-ac
 import { refreshLocationAction } from "@/lib/actions/refresh-location-action";
 import { saveLocationToConvexAction } from "@/lib/actions/save-location-action";
 import type { SearchResult } from "@/lib/services/search-state-service";
-import { Loader2, MapPin, RefreshCw, Save, Search, X } from "lucide-react";
-import { useState } from "react";
 
 interface SearchPanelProps {
   onResultSelect: (result: SearchResult) => void;
@@ -21,6 +21,7 @@ export function SearchPanel({ onResultSelect }: SearchPanelProps) {
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
 
   const handleSearch = async () => {
     if (!query.trim()) return;
@@ -74,6 +75,8 @@ export function SearchPanel({ onResultSelect }: SearchPanelProps) {
         console.error("Save failed:", saveError);
       } else if (success) {
         console.log(`✓ Saved to Convex: ${result.title}`);
+        // Mark as saved (turns green)
+        setSavedIds((prev) => new Set(prev).add(result.id));
         // Trigger a new search to refresh the results list (will now show from Convex)
         await search(query);
       }
@@ -184,6 +187,7 @@ export function SearchPanel({ onResultSelect }: SearchPanelProps) {
               const isRefreshing = refreshingId === result.id;
               const isSaving = savingId === result.id;
               const isDeleting = deletingId === result.id;
+              const isSaved = savedIds.has(result.id);
               const isFromExa = result.source === "exa";
               const isFromConvex = result.source === "database";
 
@@ -251,8 +255,16 @@ export function SearchPanel({ onResultSelect }: SearchPanelProps) {
                         type="button"
                         onClick={(e) => handleSaveToConvex(result, e)}
                         disabled={isSaving}
-                        className="p-2 rounded-md text-green-400 hover:text-green-300 dark:text-green-600 dark:hover:text-green-500 hover:bg-gray-700/50 dark:hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        title="Save to Convex (overrides existing)"
+                        className={`p-2 rounded-md hover:bg-gray-700/50 dark:hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                          isSaved
+                            ? "text-green-400 hover:text-green-300 dark:text-green-600 dark:hover:text-green-500"
+                            : "text-gray-400 hover:text-gray-300 dark:text-gray-500 dark:hover:text-gray-400"
+                        }`}
+                        title={
+                          isSaved
+                            ? "Saved to Convex ✓"
+                            : "Save to Convex (overrides existing)"
+                        }
                       >
                         <Save
                           className={`h-4 w-4 ${isSaving ? "animate-pulse" : ""}`}
