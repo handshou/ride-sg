@@ -139,6 +139,25 @@ See additional documentation in the repository:
 - `SECURITY_FIX.md` - Server-side API key security
 - `SEARCH_INTEGRATION.md` - Search architecture overview
 
+## 🚀 Future Enhancements
+
+### Weather & Environment
+
+- **Real-time Rain Overlay** - 2-hour rain nowcast from [Meteorological Service Singapore](https://www.weather.gov.sg/weather-forecast-2hrnowcast-2/)
+- **Air Quality & UV Index** - Smog levels and UV radiation data from [National Environment Agency](https://www.nea.gov.sg/corporate-functions/weather#weather-forecast2hr)
+
+### Traffic & Transportation
+
+- **LTA Dynamic Data** - Real-time bus arrivals, taxi availability, and traffic speed from [LTA DataMall](https://datamall.lta.gov.sg/content/datamall/en/dynamic-data.html)
+- **Traffic Closures** - Live road closure alerts from [LTA OneMotoring](https://onemotoring.lta.gov.sg/content/onemotoring/home/driving/traffic_information/traffic_updates_and_road_closures.html?type=crw&qcrw=D)
+
+### Enhanced Features
+
+- **Route Planning** - Multi-modal route suggestions combining walking, cycling, and public transport
+- **Weather-Aware Recommendations** - Smart suggestions based on current weather and air quality
+- **Community Reports** - Crowdsourced updates for parking availability and facility conditions
+- **Historical Analytics** - Parking usage patterns and weather trends over time
+
 ## 📄 License
 
 MIT

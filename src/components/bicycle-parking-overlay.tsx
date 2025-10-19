@@ -1,8 +1,8 @@
 "use client";
 
-import type { BicycleParkingResult } from "@/lib/schema/bicycle-parking.schema";
 import mapboxgl from "mapbox-gl";
 import { useEffect, useRef } from "react";
+import type { BicycleParkingResult } from "@/lib/schema/bicycle-parking.schema";
 
 interface BicycleParkingOverlayProps {
   map: mapboxgl.Map;
@@ -49,7 +49,7 @@ export function BicycleParkingOverlay({
     const setupLayers = () => {
       const currentParkingLocations = parkingLocationsRef.current;
       console.log(
-        `[BicycleParkingOverlay] setupLayers called, style loaded: ${map.isStyleLoaded()}`,
+        `[BicycleParkingOverlay] setupLayers called, style loaded: ${map.isStyleLoaded()}, parking locations: ${currentParkingLocations.length}, layer exists: ${!!map.getLayer(LAYER_ID)}`,
       );
 
       // Wait for style to be loaded before adding layers
@@ -60,24 +60,22 @@ export function BicycleParkingOverlay({
         return;
       }
 
-      // Remove existing layers and source if they exist
-      if (map.getLayer(LAYER_ID)) {
-        console.log("[BicycleParkingOverlay] Removing existing layer");
-        map.removeLayer(LAYER_ID);
-      }
-      if (map.getSource(SOURCE_ID)) {
-        console.log("[BicycleParkingOverlay] Removing existing source");
-        map.removeSource(SOURCE_ID);
-      }
-
-      // Skip if no parking locations
+      // If no parking locations, remove any existing layers and return
       if (currentParkingLocations.length === 0) {
-        console.log("[BicycleParkingOverlay] No parking locations to display");
+        if (map.getLayer(LAYER_ID)) {
+          console.log(
+            "[BicycleParkingOverlay] No parking locations, removing existing layers",
+          );
+          map.removeLayer(LAYER_ID);
+        }
+        if (map.getSource(SOURCE_ID)) {
+          map.removeSource(SOURCE_ID);
+        }
         return;
       }
 
       console.log(
-        `[BicycleParkingOverlay] Creating markers for ${currentParkingLocations.length} locations`,
+        `[BicycleParkingOverlay] Creating/updating markers for ${currentParkingLocations.length} locations`,
       );
 
       // Create GeoJSON features from parking locations
@@ -99,13 +97,33 @@ export function BicycleParkingOverlay({
         },
       }));
 
-      // Add source
+      const featureCollection = {
+        type: "FeatureCollection" as const,
+        features,
+      };
+
+      // Check if source already exists - if so, just update its data
+      const existingSource = map.getSource(SOURCE_ID) as
+        | mapboxgl.GeoJSONSource
+        | undefined;
+
+      if (existingSource) {
+        console.log("[BicycleParkingOverlay] Updating existing source data");
+        existingSource.setData(featureCollection);
+        return; // Layer already exists with updated data
+      }
+
+      // Remove existing layer if it exists without source (cleanup edge case)
+      if (map.getLayer(LAYER_ID)) {
+        console.log("[BicycleParkingOverlay] Removing orphaned layer");
+        map.removeLayer(LAYER_ID);
+      }
+
+      // Add source (first time)
+      console.log("[BicycleParkingOverlay] Adding new source and layer");
       map.addSource(SOURCE_ID, {
         type: "geojson",
-        data: {
-          type: "FeatureCollection",
-          features,
-        },
+        data: featureCollection,
       });
 
       // Add circle layer
