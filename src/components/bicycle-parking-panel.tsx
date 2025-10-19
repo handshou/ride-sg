@@ -113,7 +113,7 @@ export function BicycleParkingPanel({
                         {result.hasShelter && (
                           <Badge
                             variant="default"
-                            className="text-xs bg-blue-600"
+                            className="text-xs bg-emerald-600 hover:bg-emerald-700"
                           >
                             <Home className="h-3 w-3 mr-1" />
                             Sheltered
@@ -129,11 +129,6 @@ export function BicycleParkingPanel({
 
                       <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                         {result.rackType}
-                      </p>
-
-                      <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                        {result.latitude.toFixed(4)},{" "}
-                        {result.longitude.toFixed(4)}
                       </p>
                     </div>
                   </div>

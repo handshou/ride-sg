@@ -50,13 +50,14 @@ export function MapStyleSelector({ onStyleChange }: MapStyleSelectorProps) {
     const mapStyle = getMapStyleForStyle(style);
     onStyleChange(mapStyle);
 
-    // Theme relationship for visual contrast
-    // Dark map → Light UI theme
-    // All other maps → Dark UI theme
+    // Theme relationship: match map style to UI theme
+    // Dark map → Dark UI theme
+    // Light map → Light UI theme
+    // Satellite/Outdoors → Light UI theme (lighter backgrounds)
     if (style === "dark") {
-      setTheme("light");
-    } else {
       setTheme("dark");
+    } else {
+      setTheme("light");
     }
   };
 
@@ -93,39 +94,39 @@ export function MapStyleSelector({ onStyleChange }: MapStyleSelectorProps) {
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
-        className="bg-gray-900/95 border-gray-700 dark:bg-white/95 dark:border-gray-200"
+        className="bg-white/95 border-gray-200 dark:bg-gray-900/95 dark:border-gray-700"
       >
         <DropdownMenuItem
           onClick={() => handleStyleChange("light")}
-          className="text-white hover:bg-gray-800 dark:text-gray-900 dark:hover:bg-gray-100"
+          className="text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-800"
         >
           <Sun className="mr-2 h-4 w-4" />
           Light
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => handleStyleChange("dark")}
-          className="text-white hover:bg-gray-800 dark:text-gray-900 dark:hover:bg-gray-100"
+          className="text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-800"
         >
           <Moon className="mr-2 h-4 w-4" />
           Dark
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => handleStyleChange("satellite")}
-          className="text-white hover:bg-gray-800 dark:text-gray-900 dark:hover:bg-gray-100"
+          className="text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-800"
         >
           <Satellite className="mr-2 h-4 w-4" />
           Satellite
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => handleStyleChange("satelliteStreets")}
-          className="text-white hover:bg-gray-800 dark:text-gray-900 dark:hover:bg-gray-100"
+          className="text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-800"
         >
           <MapIcon className="mr-2 h-4 w-4" />
           Satellite Streets
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => handleStyleChange("outdoors")}
-          className="text-white hover:bg-gray-800 dark:text-gray-900 dark:hover:bg-gray-100"
+          className="text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-800"
         >
           <Mountain className="mr-2 h-4 w-4" />
           Outdoors

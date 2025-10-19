@@ -214,7 +214,7 @@ export function BicycleParkingOverlay({
           }
 
           const shelterBadge = props.hasShelter
-            ? '<span style="background: #3b82f6; color: white; padding: 2px 6px; border-radius: 4px;">🏠 Sheltered</span>'
+            ? '<span style="background: #059669; color: white; padding: 2px 6px; border-radius: 4px;">🏠 Sheltered</span>'
             : '<span style="background: #9ca3af; color: white; padding: 2px 6px; border-radius: 4px;">No shelter</span>';
 
           popup
