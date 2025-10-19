@@ -1,4 +1,4 @@
-import { Effect, Layer, Logger, LogLevel } from "effect";
+import { Effect, Layer } from "effect";
 import { ConvexServiceLive } from "./services/convex-service";
 import {
   DatabaseSearchServiceLive,
@@ -24,25 +24,14 @@ import {
  * services that need to share state reactively.
  */
 
-/**
- * Configure logging for search operations
- * - Development: Show all logs (Info, Warning, Error)
- * - Production: Only show warnings and errors
- */
-const SearchLoggerLive =
-  process.env.NODE_ENV === "production"
-    ? Logger.replace(Logger.defaultLogger, Logger.logfmtLogger).pipe(
-        Layer.provide(Logger.minimumLogLevel(LogLevel.Warning)),
-      )
-    : Logger.replace(Logger.defaultLogger, Logger.logfmtLogger);
-
-// Combined layer with all search-related services + logger configuration
+// Combined layer with all search-related services
+// Note: Logger configuration removed to allow all logs in production for debugging
 export const SearchLayer = Layer.mergeAll(
   SearchStateServiceLive,
   ConvexServiceLive,
   ExaSearchServiceLive,
   DatabaseSearchServiceLive,
-).pipe(Layer.provide(SearchLoggerLive));
+);
 
 /**
  * Calculate similarity score between two strings (0-1)
