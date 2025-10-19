@@ -9,9 +9,11 @@ import { refreshLocationAction } from "@/lib/actions/refresh-location-action";
 import { saveLocationToConvexAction } from "@/lib/actions/save-location-action";
 import type { SearchResult } from "@/lib/services/search-state-service";
 import { cleanAndTruncateDescription } from "@/lib/text-utils";
+import { Exa } from "@lobehub/icons";
 import {
   ChevronLeft,
   ChevronRight,
+  Database,
   Loader2,
   MapPin,
   RefreshCw,
@@ -309,8 +311,16 @@ export function SearchPanel({ onResultSelect }: SearchPanelProps) {
                                   ? "default"
                                   : "secondary"
                               }
+                              className="flex items-center gap-1"
                             >
-                              {result.source === "exa" ? "🔍 Exa" : "💾 Convex"}
+                              {result.source === "exa" ? (
+                                  <Exa.Combine size={12} />
+                              ) : (
+                                <>
+                                  <Database className="h-3 w-3" />
+                                  <span>Convex</span>
+                                </>
+                              )}
                             </Badge>
                             {result.address &&
                               (() => {

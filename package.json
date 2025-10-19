@@ -18,6 +18,7 @@
     "pre-commit": "pnpm run check-all"
   },
   "dependencies": {
+    "@lobehub/icons": "^2.43.1",
     "@radix-ui/react-dropdown-menu": "^2.1.16",
     "@radix-ui/react-slot": "^1.2.3",
     "@types/mapbox-gl": "^3.4.1",
