@@ -63,20 +63,30 @@ Navigate to **Vercel Dashboard → Your Project → Settings → Environment Var
 **Symptoms:**
 - Search returns no results
 - "Mock data" appears in console logs
-- Exa search fails silently
+- Exa search skipped even with valid API key
 
 **Diagnosis:**
 ```bash
 # Check server logs in Vercel for:
 "EXA_API_KEY not configured, using mock data"
+"Found X results in Convex, skipping Exa search" # OLD: Sequential search
+"Parallel search results: X from Convex, Y from Exa" # NEW: Parallel search
 ```
 
 **Solution:**
 1. Get an Exa API key from [exa.ai](https://exa.ai)
 2. Add `EXA_API_KEY` to Vercel environment variables
-3. Redeploy
+3. Ensure `MAPBOX_ACCESS_TOKEN` is also set (required for geocoding Exa results)
+4. Redeploy
 
 **Note:** Without Exa API key, the app will use mock data for testing.
+
+**Recent Fix (2025-10-19):**
+The search strategy was changed from sequential (Convex → Exa) to parallel (Convex + Exa simultaneously). This ensures:
+- Comprehensive results from both cached and fresh data
+- No more skipping Exa when Convex has low-quality matches
+- Results are deduplicated by title similarity (70%) and coordinate proximity (100m)
+- Users manually save preferred results (no automatic saving)
 
 ### 3. Convex Database Not Connected
 
@@ -167,7 +177,31 @@ Different environment variables between Preview and Production.
    - Using different API keys for different environments
    - Forgetting to set variables after adding new features
 
-### 7. Dark/Light Theme Issues in Production
+### 7. Noisy Console Logs in Production
+
+**Symptoms:**
+- Browser console filled with debug logs
+- `[BicycleParkingOverlay] ...` messages everywhere
+- Effect logs appearing in client-side
+
+**Diagnosis:**
+Production builds should have minimal client-side logging. Check browser console for:
+```
+[BicycleParkingOverlay] Effect triggered with 249 parking locations
+[BicycleParkingOverlay] Setting up layers initially
+timestamp=... level=INFO fiber=... message="..."
+```
+
+**Solution:**
+All debug logging is now gated behind `NODE_ENV === "development"`:
+- Development: Full verbose logging for debugging
+- Production: Only critical errors logged to console
+- Server logs (Effect logs) remain in Vercel logs
+
+**Recent Fix (2025-10-19):**
+Client-side console logs are now conditionally shown only in development mode. Production builds have clean browser consoles while server logs remain available in Vercel for debugging.
+
+### 8. Dark/Light Theme Issues in Production
 
 **Symptoms:**
 - Theme doesn't switch properly
@@ -184,7 +218,7 @@ Usually related to Tailwind CSS purging or theme provider setup.
    - **Settings → General → Clear Cache**
 4. Verify no CSS conflicts in production build
 
-### 8. API Rate Limiting in Production
+### 9. API Rate Limiting in Production
 
 **Symptoms:**
 - Features work initially then stop

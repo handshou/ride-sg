@@ -81,21 +81,31 @@ Searches local database for saved locations.
 
 ### 4. **SearchOrchestrator** (`src/lib/search-orchestrator.ts`)
 
-Coordinates searches across multiple data sources in parallel.
+Coordinates searches across Convex (database) and Exa (API) in parallel.
 
 ```typescript
-// Search both Exa and Database simultaneously
-const [exaResults, dbResults] = yield* Effect.all(
-  [exaService.search(query), dbService.search(query)],
+// Search both Convex and Exa simultaneously
+const [convexResults, exaResults] = yield* Effect.all(
+  [dbService.search(query), exaService.search(query)],
   { concurrency: "unbounded" }
 );
+
+// Deduplicate and merge results
+const mergedResults = deduplicateResults(convexResults, exaResults);
 ```
+
+**Search Strategy (Updated 2025-10-19):**
+- ✅ **Parallel Execution**: Search Convex AND Exa simultaneously (not sequential)
+- ✅ **Comprehensive Results**: Get cached + fresh data in every search
+- ✅ **Smart Deduplication**: Remove duplicates by title similarity (70%) and coordinate proximity (100m)
+- ✅ **Manual Saving**: Users choose which results to save (no automatic caching)
 
 **Benefits:**
 - Parallel execution for better performance
+- No more "skipping Exa" due to low-quality Convex matches
 - Shared state via Effect Ref
-- Automatic result accumulation
 - Centralized error handling
+- Full control over what gets cached
 
 ---
 
@@ -144,17 +154,26 @@ useSearchState Hook
     ↓
 Search Orchestrator (Effect)
     ↓
-┌─────────────────┬──────────────────┐
-│                 │                  │
-ExaSearchService  DatabaseService  (parallel)
-│                 │                  │
-└─────────────────┴──────────────────┘
+┌──────────────────────┬────────────────────┐
+│                      │                    │
+│ DatabaseService      │  ExaSearchService  │ (parallel execution)
+│ (Convex cache)       │  (Fresh API data)  │
+│                      │                    │
+└──────────────────────┴────────────────────┘
+    ↓
+Deduplication (title similarity + coordinate proximity)
+    ↓
+Merged Results (Convex + Exa - duplicates)
     ↓
 SearchStateService (Effect Ref)
     ↓
 React State Update
     ↓
 Map flyTo Animation
+    ↓
+User Manually Saves (optional)
+    ↓
+Saved to Convex for future searches
 ```
 
 ---
@@ -251,12 +270,24 @@ function SearchComponent() {
 
 ---
 
-## Next Steps
+## Recent Changes (2025-10-19)
 
-### **Immediate:**
-1. Replace Exa mock data with actual API calls
-2. Add actual database queries
-3. Implement user authentication
+### **Parallel Search Implementation**
+- Changed from sequential (Convex → Exa) to parallel (Convex + Exa)
+- Fixes issue where Convex low-quality matches blocked Exa searches
+- Users now get comprehensive results from both sources
+
+### **Manual Save Strategy**
+- Removed automatic saving from search orchestrator
+- Users manually choose which results to save to Convex
+- Prevents low-quality results from polluting the cache
+
+### **Production Log Cleanup**
+- Client-side debug logs now gated behind `NODE_ENV === "development"`
+- Production browser console stays clean
+- Server logs (Effect logs) remain in Vercel for debugging
+
+## Next Steps
 
 ### **Future Enhancements:**
 1. Add search history
@@ -265,6 +296,7 @@ function SearchComponent() {
 4. Add search suggestions/autocomplete
 5. Implement caching with Effect Cache
 6. Add real-time updates with Effect streams
+7. Add relevance scoring to sort merged results
 
 ---
 

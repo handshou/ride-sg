@@ -39,24 +39,32 @@ export function BicycleParkingOverlay({
   useEffect(() => {
     const SOURCE_ID = "bicycle-parking";
     const LAYER_ID = "bicycle-parking-circles";
+    const isDev = process.env.NODE_ENV === "development";
 
-    console.log(
-      `[BicycleParkingOverlay] Effect triggered with ${parkingLocations.length} parking locations`,
-    );
+    if (isDev) {
+      console.log(
+        `[BicycleParkingOverlay] Effect triggered with ${parkingLocations.length} parking locations`,
+      );
+    }
 
     // Setup layers initially and whenever style changes
     // Use ref so we always have the latest parking locations
     const setupLayers = () => {
       const currentParkingLocations = parkingLocationsRef.current;
-      console.log(
-        `[BicycleParkingOverlay] setupLayers called, style loaded: ${map.isStyleLoaded()}, parking locations: ${currentParkingLocations.length}, layer exists: ${!!map.getLayer(LAYER_ID)}`,
-      );
+
+      if (isDev) {
+        console.log(
+          `[BicycleParkingOverlay] setupLayers called, style loaded: ${map.isStyleLoaded()}, parking locations: ${currentParkingLocations.length}, layer exists: ${!!map.getLayer(LAYER_ID)}`,
+        );
+      }
 
       // If style is not loaded yet, poll until it is (with timeout)
       if (!map.isStyleLoaded()) {
-        console.log(
-          "[BicycleParkingOverlay] Map style not loaded yet, polling until ready...",
-        );
+        if (isDev) {
+          console.log(
+            "[BicycleParkingOverlay] Map style not loaded yet, polling until ready...",
+          );
+        }
 
         let attempts = 0;
         const maxAttempts = 50; // 50 * 100ms = 5 seconds max
@@ -65,9 +73,11 @@ export function BicycleParkingOverlay({
           attempts++;
 
           if (map.isStyleLoaded()) {
-            console.log(
-              `[BicycleParkingOverlay] Style loaded after ${attempts} attempts, retrying setup`,
-            );
+            if (isDev) {
+              console.log(
+                `[BicycleParkingOverlay] Style loaded after ${attempts} attempts, retrying setup`,
+              );
+            }
             setupLayers();
           } else if (attempts < maxAttempts) {
             setTimeout(pollStyleLoaded, 100); // Check every 100ms
@@ -85,9 +95,11 @@ export function BicycleParkingOverlay({
       // If no parking locations, remove any existing layers and return
       if (currentParkingLocations.length === 0) {
         if (map.getLayer(LAYER_ID)) {
-          console.log(
-            "[BicycleParkingOverlay] No parking locations, removing existing layers",
-          );
+          if (isDev) {
+            console.log(
+              "[BicycleParkingOverlay] No parking locations, removing existing layers",
+            );
+          }
           map.removeLayer(LAYER_ID);
         }
         if (map.getSource(SOURCE_ID)) {
@@ -96,9 +108,11 @@ export function BicycleParkingOverlay({
         return;
       }
 
-      console.log(
-        `[BicycleParkingOverlay] Creating/updating markers for ${currentParkingLocations.length} locations`,
-      );
+      if (isDev) {
+        console.log(
+          `[BicycleParkingOverlay] Creating/updating markers for ${currentParkingLocations.length} locations`,
+        );
+      }
 
       // Create GeoJSON features from parking locations
       const features = currentParkingLocations.map((parking) => ({
@@ -130,19 +144,25 @@ export function BicycleParkingOverlay({
         | undefined;
 
       if (existingSource) {
-        console.log("[BicycleParkingOverlay] Updating existing source data");
+        if (isDev) {
+          console.log("[BicycleParkingOverlay] Updating existing source data");
+        }
         existingSource.setData(featureCollection);
         return; // Layer already exists with updated data
       }
 
       // Remove existing layer if it exists without source (cleanup edge case)
       if (map.getLayer(LAYER_ID)) {
-        console.log("[BicycleParkingOverlay] Removing orphaned layer");
+        if (isDev) {
+          console.log("[BicycleParkingOverlay] Removing orphaned layer");
+        }
         map.removeLayer(LAYER_ID);
       }
 
       // Add source (first time)
-      console.log("[BicycleParkingOverlay] Adding new source and layer");
+      if (isDev) {
+        console.log("[BicycleParkingOverlay] Adding new source and layer");
+      }
       map.addSource(SOURCE_ID, {
         type: "geojson",
         data: featureCollection,
@@ -162,9 +182,11 @@ export function BicycleParkingOverlay({
         },
       });
 
-      console.log(
-        `[BicycleParkingOverlay] ✓ Successfully added ${features.length} bicycle parking markers to map`,
-      );
+      if (isDev) {
+        console.log(
+          `[BicycleParkingOverlay] ✓ Successfully added ${features.length} bicycle parking markers to map`,
+        );
+      }
 
       // Create popup for hover
       const popup = new mapboxgl.Popup({
@@ -244,12 +266,16 @@ export function BicycleParkingOverlay({
     };
 
     // Setup layers initially - the polling mechanism will handle timing
-    console.log("[BicycleParkingOverlay] Setting up layers initially");
+    if (isDev) {
+      console.log("[BicycleParkingOverlay] Setting up layers initially");
+    }
     setupLayers();
 
     // Cleanup function
     return () => {
-      console.log("[BicycleParkingOverlay] Cleaning up layers");
+      if (isDev) {
+        console.log("[BicycleParkingOverlay] Cleaning up layers");
+      }
 
       // Only cleanup if style is loaded, otherwise we'll get errors
       if (map.isStyleLoaded()) {

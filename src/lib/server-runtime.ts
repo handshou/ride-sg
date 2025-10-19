@@ -1,4 +1,4 @@
-import { Effect, Layer } from "effect";
+import { Effect, Layer, Logger, LogLevel } from "effect";
 import { mapboxPublicTokenConfig } from "./services/config-service";
 import { MapReadinessServiceLive } from "./services/map-readiness-service";
 import {
@@ -24,12 +24,24 @@ import {
  * Uses Effect.runSync directly to avoid Turbopack module resolution issues.
  */
 
-// Combined layer with all services
+/**
+ * Configure logging based on environment
+ * - Development: Show all logs (Info, Warning, Error)
+ * - Production: Only show warnings and errors (no Info logs)
+ */
+const LoggerLive =
+  process.env.NODE_ENV === "production"
+    ? Logger.replace(Logger.defaultLogger, Logger.logfmtLogger).pipe(
+        Layer.provide(Logger.minimumLogLevel(LogLevel.Warning)),
+      )
+    : Logger.replace(Logger.defaultLogger, Logger.logfmtLogger);
+
+// Combined layer with all services + logger configuration
 export const ServerLayer = Layer.mergeAll(
   MapboxServiceLive,
   ToastServiceLive,
   MapReadinessServiceLive,
-);
+).pipe(Layer.provide(LoggerLive));
 
 /**
  * Run an Effect program in a Next.js server component context

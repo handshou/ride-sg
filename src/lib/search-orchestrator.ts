@@ -1,4 +1,4 @@
-import { Effect, Layer } from "effect";
+import { Effect, Layer, Logger, LogLevel } from "effect";
 import { ConvexServiceLive } from "./services/convex-service";
 import {
   DatabaseSearchServiceLive,
@@ -24,28 +24,128 @@ import {
  * services that need to share state reactively.
  */
 
-// Combined layer with all search-related services
+/**
+ * Configure logging for search operations
+ * - Development: Show all logs (Info, Warning, Error)
+ * - Production: Only show warnings and errors
+ */
+const SearchLoggerLive =
+  process.env.NODE_ENV === "production"
+    ? Logger.replace(Logger.defaultLogger, Logger.logfmtLogger).pipe(
+        Layer.provide(Logger.minimumLogLevel(LogLevel.Warning)),
+      )
+    : Logger.replace(Logger.defaultLogger, Logger.logfmtLogger);
+
+// Combined layer with all search-related services + logger configuration
 export const SearchLayer = Layer.mergeAll(
   SearchStateServiceLive,
   ConvexServiceLive,
   ExaSearchServiceLive,
   DatabaseSearchServiceLive,
-);
+).pipe(Layer.provide(SearchLoggerLive));
 
 /**
- * Perform a coordinated search with Convex-first fallback strategy
+ * Calculate similarity score between two strings (0-1)
+ * Used for deduplicating search results from different sources
+ */
+function calculateTitleSimilarity(str1: string, str2: string): number {
+  const normalize = (s: string) => s.toLowerCase().trim();
+  const a = normalize(str1);
+  const b = normalize(str2);
+
+  // Exact match
+  if (a === b) return 1.0;
+
+  // One contains the other
+  if (a.includes(b) || b.includes(a)) return 0.8;
+
+  // Word overlap
+  const words1 = a.split(/\s+/);
+  const words2 = b.split(/\s+/);
+  const common = words1.filter((w) => words2.includes(w)).length;
+  const total = Math.max(words1.length, words2.length);
+
+  return total > 0 ? common / total : 0;
+}
+
+/**
+ * Calculate distance between two coordinates in meters
+ */
+function calculateDistance(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+): number {
+  const R = 6371e3; // Earth's radius in meters
+  const φ1 = (lat1 * Math.PI) / 180;
+  const φ2 = (lat2 * Math.PI) / 180;
+  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+  const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+
+  const a =
+    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c;
+}
+
+/**
+ * Deduplicate search results by title similarity and coordinate proximity
+ * Prioritizes Convex results (cached) over Exa results (fresh API data)
+ */
+function deduplicateResults(
+  convexResults: SearchResult[],
+  exaResults: SearchResult[],
+): SearchResult[] {
+  const merged: SearchResult[] = [...convexResults];
+  const SIMILARITY_THRESHOLD = 0.7; // 70% title similarity
+  const DISTANCE_THRESHOLD = 100; // 100 meters
+
+  for (const exaResult of exaResults) {
+    // Check if this Exa result is similar to any existing Convex result
+    const isDuplicate = merged.some((existing) => {
+      const titleSimilarity = calculateTitleSimilarity(
+        existing.title,
+        exaResult.title,
+      );
+      const distance = calculateDistance(
+        existing.location.latitude,
+        existing.location.longitude,
+        exaResult.location.latitude,
+        exaResult.location.longitude,
+      );
+
+      return (
+        titleSimilarity >= SIMILARITY_THRESHOLD ||
+        distance <= DISTANCE_THRESHOLD
+      );
+    });
+
+    // Only add if not a duplicate
+    if (!isDuplicate) {
+      merged.push(exaResult);
+    }
+  }
+
+  return merged;
+}
+
+/**
+ * Perform a coordinated search with parallel execution strategy
  *
  * This effect implements the following search flow:
- * 1. Search Convex database first
- * 2. If Convex returns results → return them
- * 3. If Convex returns nothing → search Exa API
- * 4. If Exa returns results → save them to Convex for future searches
- * 5. Return all results found
+ * 1. Search Convex database AND Exa API in parallel
+ * 2. Merge results from both sources
+ * 3. Deduplicate based on title similarity and coordinate proximity
+ * 4. Return merged results (NO automatic saving to Convex)
  *
  * This strategy ensures:
- * - Fast responses from local database (Convex)
- * - Automatic database population from external API (Exa)
- * - Reduced API calls (only when no local data exists)
+ * - Comprehensive results from both cached and fresh data
+ * - Fast parallel execution (no sequential waiting)
+ * - No duplicate locations
+ * - Manual control over which results to save
  */
 export const coordinatedSearchEffect = (query: string) =>
   Effect.gen(function* () {
@@ -55,99 +155,46 @@ export const coordinatedSearchEffect = (query: string) =>
 
     // Start search (sets loading state)
     yield* searchState.startSearch(query);
-    yield* Effect.log(`Starting coordinated search for: "${query}"`);
+    yield* Effect.log(`Starting parallel search for: "${query}"`);
 
-    // Step 1: Search Convex database first
-    const convexResults = yield* dbService.search(query).pipe(
-      Effect.catchAll((error) =>
-        Effect.gen(function* () {
-          yield* Effect.logError("Convex search failed, will try Exa", error);
-          return [];
-        }),
-      ),
-    );
-
-    // Check if Convex returned any results
-    if (convexResults.length > 0) {
-      yield* Effect.log(
-        `Found ${convexResults.length} results in Convex, skipping Exa search`,
-      );
-      yield* searchState.completeSearch();
-      return convexResults;
-    }
-
-    // Step 2: No results from Convex, search Exa API
-    yield* Effect.log("No results in Convex, searching Exa API...");
-
-    const exaResults = yield* exaService.search(query).pipe(
-      Effect.catchAll((error) =>
-        Effect.gen(function* () {
-          yield* searchState.setError(
-            `Search failed: ${error instanceof Error ? error.message : "Unknown error"}`,
-          );
-          yield* Effect.logError("Exa search failed", error);
-          return [];
-        }),
-      ),
-    );
-
-    // Step 3: Save only the highest confidence result to Convex
-    if (exaResults.length > 0) {
-      // Sort by confidence (highest first) and take the top result
-      const sortedResults = [...exaResults].sort((a, b) => {
-        const confidenceA =
-          (a as SearchResult & { confidence?: number }).confidence || 0;
-        const confidenceB =
-          (b as SearchResult & { confidence?: number }).confidence || 0;
-        return confidenceB - confidenceA;
-      });
-
-      const topResult = sortedResults[0];
-      const topConfidence =
-        (topResult as SearchResult & { confidence?: number }).confidence || 0;
-
-      // Minimum confidence threshold to save (70%)
-      const CONFIDENCE_THRESHOLD = 0.7;
-
-      if (topConfidence >= CONFIDENCE_THRESHOLD) {
-        yield* Effect.log(
-          `Found ${exaResults.length} results from Exa, saving top result (${(topConfidence * 100).toFixed(0)}% confidence) to Convex...`,
-        );
-
-        // Save only the top result to Convex
-        yield* dbService.saveLocation(topResult).pipe(
+    // Search both Convex and Exa in parallel
+    const [convexResults, exaResults] = yield* Effect.all(
+      [
+        dbService.search(query).pipe(
           Effect.catchAll((error) =>
             Effect.gen(function* () {
-              yield* Effect.logError(
-                "Failed to save top Exa result to Convex",
-                error,
-              );
-              // Don't fail the search if save fails
-              return;
+              yield* Effect.logError("Convex search failed", error);
+              return [];
             }),
           ),
-        );
+        ),
+        exaService.search(query).pipe(
+          Effect.catchAll((error) =>
+            Effect.gen(function* () {
+              yield* Effect.logError("Exa search failed", error);
+              return [];
+            }),
+          ),
+        ),
+      ],
+      { concurrency: "unbounded" },
+    );
 
-        yield* Effect.log(
-          `✓ Saved best result: ${topResult.title} [${(topConfidence * 100).toFixed(0)}% confidence]`,
-        );
-      } else {
-        yield* Effect.logWarning(
-          `Found ${exaResults.length} results from Exa, but top result only has ${(topConfidence * 100).toFixed(0)}% confidence (threshold: ${CONFIDENCE_THRESHOLD * 100}%)`,
-        );
-      }
-    } else {
-      yield* Effect.log("No results found from Exa");
-    }
+    yield* Effect.log(
+      `Parallel search results: ${convexResults.length} from Convex, ${exaResults.length} from Exa`,
+    );
+
+    // Deduplicate and merge results
+    const mergedResults = deduplicateResults(convexResults, exaResults);
+
+    yield* Effect.log(
+      `Merged and deduplicated: ${mergedResults.length} unique results`,
+    );
 
     // Complete search
     yield* searchState.completeSearch();
 
-    yield* Effect.log(
-      `Coordinated search completed: ${exaResults.length} total results`,
-    );
-
-    return exaResults;
+    return mergedResults;
   });
 
 /**
