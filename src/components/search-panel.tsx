@@ -1,21 +1,32 @@
 "use client";
 
-import { Loader2, MapPin, RefreshCw, Save, Search, X } from "lucide-react";
-import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useMobile } from "@/hooks/use-mobile";
 import { useSearchState } from "@/hooks/use-search-state";
 import { deleteLocationFromConvexAction } from "@/lib/actions/delete-location-action";
 import { refreshLocationAction } from "@/lib/actions/refresh-location-action";
 import { saveLocationToConvexAction } from "@/lib/actions/save-location-action";
 import type { SearchResult } from "@/lib/services/search-state-service";
 import { cleanAndTruncateDescription } from "@/lib/text-utils";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  MapPin,
+  RefreshCw,
+  Save,
+  Search,
+  X,
+} from "lucide-react";
+import { useState } from "react";
 
 interface SearchPanelProps {
   onResultSelect: (result: SearchResult) => void;
 }
 
 export function SearchPanel({ onResultSelect }: SearchPanelProps) {
+  const isMobile = useMobile();
   const { search, results, isLoading, error, selectResult, selectedResult } =
     useSearchState();
   const [query, setQuery] = useState("");
@@ -23,9 +34,11 @@ export function SearchPanel({ onResultSelect }: SearchPanelProps) {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+  const [currentResultIndex, setCurrentResultIndex] = useState(0);
 
   const handleSearch = async () => {
     if (!query.trim()) return;
+    setCurrentResultIndex(0); // Reset to first result on new search
     await search(query);
   };
 
@@ -37,7 +50,28 @@ export function SearchPanel({ onResultSelect }: SearchPanelProps) {
   const handleClear = () => {
     setQuery("");
     selectResult(null);
+    setCurrentResultIndex(0);
   };
+
+  const handlePrevResult = () => {
+    setCurrentResultIndex((prev) => Math.max(0, prev - 1));
+    if (results.length > 0 && currentResultIndex > 0) {
+      const prevResult = results[currentResultIndex - 1];
+      handleResultClick(prevResult);
+    }
+  };
+
+  const handleNextResult = () => {
+    setCurrentResultIndex((prev) => Math.min(results.length - 1, prev + 1));
+    if (results.length > 0 && currentResultIndex < results.length - 1) {
+      const nextResult = results[currentResultIndex + 1];
+      handleResultClick(nextResult);
+    }
+  };
+
+  // Get results to display (1 for mobile, all for desktop)
+  const displayResults =
+    isMobile && results.length > 0 ? [results[currentResultIndex]] : results;
 
   const handleRefresh = async (result: SearchResult, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent selecting the result
@@ -114,7 +148,13 @@ export function SearchPanel({ onResultSelect }: SearchPanelProps) {
   };
 
   return (
-    <div className="absolute top-20 left-4 z-20 w-96 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+    <div
+      className={`absolute z-20 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 ${
+        isMobile
+          ? "bottom-4 left-4 right-4 w-auto max-h-[60vh]"
+          : "top-20 left-4 w-96"
+      }`}
+    >
       {/* Search Input */}
       <div className="p-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex gap-2 items-stretch">
@@ -182,136 +222,170 @@ export function SearchPanel({ onResultSelect }: SearchPanelProps) {
         )}
 
         {results.length > 0 && (
-          <div className="divide-y divide-gray-200 dark:divide-gray-700">
-            {results.map((result) => {
-              const isSelected = selectedResult?.id === result.id;
-              const isRefreshing = refreshingId === result.id;
-              const isSaving = savingId === result.id;
-              const isDeleting = deletingId === result.id;
-              const isSaved = savedIds.has(result.id);
-              const isFromExa = result.source === "exa";
-              const isFromConvex = result.source === "database";
-
-              return (
-                <div
-                  key={result.id}
-                  className={`flex items-center transition-colors ${
-                    isSelected
-                      ? "bg-purple-50 dark:bg-purple-900/20 border-l-4 border-purple-500"
-                      : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
-                  }`}
+          <>
+            {/* Mobile Navigation */}
+            {isMobile && results.length > 1 && (
+              <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-gray-50 dark:bg-gray-800/50">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePrevResult}
+                  disabled={currentResultIndex === 0}
+                  className="h-8"
                 >
-                  <button
-                    type="button"
-                    onClick={() => handleResultClick(result)}
-                    className="flex-1 p-4 text-left"
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm text-gray-600 dark:text-gray-400">
+                  {currentResultIndex + 1} / {results.length}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleNextResult}
+                  disabled={currentResultIndex === results.length - 1}
+                  className="h-8"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+
+            <div className="divide-y divide-gray-200 dark:divide-gray-700">
+              {displayResults.map((result) => {
+                const isSelected = selectedResult?.id === result.id;
+                const isRefreshing = refreshingId === result.id;
+                const isSaving = savingId === result.id;
+                const isDeleting = deletingId === result.id;
+                const isSaved = savedIds.has(result.id);
+                const isFromExa = result.source === "exa";
+                const isFromConvex = result.source === "database";
+
+                return (
+                  <div
+                    key={result.id}
+                    className={`flex items-center transition-colors ${
+                      isSelected
+                        ? "bg-purple-50 dark:bg-purple-900/20 border-l-4 border-purple-500"
+                        : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                    }`}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <MapPin className="h-4 w-4 text-purple-500 flex-shrink-0" />
-                          <h3 className="font-medium text-gray-900 dark:text-white truncate">
-                            {result.title}
-                          </h3>
-                        </div>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-                          {cleanAndTruncateDescription(result.description, 200)}
-                        </p>
-                        {result.url && (
-                          <a
-                            href={result.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="text-xs text-purple-600 hover:text-purple-500 dark:text-purple-400 dark:hover:text-purple-300 mt-1 inline-flex items-center gap-1 hover:underline"
-                          >
-                            <span>🔗</span>
-                            <span className="truncate max-w-[200px]">
-                              {new URL(result.url).hostname}
-                            </span>
-                          </a>
-                        )}
-                        <div className="flex items-center gap-2 mt-2">
-                          <Badge
-                            variant={
-                              result.source === "exa" ? "default" : "secondary"
-                            }
-                          >
-                            {result.source === "exa" ? "🔍 Exa" : "💾 Convex"}
-                          </Badge>
-                          {result.address &&
-                            (() => {
-                              // Extract postal code (6 digits) from address
-                              const postalMatch =
-                                result.address.match(/\b\d{6}\b/);
-                              return postalMatch ? (
-                                <span className="text-xs text-gray-500 dark:text-gray-400">
-                                  📮 {postalMatch[0]}
-                                </span>
-                              ) : null;
-                            })()}
-                        </div>
-                      </div>
-                    </div>
-                  </button>
-
-                  {/* Action Buttons */}
-                  <div className="flex items-center gap-1 pr-3">
-                    {/* Save to Convex Button - Only show for Exa results */}
-                    {isFromExa && (
-                      <button
-                        type="button"
-                        onClick={(e) => handleSaveToConvex(result, e)}
-                        disabled={isSaving}
-                        className={`p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                          isSaved
-                            ? "text-green-600 hover:text-green-500 dark:text-green-400 dark:hover:text-green-300"
-                            : "text-gray-500 hover:text-gray-400 dark:text-gray-400 dark:hover:text-gray-300"
-                        }`}
-                        title={
-                          isSaved
-                            ? "Saved to Convex ✓"
-                            : "Save to Convex (overrides existing)"
-                        }
-                      >
-                        <Save
-                          className={`h-4 w-4 ${isSaving ? "animate-pulse" : ""}`}
-                        />
-                      </button>
-                    )}
-
-                    {/* Delete from Convex Button - Only show for Convex results */}
-                    {isFromConvex && (
-                      <button
-                        type="button"
-                        onClick={(e) => handleDeleteFromConvex(result, e)}
-                        disabled={isDeleting}
-                        className="p-2 rounded-md text-red-600 hover:text-red-500 dark:text-red-400 dark:hover:text-red-300 hover:bg-gray-200 dark:hover:bg-gray-700/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        title="Delete from Convex"
-                      >
-                        <X
-                          className={`h-4 w-4 ${isDeleting ? "animate-pulse" : ""}`}
-                        />
-                      </button>
-                    )}
-
-                    {/* Refresh Button */}
                     <button
                       type="button"
-                      onClick={(e) => handleRefresh(result, e)}
-                      disabled={isRefreshing}
-                      className="p-2 rounded-md text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      title="Refresh from Exa"
+                      onClick={() => handleResultClick(result)}
+                      className="flex-1 p-4 text-left"
                     >
-                      <RefreshCw
-                        className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
-                      />
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <MapPin className="h-4 w-4 text-purple-500 flex-shrink-0" />
+                            <h3 className="font-medium text-gray-900 dark:text-white truncate">
+                              {result.title}
+                            </h3>
+                          </div>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                            {cleanAndTruncateDescription(
+                              result.description,
+                              200,
+                            )}
+                          </p>
+                          {result.url && (
+                            <a
+                              href={result.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-xs text-purple-600 hover:text-purple-500 dark:text-purple-400 dark:hover:text-purple-300 mt-1 inline-flex items-center gap-1 hover:underline"
+                            >
+                              <span>🔗</span>
+                              <span className="truncate max-w-[200px]">
+                                {new URL(result.url).hostname}
+                              </span>
+                            </a>
+                          )}
+                          <div className="flex items-center gap-2 mt-2">
+                            <Badge
+                              variant={
+                                result.source === "exa"
+                                  ? "default"
+                                  : "secondary"
+                              }
+                            >
+                              {result.source === "exa" ? "🔍 Exa" : "💾 Convex"}
+                            </Badge>
+                            {result.address &&
+                              (() => {
+                                // Extract postal code (6 digits) from address
+                                const postalMatch =
+                                  result.address.match(/\b\d{6}\b/);
+                                return postalMatch ? (
+                                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                                    📮 {postalMatch[0]}
+                                  </span>
+                                ) : null;
+                              })()}
+                          </div>
+                        </div>
+                      </div>
                     </button>
+
+                    {/* Action Buttons */}
+                    <div className="flex items-center gap-1 pr-3">
+                      {/* Save to Convex Button - Only show for Exa results */}
+                      {isFromExa && (
+                        <button
+                          type="button"
+                          onClick={(e) => handleSaveToConvex(result, e)}
+                          disabled={isSaving}
+                          className={`p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                            isSaved
+                              ? "text-green-600 hover:text-green-500 dark:text-green-400 dark:hover:text-green-300"
+                              : "text-gray-500 hover:text-gray-400 dark:text-gray-400 dark:hover:text-gray-300"
+                          }`}
+                          title={
+                            isSaved
+                              ? "Saved to Convex ✓"
+                              : "Save to Convex (overrides existing)"
+                          }
+                        >
+                          <Save
+                            className={`h-4 w-4 ${isSaving ? "animate-pulse" : ""}`}
+                          />
+                        </button>
+                      )}
+
+                      {/* Delete from Convex Button - Only show for Convex results */}
+                      {isFromConvex && (
+                        <button
+                          type="button"
+                          onClick={(e) => handleDeleteFromConvex(result, e)}
+                          disabled={isDeleting}
+                          className="p-2 rounded-md text-red-600 hover:text-red-500 dark:text-red-400 dark:hover:text-red-300 hover:bg-gray-200 dark:hover:bg-gray-700/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Delete from Convex"
+                        >
+                          <X
+                            className={`h-4 w-4 ${isDeleting ? "animate-pulse" : ""}`}
+                          />
+                        </button>
+                      )}
+
+                      {/* Refresh Button */}
+                      <button
+                        type="button"
+                        onClick={(e) => handleRefresh(result, e)}
+                        disabled={isRefreshing}
+                        className="p-2 rounded-md text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Refresh from Exa"
+                      >
+                        <RefreshCw
+                          className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
+                        />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </div>
 

@@ -1,6 +1,5 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
 import { BicycleParkingOverlay } from "@/components/bicycle-parking-overlay";
 import { BicycleParkingPanel } from "@/components/bicycle-parking-panel";
 import { ErrorToastHandler } from "@/components/error-toast-handler";
@@ -10,11 +9,13 @@ import { MapboxGLMap } from "@/components/mapbox-gl-map";
 import { MapboxSimpleOverlay } from "@/components/mapbox-simple-overlay";
 import { RandomCoordinatesButton } from "@/components/random-coordinates-button";
 import { SearchPanel } from "@/components/search-panel";
+import { useMobile } from "@/hooks/use-mobile";
 import { logger } from "@/lib/client-logger";
 import { MAPBOX_STYLES } from "@/lib/map-styles";
 import type { BicycleParkingResult } from "@/lib/schema/bicycle-parking.schema";
 import type { GeocodeResult } from "@/lib/services/mapbox-service";
 import type { SearchResult } from "@/lib/services/search-state-service";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface SingaporeMapExplorerProps {
   initialRandomCoords: { latitude: number; longitude: number };
@@ -31,6 +32,7 @@ export function SingaporeMapExplorer({
   staticMapUrl,
   mapboxPublicToken,
 }: SingaporeMapExplorerProps) {
+  const isMobile = useMobile();
   const [randomCoords, setRandomCoords] = useState(initialRandomCoords);
   const [staticMapUrlState, setStaticMapUrlState] = useState(staticMapUrl);
   const mapInstanceRef = useRef<mapboxgl.Map | null>(null);
@@ -293,13 +295,15 @@ export function SingaporeMapExplorer({
       {/* Search Panel */}
       <SearchPanel onResultSelect={handleSearchResultSelect} />
 
-      {/* Bicycle Parking Panel */}
-      <BicycleParkingPanel
-        parkingResults={bicycleParkingResults}
-        isLoading={isFetchingParking}
-        onParkingSelect={handleParkingSelect}
-        selectedParking={selectedParking}
-      />
+      {/* Bicycle Parking Panel - Hide on Mobile */}
+      {!isMobile && (
+        <BicycleParkingPanel
+          parkingResults={bicycleParkingResults}
+          isLoading={isFetchingParking}
+          onParkingSelect={handleParkingSelect}
+          selectedParking={selectedParking}
+        />
+      )}
 
       {/* Main Interactive Map */}
       <div className="relative w-full h-screen">
