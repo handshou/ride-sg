@@ -2,7 +2,7 @@
 
 import type { BicycleParkingResult } from "@/lib/schema/bicycle-parking.schema";
 import mapboxgl from "mapbox-gl";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 interface BicycleParkingOverlayProps {
   map: mapboxgl.Map;
@@ -28,26 +28,60 @@ export function BicycleParkingOverlay({
   parkingLocations,
   onParkingSelect,
 }: BicycleParkingOverlayProps) {
+  // Use ref to always have access to latest parking locations
+  const parkingLocationsRef = useRef(parkingLocations);
+
+  // Update ref whenever parkingLocations changes
+  useEffect(() => {
+    parkingLocationsRef.current = parkingLocations;
+  }, [parkingLocations]);
+
   useEffect(() => {
     const SOURCE_ID = "bicycle-parking";
     const LAYER_ID = "bicycle-parking-circles";
 
+    console.log(
+      `[BicycleParkingOverlay] Effect triggered with ${parkingLocations.length} parking locations`,
+    );
+
     // Setup layers initially and whenever style changes
+    // Use ref so we always have the latest parking locations
     const setupLayers = () => {
+      const currentParkingLocations = parkingLocationsRef.current;
+      console.log(
+        `[BicycleParkingOverlay] setupLayers called, style loaded: ${map.isStyleLoaded()}`,
+      );
+
       // Wait for style to be loaded before adding layers
       if (!map.isStyleLoaded()) {
+        console.log(
+          "[BicycleParkingOverlay] Map style not loaded yet, skipping setup",
+        );
         return;
       }
+
       // Remove existing layers and source if they exist
       if (map.getLayer(LAYER_ID)) {
+        console.log("[BicycleParkingOverlay] Removing existing layer");
         map.removeLayer(LAYER_ID);
       }
       if (map.getSource(SOURCE_ID)) {
+        console.log("[BicycleParkingOverlay] Removing existing source");
         map.removeSource(SOURCE_ID);
       }
 
+      // Skip if no parking locations
+      if (currentParkingLocations.length === 0) {
+        console.log("[BicycleParkingOverlay] No parking locations to display");
+        return;
+      }
+
+      console.log(
+        `[BicycleParkingOverlay] Creating markers for ${currentParkingLocations.length} locations`,
+      );
+
       // Create GeoJSON features from parking locations
-      const features = parkingLocations.map((parking) => ({
+      const features = currentParkingLocations.map((parking) => ({
         type: "Feature" as const,
         geometry: {
           type: "Point" as const,
@@ -87,6 +121,10 @@ export function BicycleParkingOverlay({
           "circle-opacity": 1,
         },
       });
+
+      console.log(
+        `[BicycleParkingOverlay] ✓ Successfully added ${features.length} bicycle parking markers to map`,
+      );
 
       // Create popup for hover
       const popup = new mapboxgl.Popup({
@@ -154,8 +192,10 @@ export function BicycleParkingOverlay({
           const props = feature.properties;
           if (!props) return;
 
-          // Find the full parking object from parkingLocations
-          const parking = parkingLocations.find((p) => p.id === props.id);
+          // Find the full parking object from current parkingLocations
+          const parking = parkingLocationsRef.current.find(
+            (p) => p.id === props.id,
+          );
           if (parking) {
             onParkingSelect(parking);
           }
@@ -164,14 +204,27 @@ export function BicycleParkingOverlay({
     };
 
     // Setup layers initially
+    console.log("[BicycleParkingOverlay] Setting up layers initially");
     setupLayers();
 
     // Listen for style changes and re-setup layers
     // This is crucial for handling map style changes (e.g., switching from streets to satellite)
+    console.log("[BicycleParkingOverlay] Registering styledata event listener");
     map.on("styledata", setupLayers);
+
+    // Check if style loaded while we were setting up
+    // This handles race condition where style loads between initial check and listener registration
+    if (map.isStyleLoaded()) {
+      console.log(
+        "[BicycleParkingOverlay] Style is now loaded, calling setupLayers again",
+      );
+      // Use setTimeout to ensure this runs after current call stack
+      setTimeout(() => setupLayers(), 0);
+    }
 
     // Cleanup function - removing the layer automatically removes all event listeners
     return () => {
+      console.log("[BicycleParkingOverlay] Cleaning up event listeners");
       map.off("styledata", setupLayers);
 
       if (map.getLayer(LAYER_ID)) {

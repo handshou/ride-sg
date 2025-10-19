@@ -1,45 +1,144 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Ride-SG
 
-## Getting Started
+A modern Singapore map explorer with intelligent landmark search and real-time bicycle parking data.
 
-### Environment Setup
+## 🚀 Technologies
 
-1. Copy the environment example file:
+- **[Next.js 15](https://nextjs.org)** - React framework with App Router
+- **[Effect-TS](https://effect.website/)** - Functional programming library for TypeScript
+- **[Mapbox GL JS](https://docs.mapbox.com/mapbox-gl-js/)** - Interactive map rendering
+- **[Convex](https://convex.dev)** - Real-time backend database with caching
+- **[Exa AI](https://exa.ai)** - Semantic search API for landmark discovery
+- **[LTA DataMall](https://datamall.lta.gov.sg/)** - Singapore bicycle parking data
+- **[Tailwind CSS](https://tailwindcss.com)** - Utility-first styling
+- **[TypeScript](https://www.typescriptlang.org)** - Type-safe development
+- **[Biome](https://biomejs.dev)** - Fast linter and formatter
+- **[Vitest](https://vitest.dev)** & **[Playwright](https://playwright.dev)** - Testing
+
+## ✨ Features
+
+1. **Smart Landmark Search** - AI-powered search with Exa API, automatically cached in Convex for fast retrieval
+2. **Interactive Map Explorer** - Satellite/street views with smooth flyTo animations and location markers
+3. **Real-time Bicycle Parking** - Live data from LTA DataMall showing nearby bicycle parking with shelter indicators
+4. **Location Discovery** - GPS location finder, random coordinates generator, and manual search
+
+## 🛠️ Getting Started
+
+### Prerequisites
+
+- Node.js 18+ and pnpm
+- [Mapbox Access Token](https://account.mapbox.com/access-tokens/)
+- [Convex Account](https://convex.dev)
+- [Exa API Key](https://exa.ai)
+- [LTA DataMall Account Key](https://datamall.lta.gov.sg/content/datamall/en/request-for-api.html)
+
+### Installation
+
+1. **Clone and install dependencies:**
+   ```bash
+   pnpm install
+   ```
+
+2. **Set up environment variables:**
+   ```bash
+   cp .env.example .env.local
+   ```
+   
+   Add your keys to `.env.local`:
+   ```env
+   MAPBOX_ACCESS_TOKEN=pk.your_mapbox_token
+   NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=pk.your_mapbox_token
+   EXA_API_KEY=your_exa_api_key
+   LTA_ACCOUNT_KEY=your_lta_account_key
+   ```
+
+3. **Start Convex development server:**
+   ```bash
+   npx convex dev
+   ```
+   
+   Follow the prompts to set up your Convex project.
+
+4. **Start Next.js development server:**
+   ```bash
+   pnpm dev
+   ```
+
+5. **Open your browser:**
+   ```
+   http://localhost:3000
+   ```
+
+## 📝 Development Scripts
+
 ```bash
-cp .env.example .env.local
+pnpm dev          # Start development server
+pnpm build        # Build for production
+pnpm start        # Start production server
+pnpm lint         # Run Biome linter
+pnpm format       # Format code with Biome
+pnpm test         # Run unit tests (Vitest)
+pnpm test:watch   # Run tests in watch mode
+pnpm test:e2e     # Run end-to-end tests (Playwright)
+pnpm check-all    # Run all checks (lint + type-check + test + build)
 ```
 
-2. Get your Mapbox access token:
-   - Go to [Mapbox Account](https://account.mapbox.com/access-tokens/)
-   - Create a new access token or use an existing one
-   - Copy the token and paste it in `.env.local`:
-   ```
-   MAPBOX_ACCESS_TOKEN=pk.your_actual_token_here
-   ```
+## 🏗️ Architecture
 
-3. Run the development server:
+### Effect-TS Service Layer
 
-```bash
-pnpm dev
+The project uses Effect-TS for functional programming patterns:
+
+- **Services**: Modular, composable services with dependency injection
+- **Error Handling**: Type-safe error handling with `Effect.catchAll`
+- **Configuration**: Environment variables managed through Effect Config
+- **Runtime**: Custom server runtime for Next.js server components
+
+### Key Services
+
+- `ExaSearchService` - Semantic search with Exa Answer API
+- `ConvexService` - Database operations with caching
+- `MapboxService` - Geocoding and map data
+- `BicycleParkingService` - LTA DataMall integration
+- `GeolocationService` - Browser geolocation API
+- `ToastService` - User notifications
+
+### Convex Schema
+
+- `locations` - Cached landmark search results
+- `bicycleParking` - Cached bicycle parking data
+
+## 📦 Project Structure
+
+```
+src/
+├── app/              # Next.js App Router pages
+├── components/       # React components
+│   └── ui/          # Reusable UI components
+├── hooks/           # Custom React hooks
+├── lib/             # Core application logic
+│   ├── actions/     # Next.js Server Actions
+│   ├── services/    # Effect-TS services
+│   └── schema/      # Effect.Schema definitions
+convex/              # Convex backend functions
+tests/               # Playwright e2e tests
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🧪 Testing
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Unit Tests**: Vitest for testing Effect-TS services
+- **E2E Tests**: Playwright for browser testing across Chromium, Firefox, WebKit
+- **Performance**: 14 unit tests (~400ms), 36 e2e tests (~40s)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 📚 Documentation
 
-## Learn More
+See additional documentation in the repository:
 
-To learn more about Next.js, take a look at the following resources:
+- `AGENTS.md` - AI agent capabilities and guidelines
+- `DEPLOYMENT.md` - Vercel deployment instructions
+- `SECURITY_FIX.md` - Server-side API key security
+- `SEARCH_INTEGRATION.md` - Search architecture overview
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 📄 License
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+MIT
