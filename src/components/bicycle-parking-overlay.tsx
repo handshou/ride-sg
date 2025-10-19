@@ -1,8 +1,8 @@
 "use client";
 
+import type { BicycleParkingResult } from "@/lib/schema/bicycle-parking.schema";
 import mapboxgl from "mapbox-gl";
 import { useEffect, useRef } from "react";
-import type { BicycleParkingResult } from "@/lib/schema/bicycle-parking.schema";
 
 interface BicycleParkingOverlayProps {
   map: mapboxgl.Map;
@@ -271,11 +271,27 @@ export function BicycleParkingOverlay({
     }
     setupLayers();
 
+    // Listen for style changes and re-add layers
+    const handleStyleData = () => {
+      if (isDev) {
+        console.log(
+          "[BicycleParkingOverlay] Style changed, re-adding bicycle parking layers",
+        );
+      }
+      // Re-add layers after style has fully loaded
+      setupLayers();
+    };
+
+    map.on("styledata", handleStyleData);
+
     // Cleanup function
     return () => {
       if (isDev) {
         console.log("[BicycleParkingOverlay] Cleaning up layers");
       }
+
+      // Remove style change listener
+      map.off("styledata", handleStyleData);
 
       // Only cleanup if style is loaded, otherwise we'll get errors
       if (map.isStyleLoaded()) {
