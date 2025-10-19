@@ -1,6 +1,7 @@
 "use client";
 
 import { Effect } from "effect";
+import { Navigation } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -64,15 +65,14 @@ export function LocateMeButton({ onLocationFound }: LocateMeButtonProps) {
       onClick={locateMe}
       disabled={isLocating}
       variant="outline"
-      className="w-full bg-gray-900/95 text-white border-gray-700 hover:bg-gray-800/95 dark:bg-white/95 dark:text-gray-900 dark:border-gray-200 dark:hover:bg-gray-100/95"
+      size="icon"
+      className="h-10 w-10 bg-white/95 text-gray-900 border-gray-300 hover:bg-gray-100/95 shadow-md dark:bg-gray-900/95 dark:text-white dark:border-gray-700 dark:hover:bg-gray-800/95"
+      title="Locate me"
     >
       {isLocating ? (
-        <>
-          <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-          Locating...
-        </>
+        <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
       ) : (
-        "📍 Locate Me"
+        <Navigation className="h-5 w-5" />
       )}
     </Button>
   );

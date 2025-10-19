@@ -280,9 +280,13 @@ export function SingaporeMapExplorer({
         staticMapUrl={staticMapUrlState}
       />
 
-      {/* Header with map style selector */}
+      {/* Header with map style selector and navigation controls */}
       <div className="absolute top-4 left-4 z-10 flex gap-2">
         <MapStyleSelector onStyleChange={handleStyleChange} />
+        <RandomCoordinatesButton
+          onCoordinatesGenerated={handleCoordinatesGenerated}
+        />
+        <LocateMeButton onLocationFound={handleLocationFound} />
         {/* <ThemeToggle /> */}
       </div>
 
@@ -322,14 +326,6 @@ export function SingaporeMapExplorer({
             />
           </>
         )}
-      </div>
-
-      {/* Floating Controls */}
-      <div className="absolute bottom-4 left-4 z-10 space-y-2">
-        <RandomCoordinatesButton
-          onCoordinatesGenerated={handleCoordinatesGenerated}
-        />
-        <LocateMeButton onLocationFound={handleLocationFound} />
       </div>
     </div>
   );
