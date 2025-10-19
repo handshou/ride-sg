@@ -1,9 +1,9 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
-import type { BicycleParkingResult } from "@/lib/schema/bicycle-parking.schema";
 import { Bike, CircleDot, Home } from "lucide-react";
 import { useEffect, useRef } from "react";
+import { Badge } from "@/components/ui/badge";
+import type { BicycleParkingResult } from "@/lib/schema/bicycle-parking.schema";
 
 interface BicycleParkingPanelProps {
   parkingResults: BicycleParkingResult[];

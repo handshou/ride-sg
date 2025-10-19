@@ -1,8 +1,8 @@
 "use client";
 
+import type { BicycleParkingResult } from "@/lib/schema/bicycle-parking.schema";
 import mapboxgl from "mapbox-gl";
 import { useEffect } from "react";
-import type { BicycleParkingResult } from "@/lib/schema/bicycle-parking.schema";
 
 interface BicycleParkingOverlayProps {
   map: mapboxgl.Map;
@@ -32,20 +32,12 @@ export function BicycleParkingOverlay({
     const SOURCE_ID = "bicycle-parking";
     const LAYER_ID = "bicycle-parking-circles";
 
-    // Wait for map to be loaded
-    if (!map.isStyleLoaded()) {
-      const handler = () => {
-        setupLayers();
-      };
-      map.once("styledata", handler);
-      return () => {
-        map.off("styledata", handler);
-      };
-    }
-
-    setupLayers();
-
-    function setupLayers() {
+    // Setup layers initially and whenever style changes
+    const setupLayers = () => {
+      // Wait for style to be loaded before adding layers
+      if (!map.isStyleLoaded()) {
+        return;
+      }
       // Remove existing layers and source if they exist
       if (map.getLayer(LAYER_ID)) {
         map.removeLayer(LAYER_ID);
@@ -169,10 +161,19 @@ export function BicycleParkingOverlay({
           }
         }
       });
-    }
+    };
+
+    // Setup layers initially
+    setupLayers();
+
+    // Listen for style changes and re-setup layers
+    // This is crucial for handling map style changes (e.g., switching from streets to satellite)
+    map.on("styledata", setupLayers);
 
     // Cleanup function - removing the layer automatically removes all event listeners
     return () => {
+      map.off("styledata", setupLayers);
+
       if (map.getLayer(LAYER_ID)) {
         map.removeLayer(LAYER_ID);
       }
