@@ -1,7 +1,5 @@
 "use client";
 
-import { Loader2, MapPin, RefreshCw, Save, Search, X } from "lucide-react";
-import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useSearchState } from "@/hooks/use-search-state";
@@ -10,6 +8,8 @@ import { refreshLocationAction } from "@/lib/actions/refresh-location-action";
 import { saveLocationToConvexAction } from "@/lib/actions/save-location-action";
 import type { SearchResult } from "@/lib/services/search-state-service";
 import { cleanAndTruncateDescription } from "@/lib/text-utils";
+import { Loader2, MapPin, RefreshCw, Save, Search, X } from "lucide-react";
+import { useState } from "react";
 
 interface SearchPanelProps {
   onResultSelect: (result: SearchResult) => void;
@@ -239,10 +239,17 @@ export function SearchPanel({ onResultSelect }: SearchPanelProps) {
                           >
                             {result.source === "exa" ? "🔍 Exa" : "💾 Convex"}
                           </Badge>
-                          <span className="text-xs text-gray-400 dark:text-gray-500">
-                            {result.location.latitude.toFixed(4)},{" "}
-                            {result.location.longitude.toFixed(4)}
-                          </span>
+                          {result.address &&
+                            (() => {
+                              // Extract postal code (6 digits) from address
+                              const postalMatch =
+                                result.address.match(/\b\d{6}\b/);
+                              return postalMatch ? (
+                                <span className="text-xs text-gray-400 dark:text-gray-500">
+                                  📮 {postalMatch[0]}
+                                </span>
+                              ) : null;
+                            })()}
                         </div>
                       </div>
                     </div>

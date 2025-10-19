@@ -165,12 +165,13 @@ export class ExaSearchServiceImpl implements ExaSearchService {
   /**
    * Extract location entries from Exa Answer response
    * Parses structured format: "Name | Address | Description"
-   * Returns objects with name, searchQuery, description, and confidence score
+   * Returns objects with name, searchQuery, description, address, and confidence score
    */
   extractLocationEntries(answer: string): Array<{
     name: string;
     searchQuery: string;
     description: string;
+    address: string;
     confidence: number;
   }> {
     // Split by numbered lines (1. 2. 3.) or bullet points
@@ -180,6 +181,7 @@ export class ExaSearchServiceImpl implements ExaSearchService {
       name: string;
       searchQuery: string;
       description: string;
+      address: string;
       confidence: number;
     }> = [];
 
@@ -209,7 +211,7 @@ export class ExaSearchServiceImpl implements ExaSearchService {
           description,
         });
 
-        entries.push({ name, searchQuery, description, confidence });
+        entries.push({ name, searchQuery, description, address, confidence });
       } else {
         // Fallback: try to parse unstructured format
         // Extract name (first part before comma, colon, dash, or "at")
@@ -240,9 +242,8 @@ export class ExaSearchServiceImpl implements ExaSearchService {
         const description = this.cleanDescription(rawDescription);
 
         // Use name + address for better geocoding
-        const searchQuery = addressMatch
-          ? `${name}, ${addressMatch[1].trim()}, Singapore`
-          : `${name}, Singapore`;
+        const address = addressMatch ? addressMatch[1].trim() : "Singapore";
+        const searchQuery = `${name}, ${address}, Singapore`;
 
         const confidence = this.calculateConfidence({
           name,
@@ -250,7 +251,7 @@ export class ExaSearchServiceImpl implements ExaSearchService {
           description,
         });
 
-        entries.push({ name, searchQuery, description, confidence });
+        entries.push({ name, searchQuery, description, address, confidence });
       }
 
       // Limit to top 5
@@ -435,6 +436,7 @@ Example format:
               location: coordinates,
               source: "exa" as const,
               timestamp: Date.now(),
+              address: entry.address, // Add address including postal code
               url, // Add URL if available
               confidence: entry.confidence, // Add confidence score
             } as SearchResult & { confidence: number });
