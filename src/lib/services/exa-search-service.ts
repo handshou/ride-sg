@@ -353,31 +353,49 @@ Example format:
         });
 
         yield* Effect.log(
-          `Exa Answer: "${answerData.answer.substring(0, 100)}..."`,
+          `Exa Answer received: "${answerData.answer.substring(0, 150)}..."`,
         );
         if (answerData.sources) {
-          yield* Effect.log(`Sources: ${answerData.sources.length}`);
+          yield* Effect.log(
+            `Exa sources: ${answerData.sources.length} sources`,
+          );
         }
 
         // Extract location entries from the answer
         const locationEntries = this.extractLocationEntries(answerData.answer);
 
         yield* Effect.log(
-          `Extracted ${locationEntries.length} locations: ${locationEntries.map((e) => e.name).join(", ")}`,
+          `Extracted ${locationEntries.length} locations from Exa: ${locationEntries.map((e) => e.name).join(", ")}`,
         );
+
+        if (locationEntries.length === 0) {
+          yield* Effect.logWarning(
+            `Exa returned answer but no locations could be extracted. Answer was: "${answerData.answer.substring(0, 200)}"`,
+          );
+        }
 
         // Geocode each location
         const exaResults: SearchResult[] = [];
 
         for (const entry of locationEntries) {
           yield* Effect.log(
-            `Geocoding: "${entry.searchQuery}" (confidence: ${(entry.confidence * 100).toFixed(0)}%)`,
+            `Geocoding Exa result: "${entry.searchQuery}" (confidence: ${(entry.confidence * 100).toFixed(0)}%)`,
           );
 
           const coordinates = yield* this.geocodeLocation(
             entry.searchQuery,
             mapboxToken,
           );
+
+          if (coordinates) {
+            yield* Effect.log(
+              `✓ Geocoded "${entry.name}" to (${coordinates.latitude.toFixed(4)}, ${coordinates.longitude.toFixed(4)})`,
+            );
+          } else {
+            yield* Effect.logWarning(
+              `✗ Geocoding failed for "${entry.name}" using query "${entry.searchQuery}"`,
+            );
+          }
 
           if (coordinates) {
             // Clean description from entry or fallback to source
@@ -404,14 +422,6 @@ Example format:
               url, // Add URL if available
               confidence: entry.confidence, // Add confidence score
             } as SearchResult & { confidence: number });
-
-            yield* Effect.log(
-              `✓ ${entry.name} at (${coordinates.latitude.toFixed(4)}, ${coordinates.longitude.toFixed(4)}) [${(entry.confidence * 100).toFixed(0)}% confidence]`,
-            );
-          } else {
-            yield* Effect.logWarning(
-              `✗ Skipped "${entry.name}" - geocoding failed`,
-            );
           }
         }
 
