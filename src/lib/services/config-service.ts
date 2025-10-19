@@ -47,10 +47,13 @@ export const convexPublicDeploymentConfig = Effect.sync(
 );
 
 /**
- * Configuration for LTA DataMall API AccountKey
- * Used for accessing Singapore bicycle parking data
+ * Configuration for LTA DataMall API AccountKey (server-side only)
+ * Used for accessing Singapore bicycle parking and transport data
+ * Get your key from: https://datamall.lta.gov.sg/content/datamall/en/request-for-api.html
  */
 export const ltaAccountKeyConfig = Config.string("LTA_ACCOUNT_KEY").pipe(
-  Config.withDefault("[LTA_KEY_REMOVED]="),
-  Config.withDescription("LTA DataMall AccountKey for API access"),
+  Config.withDefault(""),
+  Config.withDescription(
+    "LTA DataMall AccountKey for API access - server-side only, never expose to client",
+  ),
 );
