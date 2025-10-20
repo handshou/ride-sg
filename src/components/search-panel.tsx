@@ -1,5 +1,13 @@
 "use client";
 
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { useMobile } from "@/hooks/use-mobile";
+import { useSearchState } from "@/hooks/use-search-state";
+import { deleteLocationFromConvexAction } from "@/lib/actions/delete-location-action";
+import { saveLocationToConvexAction } from "@/lib/actions/save-location-action";
+import type { SearchResult } from "@/lib/services/search-state-service";
+import { cleanAndTruncateDescription } from "@/lib/text-utils";
 import { Exa } from "@lobehub/icons";
 import {
   ChevronDown,
@@ -13,24 +21,27 @@ import {
   Search,
   X,
 } from "lucide-react";
-import { useState } from "react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { useMobile } from "@/hooks/use-mobile";
-import { useSearchState } from "@/hooks/use-search-state";
-import { deleteLocationFromConvexAction } from "@/lib/actions/delete-location-action";
-import { saveLocationToConvexAction } from "@/lib/actions/save-location-action";
-import type { SearchResult } from "@/lib/services/search-state-service";
-import { cleanAndTruncateDescription } from "@/lib/text-utils";
+import { useCallback, useEffect, useState } from "react";
 
 interface SearchPanelProps {
   onResultSelect: (result: SearchResult) => void;
+  onSearchStateReady?: (addResult: (result: SearchResult) => void) => void;
 }
 
-export function SearchPanel({ onResultSelect }: SearchPanelProps) {
+export function SearchPanel({
+  onResultSelect,
+  onSearchStateReady,
+}: SearchPanelProps) {
   const isMobile = useMobile();
-  const { search, results, isLoading, error, selectResult, selectedResult } =
-    useSearchState();
+  const {
+    search,
+    results,
+    isLoading,
+    error,
+    selectResult,
+    selectedResult,
+    addResult,
+  } = useSearchState();
   const [query, setQuery] = useState("");
   const [savingId, setSavingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -38,6 +49,23 @@ export function SearchPanel({ onResultSelect }: SearchPanelProps) {
   const [hoveredSaveId, setHoveredSaveId] = useState<string | null>(null);
   const [currentResultIndex, setCurrentResultIndex] = useState(0);
   const [isResultsMinimized, setIsResultsMinimized] = useState(true);
+
+  // Memoized callback to add result and update UI
+  const handleAddResult = useCallback(
+    (result: SearchResult) => {
+      addResult(result);
+      setIsResultsMinimized(false); // Expand results when location is added
+      setQuery(result.title); // Update query input
+    },
+    [addResult],
+  );
+
+  // Expose addResult method to parent component (only once)
+  useEffect(() => {
+    if (onSearchStateReady) {
+      onSearchStateReady(handleAddResult);
+    }
+  }, [onSearchStateReady, handleAddResult]);
 
   const handleSearch = async () => {
     if (!query.trim()) return;

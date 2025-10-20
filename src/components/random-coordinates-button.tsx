@@ -1,16 +1,18 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
+import { generateRandomCoordinatesEffect } from "@/lib/services/random-coordinates-service";
 import { Effect } from "effect";
 import { Dices } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { generateRandomCoordinatesEffect } from "@/lib/services/random-coordinates-service";
 
 interface RandomCoordinatesButtonProps {
   onCoordinatesGenerated: (coords: {
     latitude: number;
     longitude: number;
+    title?: string;
+    description?: string;
   }) => void;
   savedLocations?: Array<{
     latitude: number;
@@ -45,7 +47,10 @@ export function RandomCoordinatesButton({
           `   Next will be: ${nextIndex + 1}. "${savedLocations[nextIndex]?.title}"`,
         );
 
-        onCoordinatesGenerated(location);
+        onCoordinatesGenerated({
+          ...location,
+          description: `Saved location ${currentIndex + 1}/${savedLocations.length}`,
+        });
         if (onIndexChange) {
           onIndexChange(nextIndex);
         }
@@ -87,6 +92,11 @@ export function RandomCoordinatesButton({
     }
   };
 
+  const hasLocations = savedLocations && savedLocations.length > 0;
+  const buttonTitle = hasLocations
+    ? `Next Saved Location (${currentIndex + 1}/${savedLocations.length})`
+    : "Random Singapore Location";
+
   return (
     <Button
       onClick={generateRandomCoordinates}
@@ -94,7 +104,7 @@ export function RandomCoordinatesButton({
       variant="outline"
       size="icon"
       className="h-10 w-10 bg-white/95 text-gray-900 border-gray-300 hover:bg-gray-100/95 shadow-md dark:bg-gray-900/95 dark:text-white dark:border-gray-700 dark:hover:bg-gray-800/95"
-      title="Generate random coordinates"
+      title={buttonTitle}
     >
       {isGenerating ? (
         <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />

@@ -1,7 +1,5 @@
 "use client";
 
-import { useQuery } from "convex/react";
-import { useCallback, useEffect, useRef, useState } from "react";
 import { BicycleParkingOverlay } from "@/components/bicycle-parking-overlay";
 import { BicycleParkingPanel } from "@/components/bicycle-parking-panel";
 import { ErrorToastHandler } from "@/components/error-toast-handler";
@@ -20,6 +18,8 @@ import { MAPBOX_STYLES } from "@/lib/map-styles";
 import type { BicycleParkingResult } from "@/lib/schema/bicycle-parking.schema";
 import type { GeocodeResult } from "@/lib/services/mapbox-service";
 import type { SearchResult } from "@/lib/services/search-state-service";
+import { useQuery } from "convex/react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../../convex/_generated/api";
 
 interface SingaporeMapExplorerProps {
@@ -53,6 +53,11 @@ export function SingaporeMapExplorer({
   const [isFetchingParking, setIsFetchingParking] = useState(false);
   const [selectedParking, setSelectedParking] =
     useState<BicycleParkingResult | null>(null);
+
+  // Callback to add results to search panel from outside
+  const [addSearchResult, setAddSearchResult] = useState<
+    ((result: SearchResult) => void) | null
+  >(null);
 
   // Always use satellite-streets as default map style
   const [mapStyle, setMapStyle] = useState(MAPBOX_STYLES.satelliteStreets);
@@ -158,11 +163,103 @@ export function SingaporeMapExplorer({
     [initialRandomCoords],
   );
 
+  // Handle search result selection - flyTo the selected location (moved before handleCoordinatesGenerated)
+  const handleSearchResultSelect = useCallback((result: SearchResult) => {
+    logger.info("Search result selected", {
+      title: result.title,
+      location: result.location,
+    });
+
+    // Fly to the search result with cinematic animation
+    if (mapInstanceRef.current) {
+      const map = mapInstanceRef.current;
+      const currentCenter = map.getCenter();
+
+      logger.debug("Current map center", {
+        lng: currentCenter.lng,
+        lat: currentCenter.lat,
+      });
+      logger.debug("Flying to", {
+        longitude: result.location.longitude,
+        latitude: result.location.latitude,
+      });
+
+      // Function to execute flyTo
+      const executeFlyTo = () => {
+        map.stop(); // Stop any ongoing animations before starting new one
+
+        // Wait for next frame to ensure stop() has completed
+        requestAnimationFrame(() => {
+          map.flyTo({
+            center: [result.location.longitude, result.location.latitude],
+            zoom: 17, // Zoom in very close for POIs
+            duration: 2500, // 2.5 second cinematic animation
+            essential: true,
+            curve: 1.6, // High arc for sweeping motion
+            easing: (t) => {
+              // Custom easing: slow start, fast middle, slow end
+              return t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
+            },
+            pitch: 50, // Tilt for dramatic 3D view
+            bearing: 30, // Slight rotation for visual interest
+          });
+          logger.success("flyTo called successfully");
+
+          // Update marker location AFTER flyTo starts (to avoid re-render before animation)
+          setMapLocation(result.location);
+          setIsUserLocation(false);
+        });
+      };
+
+      // If map style is still loading, wait for it to finish
+      if (!map.isStyleLoaded()) {
+        logger.debug("Map style loading, waiting for styledata event");
+        map.once("styledata", () => {
+          logger.success("Map style loaded, executing flyTo");
+          executeFlyTo();
+        });
+      } else {
+        executeFlyTo();
+      }
+    } else {
+      logger.warn("Map instance not ready yet");
+    }
+  }, []);
+
   const handleCoordinatesGenerated = useCallback(
-    (newCoords: { latitude: number; longitude: number }) => {
+    (newCoords: {
+      latitude: number;
+      longitude: number;
+      title?: string;
+      description?: string;
+    }) => {
       // Update static map URL with new coordinates
       const newStaticMapUrl = `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/${newCoords.longitude},${newCoords.latitude},12/400x300?access_token=${mapboxPublicToken}`;
       setStaticMapUrlState(newStaticMapUrl);
+
+      // If we have location info, create a SearchResult and add it to search panel
+      if (newCoords.title) {
+        const searchResult: SearchResult = {
+          id: `saved-${Date.now()}`,
+          title: newCoords.title,
+          description: newCoords.description || "Saved location",
+          location: {
+            latitude: newCoords.latitude,
+            longitude: newCoords.longitude,
+          },
+          source: "database",
+          timestamp: Date.now(),
+        };
+
+        // Add to search results first (if callback is available)
+        if (addSearchResult) {
+          addSearchResult(searchResult);
+        }
+
+        // Then fly to location
+        handleSearchResultSelect(searchResult);
+        return;
+      }
 
       // Fly to new random coordinates with smooth animation (no pitch/bearing)
       if (mapInstanceRef.current) {
@@ -196,7 +293,7 @@ export function SingaporeMapExplorer({
         }
       }
     },
-    [mapboxPublicToken],
+    [mapboxPublicToken, handleSearchResultSelect, addSearchResult],
   );
 
   const handleLocationFound = useCallback(
@@ -282,69 +379,6 @@ export function SingaporeMapExplorer({
     }
   }, []);
 
-  // Handle search result selection - flyTo the selected location
-  const handleSearchResultSelect = useCallback((result: SearchResult) => {
-    logger.info("Search result selected", {
-      title: result.title,
-      location: result.location,
-    });
-
-    // Fly to the search result with cinematic animation
-    if (mapInstanceRef.current) {
-      const map = mapInstanceRef.current;
-      const currentCenter = map.getCenter();
-
-      logger.debug("Current map center", {
-        lng: currentCenter.lng,
-        lat: currentCenter.lat,
-      });
-      logger.debug("Flying to", {
-        longitude: result.location.longitude,
-        latitude: result.location.latitude,
-      });
-
-      // Function to execute flyTo
-      const executeFlyTo = () => {
-        map.stop(); // Stop any ongoing animations before starting new one
-
-        // Wait for next frame to ensure stop() has completed
-        requestAnimationFrame(() => {
-          map.flyTo({
-            center: [result.location.longitude, result.location.latitude],
-            zoom: 17, // Zoom in very close for POIs
-            duration: 2500, // 2.5 second cinematic animation
-            essential: true,
-            curve: 1.6, // High arc for sweeping motion
-            easing: (t) => {
-              // Custom easing: slow start, fast middle, slow end
-              return t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
-            },
-            pitch: 50, // Tilt for dramatic 3D view
-            bearing: 30, // Slight rotation for visual interest
-          });
-          logger.success("flyTo called successfully");
-
-          // Update marker location AFTER flyTo starts (to avoid re-render before animation)
-          setMapLocation(result.location);
-          setIsUserLocation(false);
-        });
-      };
-
-      // If map style is still loading, wait for it to finish
-      if (!map.isStyleLoaded()) {
-        logger.debug("Map style loading, waiting for styledata event");
-        map.once("styledata", () => {
-          logger.success("Map style loaded, executing flyTo");
-          executeFlyTo();
-        });
-      } else {
-        executeFlyTo();
-      }
-    } else {
-      logger.warn("Map instance not ready yet");
-    }
-  }, []);
-
   return (
     <div className="font-sans min-h-screen">
       <ErrorToastHandler
@@ -367,7 +401,10 @@ export function SingaporeMapExplorer({
       </div>
 
       {/* Search Panel */}
-      <SearchPanel onResultSelect={handleSearchResultSelect} />
+      <SearchPanel
+        onResultSelect={handleSearchResultSelect}
+        onSearchStateReady={(addResult) => setAddSearchResult(() => addResult)}
+      />
 
       {/* Bicycle Parking Panel - Hide on Mobile */}
       {!isMobile && (

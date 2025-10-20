@@ -1,7 +1,5 @@
 "use client";
 
-import { Effect } from "effect";
-import { useState } from "react";
 import { searchLandmarksAction } from "@/lib/actions/search-actions";
 import { logger } from "@/lib/client-logger";
 import { runSelectResult } from "@/lib/search-orchestrator";
@@ -9,6 +7,8 @@ import type {
   SearchResult,
   SearchState,
 } from "@/lib/services/search-state-service";
+import { Effect } from "effect";
+import { useCallback, useState } from "react";
 
 /**
  * React Hook to interact with server-side search
@@ -94,6 +94,19 @@ export function useSearchState() {
     return searchState.results;
   };
 
+  /**
+   * Manually add a result to the search state
+   * (Useful for showing saved locations or navigation results)
+   */
+  const addResult = useCallback((result: SearchResult) => {
+    setSearchState((prev) => ({
+      ...prev,
+      results: [result],
+      selectedResult: result,
+      query: result.title, // Set query to location name
+    }));
+  }, []);
+
   return {
     // State
     searchState,
@@ -102,6 +115,7 @@ export function useSearchState() {
     search,
     selectResult,
     refreshResults,
+    addResult,
 
     // Derived state for convenience
     results: searchState.results,
