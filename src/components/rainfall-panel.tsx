@@ -69,7 +69,9 @@ export function RainfallPanel({
       <div
         role="button"
         tabIndex={0}
-        className="flex cursor-pointer items-center justify-between p-4 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50"
+        className={`flex cursor-pointer items-center justify-between p-4 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50 ${
+          isExpanded ? "rounded-t-lg" : "rounded-lg"
+        }`}
         onClick={() => setIsExpanded(!isExpanded)}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
@@ -106,7 +108,7 @@ export function RainfallPanel({
 
       {/* Expandable Content */}
       {isExpanded && (
-        <div className="border-t border-gray-200 dark:border-gray-700">
+        <div className="rounded-b-lg border-t border-gray-200 dark:border-gray-700">
           <div className="p-3">
             <p className="text-xs text-gray-500 dark:text-gray-400">
               Last update: {lastUpdate}

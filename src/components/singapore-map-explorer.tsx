@@ -66,8 +66,8 @@ export function SingaporeMapExplorer({
   // Always use satellite-streets as default map style
   const [mapStyle, setMapStyle] = useState(MAPBOX_STYLES.satelliteStreets);
 
-  // Rainfall visualization state
-  const [showRainfall, setShowRainfall] = useState(false);
+  // Rainfall visualization state - auto-enabled on load
+  const [showRainfall, setShowRainfall] = useState(true);
   const [useMockRainfall, setUseMockRainfall] = useState(false);
 
   // Saved locations for random navigation - using Convex reactive query
@@ -154,7 +154,7 @@ export function SingaporeMapExplorer({
       setIsMapReady(true);
 
       // Fly to initial location with a dramatic zoom-in animation
-      logger.debug("Map ready, flying in from zoom 2 to 10");
+      logger.debug("Map ready, flying in from zoom 2 to 10 with pitch");
       map.stop(); // Stop any ongoing animations
 
       // Wait for next frame to ensure stop() has completed
@@ -162,6 +162,8 @@ export function SingaporeMapExplorer({
         map.flyTo({
           center: [initialRandomCoords.longitude, initialRandomCoords.latitude],
           zoom: 10, // Zoom in to show Singapore island
+          pitch: 60, // Tilt the camera at 60 degrees for 3D view
+          bearing: 0, // North-facing orientation
           duration: 2500, // Longer duration for dramatic effect
           essential: true,
           curve: 1.5, // Higher curve for more dramatic arc
