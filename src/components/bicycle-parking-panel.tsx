@@ -140,128 +140,139 @@ export function BicycleParkingPanel({
 
       {/* Results List - Only show when not minimized */}
       {!isMinimized && (
-        <>
-          <div className="overflow-y-auto flex-1">
-            {isLoading && (
-              <div className="p-8 text-center text-gray-500 dark:text-gray-400">
-                <CircleDot className="h-8 w-8 animate-spin mx-auto mb-2" />
-                <p>Finding bicycle parking...</p>
-              </div>
-            )}
-
-            {!isLoading && parkingResults.length > 0 && (
-              <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                {parkingResults.map((result) => {
-                  const isSelected = selectedParking?.id === result.id;
-                  const rackSizeLabel =
-                    result.rackCount <= 10
-                      ? "Small"
-                      : result.rackCount <= 30
-                        ? "Medium"
-                        : "Large";
-
-                  return (
-                    <button
-                      key={result.id}
-                      ref={(el) => {
-                        if (el) {
-                          itemRefs.current.set(result.id, el);
-                        } else {
-                          itemRefs.current.delete(result.id);
-                        }
-                      }}
-                      type="button"
-                      onClick={() => onParkingSelect(result)}
-                      className={`w-full p-4 text-left transition-colors ${
-                        isSelected
-                          ? "bg-green-50 dark:bg-green-900/20 border-l-4 border-green-500"
-                          : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <CircleDot
-                              className={`flex-shrink-0 ${
-                                result.rackCount <= 10
-                                  ? "h-3 w-3"
-                                  : result.rackCount <= 30
-                                    ? "h-4 w-4"
-                                    : "h-5 w-5"
-                              } text-green-500`}
-                            />
-                            <h3 className="font-medium text-gray-900 dark:text-white truncate">
-                              {result.description}
-                            </h3>
-                          </div>
-
-                          <div className="flex items-center gap-2 mt-2 flex-wrap">
-                            <Badge variant="outline" className="text-xs">
-                              <Bike className="h-3 w-3 mr-1" />
-                              {result.rackCount} racks ({rackSizeLabel})
-                            </Badge>
-
-                            {result.hasShelter && (
-                              <Badge
-                                variant="default"
-                                className="text-xs bg-emerald-600 hover:bg-emerald-700"
-                              >
-                                <Home className="h-3 w-3 mr-1" />
-                                Sheltered
-                              </Badge>
-                            )}
-
-                            {!result.hasShelter && (
-                              <Badge variant="secondary" className="text-xs">
-                                No shelter
-                              </Badge>
-                            )}
-                          </div>
-
-                          <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                            {result.rackType}
-                          </p>
-                        </div>
-
-                        {/* Save button */}
-                        <button
-                          type="button"
-                          onClick={(e) => handleSaveBicycleParking(result, e)}
-                          className={`p-2 rounded-md transition-all flex-shrink-0 ${
-                            savedBicycleParkingIds.has(result.id)
-                              ? "text-red-500 dark:text-red-400"
-                              : "text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400"
-                          }`}
-                          title={
-                            savedBicycleParkingIds.has(result.id)
-                              ? "Saved"
-                              : "Save bicycle parking location"
-                          }
-                        >
-                          <Heart
-                            className={`h-4 w-4 ${
-                              savedBicycleParkingIds.has(result.id)
-                                ? "fill-current"
-                                : ""
-                            }`}
-                          />
-                        </button>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Footer */}
-          {!isLoading && parkingResults.length > 0 && (
-            <div className="p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-sm text-gray-600 dark:text-gray-400">
-              Found {parkingResults.length} bicycle parking location
-              {parkingResults.length !== 1 ? "s" : ""}
+        <div className="overflow-y-auto flex-1">
+          {isLoading && (
+            <div className="p-8 text-center text-gray-500 dark:text-gray-400">
+              <CircleDot className="h-8 w-8 animate-spin mx-auto mb-2" />
+              <p>Finding bicycle parking...</p>
             </div>
           )}
-        </>
+
+          {!isLoading && parkingResults.length > 0 && (
+            <div className="divide-y divide-gray-200 dark:divide-gray-700">
+              {parkingResults.map((result) => {
+                const isSelected = selectedParking?.id === result.id;
+                const rackSizeLabel =
+                  result.rackCount <= 10
+                    ? "Small"
+                    : result.rackCount <= 30
+                      ? "Medium"
+                      : "Large";
+
+                return (
+                  <button
+                    key={result.id}
+                    ref={(el) => {
+                      if (el) {
+                        itemRefs.current.set(result.id, el);
+                      } else {
+                        itemRefs.current.delete(result.id);
+                      }
+                    }}
+                    type="button"
+                    onClick={() => onParkingSelect(result)}
+                    className={`w-full p-4 text-left transition-colors ${
+                      isSelected
+                        ? "bg-green-50 dark:bg-green-900/20 border-l-4 border-green-500"
+                        : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <CircleDot
+                            className={`flex-shrink-0 ${
+                              result.rackCount <= 10
+                                ? "h-3 w-3"
+                                : result.rackCount <= 30
+                                  ? "h-4 w-4"
+                                  : "h-5 w-5"
+                            } text-green-500`}
+                          />
+                          <h3 className="font-medium text-gray-900 dark:text-white truncate">
+                            {result.description}
+                          </h3>
+                        </div>
+
+                        <div className="flex items-center gap-2 mt-2 flex-wrap">
+                          <Badge variant="outline" className="text-xs">
+                            <Bike className="h-3 w-3 mr-1" />
+                            {result.rackCount} racks ({rackSizeLabel})
+                          </Badge>
+
+                          {result.hasShelter && (
+                            <Badge
+                              variant="default"
+                              className="text-xs bg-emerald-600 hover:bg-emerald-700"
+                            >
+                              <Home className="h-3 w-3 mr-1" />
+                              Sheltered
+                            </Badge>
+                          )}
+
+                          {!result.hasShelter && (
+                            <Badge variant="secondary" className="text-xs">
+                              No shelter
+                            </Badge>
+                          )}
+                        </div>
+
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                          {result.rackType}
+                        </p>
+                      </div>
+
+                      {/* Save button */}
+                      <button
+                        type="button"
+                        onClick={(e) => handleSaveBicycleParking(result, e)}
+                        className={`p-2 rounded-md transition-all flex-shrink-0 ${
+                          savedBicycleParkingIds.has(result.id)
+                            ? "text-red-500 dark:text-red-400"
+                            : "text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400"
+                        }`}
+                        title={
+                          savedBicycleParkingIds.has(result.id)
+                            ? "Saved"
+                            : "Save bicycle parking location"
+                        }
+                      >
+                        <Heart
+                          className={`h-4 w-4 ${
+                            savedBicycleParkingIds.has(result.id)
+                              ? "fill-current"
+                              : ""
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Footer - Always shown when there are results */}
+      {!isLoading && parkingResults.length > 0 && (
+        <div className="p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+          <button
+            type="button"
+            onClick={() => setIsMinimized(!isMinimized)}
+            className="w-full flex items-center justify-between text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+          >
+            <span>
+              Found {parkingResults.length} bicycle parking location
+              {parkingResults.length !== 1 ? "s" : ""}
+            </span>
+            {isMinimized ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronUp className="h-4 w-4" />
+            )}
+          </button>
+        </div>
       )}
     </div>
   );
