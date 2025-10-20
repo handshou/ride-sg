@@ -118,7 +118,7 @@ export class SearchStateService extends Effect.Service<SearchStateService>()(
       };
     }),
     dependencies: [],
-  }
+  },
 ) {}
 
 /**
@@ -167,4 +167,3 @@ export const getSearchStateEffect = () =>
  */
 export const SearchStateServiceTag =
   Context.GenericTag<SearchStateService>("SearchStateService");
-
