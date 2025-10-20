@@ -1,5 +1,7 @@
 "use client";
 
+import { Badge } from "@/components/ui/badge";
+import type { BicycleParkingResult } from "@/lib/schema/bicycle-parking.schema";
 import {
   Bike,
   ChevronDown,
@@ -10,8 +12,6 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
-import type { BicycleParkingResult } from "@/lib/schema/bicycle-parking.schema";
 
 interface BicycleParkingPanelProps {
   parkingResults: BicycleParkingResult[];
@@ -30,7 +30,7 @@ export function BicycleParkingPanel({
   const [savedBicycleParkingIds, setSavedBicycleParkingIds] = useState<
     Set<string>
   >(new Set());
-  const [isMinimized, setIsMinimized] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(true);
 
   // Load saved bicycle parking IDs on mount
   useEffect(() => {

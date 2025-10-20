@@ -1,7 +1,7 @@
 import { Effect, Layer } from "effect";
 import { describe, expect, it } from "vitest";
 import { ConfigService } from "./config-service";
-import { MapboxService, MapboxServiceTag } from "./mapbox-service";
+import { MapboxService } from "./mapbox-service";
 
 // Layer with all dependencies
 const TestLayer = Layer.mergeAll(ConfigService.Default, MapboxService.Default);
@@ -10,7 +10,7 @@ describe("Mapbox Service - Live Functionality", () => {
   describe("Basic Functionality", () => {
     it("should get Singapore locations", async () => {
       const program = Effect.gen(function* () {
-        const mapboxService = yield* MapboxServiceTag;
+        const mapboxService = yield* MapboxService;
         return yield* mapboxService.forwardGeocode("Singapore");
       });
 
@@ -27,7 +27,7 @@ describe("Mapbox Service - Live Functionality", () => {
 
     it("should get random Singapore coordinates", async () => {
       const program = Effect.gen(function* () {
-        const mapboxService = yield* MapboxServiceTag;
+        const mapboxService = yield* MapboxService;
         return yield* mapboxService.getRandomSingaporeCoords();
       });
 
@@ -45,7 +45,7 @@ describe("Mapbox Service - Live Functionality", () => {
 
     it("should generate static map URL", async () => {
       const program = Effect.gen(function* () {
-        const mapboxService = yield* MapboxServiceTag;
+        const mapboxService = yield* MapboxService;
         return yield* mapboxService.getStaticMap(
           { longitude: 103.8, latitude: 1.3 },
           12,

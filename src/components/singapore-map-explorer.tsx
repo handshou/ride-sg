@@ -147,7 +147,7 @@ export function SingaporeMapExplorer({
       requestAnimationFrame(() => {
         map.flyTo({
           center: [initialRandomCoords.longitude, initialRandomCoords.latitude],
-          zoom: 13,
+          zoom: 15, // Higher zoom for better view of Singapore
           duration: 1500,
           essential: true,
           curve: 1.2,
@@ -175,7 +175,7 @@ export function SingaporeMapExplorer({
           requestAnimationFrame(() => {
             map.flyTo({
               center: [newCoords.longitude, newCoords.latitude],
-              zoom: 14,
+              zoom: 15, // Match initial zoom level
               duration: 1500,
               essential: true,
               curve: 1.2,
