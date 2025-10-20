@@ -1,14 +1,5 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { useMobile } from "@/hooks/use-mobile";
-import { useSearchState } from "@/hooks/use-search-state";
-import { deleteLocationFromConvexAction } from "@/lib/actions/delete-location-action";
-import { saveLocationToConvexAction } from "@/lib/actions/save-location-action";
-import { logger } from "@/lib/client-logger";
-import type { SearchResult } from "@/lib/services/search-state-service";
-import { cleanAndTruncateDescription } from "@/lib/text-utils";
 import { Exa } from "@lobehub/icons";
 import {
   ChevronDown,
@@ -24,6 +15,15 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { useMobile } from "@/hooks/use-mobile";
+import { useSearchState } from "@/hooks/use-search-state";
+import { deleteLocationFromConvexAction } from "@/lib/actions/delete-location-action";
+import { saveLocationToConvexAction } from "@/lib/actions/save-location-action";
+import { logger } from "@/lib/client-logger";
+import type { SearchResult } from "@/lib/services/search-state-service";
+import { cleanAndTruncateDescription } from "@/lib/text-utils";
 
 interface SearchPanelProps {
   onResultSelect: (result: SearchResult) => void;

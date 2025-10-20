@@ -1,5 +1,7 @@
 "use client";
 
+import { useQuery } from "convex/react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { BicycleParkingOverlay } from "@/components/bicycle-parking-overlay";
 import { BicycleParkingPanel } from "@/components/bicycle-parking-panel";
 import { ErrorToastHandler } from "@/components/error-toast-handler";
@@ -18,8 +20,6 @@ import { MAPBOX_STYLES } from "@/lib/map-styles";
 import type { BicycleParkingResult } from "@/lib/schema/bicycle-parking.schema";
 import type { GeocodeResult } from "@/lib/services/mapbox-service";
 import type { SearchResult } from "@/lib/services/search-state-service";
-import { useQuery } from "convex/react";
-import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../../convex/_generated/api";
 
 interface SingaporeMapExplorerProps {
@@ -63,6 +63,7 @@ export function SingaporeMapExplorer({
   const [mapStyle, setMapStyle] = useState(MAPBOX_STYLES.satelliteStreets);
 
   // Saved locations for random navigation - using Convex reactive query
+  // Returns undefined during SSR or when ConvexProvider is not available
   const convexLocations = useQuery(api.locations.getRandomizableLocations, {});
   const [savedLocations, setSavedLocations] = useState<
     Array<{ latitude: number; longitude: number; title: string }>

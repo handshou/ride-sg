@@ -1,3 +1,4 @@
+import { ClientOnly } from "@/components/client-only";
 import { SingaporeMapExplorer } from "@/components/singapore-map-explorer";
 import {
   getMapboxPublicToken,
@@ -28,11 +29,22 @@ export default function Home() {
   const mapboxPublicToken = runServerEffect(getMapboxPublicToken());
 
   return (
-    <SingaporeMapExplorer
-      initialRandomCoords={randomCoords}
-      singaporeLocations={singaporeLocations}
-      staticMapUrl={staticMapUrl}
-      mapboxPublicToken={mapboxPublicToken}
-    />
+    <ClientOnly
+      fallback={
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4" />
+            <p className="text-gray-600 dark:text-gray-400">Loading map...</p>
+          </div>
+        </div>
+      }
+    >
+      <SingaporeMapExplorer
+        initialRandomCoords={randomCoords}
+        singaporeLocations={singaporeLocations}
+        staticMapUrl={staticMapUrl}
+        mapboxPublicToken={mapboxPublicToken}
+      />
+    </ClientOnly>
   );
 }

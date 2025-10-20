@@ -1,6 +1,5 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { Exa } from "@lobehub/icons";
 import {
   Bike,
@@ -14,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 
 export function HowToButton() {
   const [isOpen, setIsOpen] = useState(false);

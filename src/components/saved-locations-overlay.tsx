@@ -14,6 +14,7 @@ export function SavedLocationsOverlay({ map }: SavedLocationsOverlayProps) {
   const markersRef = useRef<mapboxgl.Marker[]>([]);
 
   // Use Convex reactive query - automatically updates when data changes!
+  // Returns undefined during SSR or when ConvexProvider is not available
   const locations = useQuery(api.locations.getRandomizableLocations, {});
 
   // Reactively render markers whenever Convex data changes
