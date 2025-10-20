@@ -65,7 +65,7 @@ export function SingaporeMapExplorer({
     Array<{ latitude: number; longitude: number }>
   >([]);
 
-  // Fetch saved locations on mount
+  // Fetch saved locations on mount and when they're updated
   useEffect(() => {
     const fetchSavedLocations = async () => {
       try {
@@ -78,11 +78,33 @@ export function SingaporeMapExplorer({
           return;
         }
 
+        logger.info("Fetching saved randomizable locations from Convex...");
         const client = new ConvexHttpClient(deployment);
         const locations = await client.query(
           api.locations.getRandomizableLocations,
           {},
         );
+
+        logger.info(
+          `✅ Loaded ${locations.length} saved locations for random selection`,
+        );
+
+        // Log the actual locations for debugging
+        if (locations.length > 0) {
+          logger.debug(
+            "Saved locations:",
+            locations.map((loc) => ({
+              title: loc.title,
+              lat: loc.latitude,
+              lng: loc.longitude,
+              isRandomizable: loc.isRandomizable,
+            })),
+          );
+        } else {
+          logger.warn(
+            "No saved locations found with isRandomizable=true. Make sure Convex schema is deployed with 'pnpm run dev:convex'",
+          );
+        }
 
         setSavedLocations(
           locations.map((loc) => ({
@@ -90,16 +112,24 @@ export function SingaporeMapExplorer({
             longitude: loc.longitude,
           })),
         );
-
-        logger.info(
-          `Loaded ${locations.length} saved locations for random selection`,
-        );
       } catch (error) {
         logger.error("Failed to fetch saved locations", error);
       }
     };
 
     fetchSavedLocations();
+
+    // Listen for custom event when a location is saved
+    const handleLocationSaved = () => {
+      logger.info("Location saved, refetching randomizable locations...");
+      setTimeout(() => fetchSavedLocations(), 1000); // Wait 1s for Convex to sync
+    };
+
+    window.addEventListener("locationSaved", handleLocationSaved);
+
+    return () => {
+      window.removeEventListener("locationSaved", handleLocationSaved);
+    };
   }, []);
 
   // Fetch bicycle parking for a location

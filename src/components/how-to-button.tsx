@@ -1,8 +1,19 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { Info, X } from "lucide-react";
+import { Exa } from "@lobehub/icons";
+import {
+  Bike,
+  Database,
+  Dices,
+  Heart,
+  Info,
+  Layers,
+  Navigation,
+  Search,
+  X,
+} from "lucide-react";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 
 export function HowToButton() {
   const [isOpen, setIsOpen] = useState(false);
@@ -48,31 +59,59 @@ export function HowToButton() {
               How to Use Ride-SG
             </h2>
 
-            <div className="space-y-3 text-sm text-gray-700 dark:text-gray-300">
-              <p>
-                <strong>🔍 Search:</strong> Type a location name to find places
-                in Singapore
-              </p>
-              <p>
-                <strong>❤️ Save:</strong> Click the heart icon on search results
-                to add them to your randomized list
-              </p>
-              <p>
-                <strong>🎲 Random:</strong> Click the dice icon to visit a saved
-                location (or random spot if none saved)
-              </p>
-              <p>
-                <strong>📍 Locate:</strong> Click the compass to find your
-                current location
-              </p>
-              <p>
-                <strong>🚲 Bicycle Parking:</strong> Click any bicycle marker to
-                see parking details. Click results in the panel to save locally.
-              </p>
-              <p>
-                <strong>🎨 Map Style:</strong> Click the layers icon to switch
-                between map styles
-              </p>
+            <div className="space-y-4 text-sm text-gray-700 dark:text-gray-300">
+              <div className="flex items-start gap-3">
+                <Layers className="h-5 w-5 flex-shrink-0 text-gray-600 dark:text-gray-400" />
+                <div>
+                  <strong>Map Style:</strong> Switch between different map views
+                  (satellite, streets, dark, light)
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <Dices className="h-5 w-5 flex-shrink-0 text-gray-600 dark:text-gray-400" />
+                <div>
+                  <strong>Random:</strong> Visit a saved location, or explore a
+                  random spot in Singapore if none saved
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <Navigation className="h-5 w-5 flex-shrink-0 text-gray-600 dark:text-gray-400" />
+                <div>
+                  <strong>Locate Me:</strong> Find and navigate to your current
+                  location
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <Search className="h-5 w-5 flex-shrink-0 text-gray-600 dark:text-gray-400" />
+                <div>
+                  <strong>Search:</strong> Type a location name to find places
+                  in Singapore. Results from{" "}
+                  <Database className="inline h-3 w-3" /> Convex (cached) and{" "}
+                  <Exa.Combine className="inline h-3 w-3" /> Exa (AI search)
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <Heart className="h-5 w-5 flex-shrink-0 text-red-500 dark:text-red-400 fill-current" />
+                <div>
+                  <strong>Save:</strong> Click the heart on search results to
+                  add them to your randomized list
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <Bike className="h-5 w-5 flex-shrink-0 text-green-500" />
+                <div>
+                  <strong>Bicycle Parking:</strong> Green bicycle icons show
+                  parking locations. Click markers or panel results to view
+                  details. Save with{" "}
+                  <Heart className="inline h-3 w-3 text-red-500 fill-current" />{" "}
+                  for red pin markers
+                </div>
+              </div>
             </div>
           </div>
         </div>

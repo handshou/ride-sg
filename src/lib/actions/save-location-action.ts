@@ -93,6 +93,11 @@ export async function saveLocationToConvexAction(
 
     console.log(`✅ Successfully saved to Convex: ${result.title}`);
 
+    // Dispatch event to notify components to refetch saved locations
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("locationSaved"));
+    }
+
     return { success: true };
   } catch (error) {
     console.error("❌ Save location action failed:", error);

@@ -27,14 +27,20 @@ export function RandomCoordinatesButton({
     try {
       // If we have saved locations, pick one randomly
       if (savedLocations && savedLocations.length > 0) {
+        console.log(`🎲 Picking from ${savedLocations.length} saved locations`);
         const randomIndex = Math.floor(Math.random() * savedLocations.length);
         const randomLocation = savedLocations[randomIndex];
 
+        console.log("🎲 Selected saved location:", randomLocation);
         onCoordinatesGenerated(randomLocation);
         toast.success("Navigating to saved location");
         setIsGenerating(false);
         return;
       }
+
+      console.log(
+        "🎲 No saved locations, generating random Singapore coordinates",
+      );
 
       // Fall back to random Singapore coordinates
       const result = await Effect.runPromise(

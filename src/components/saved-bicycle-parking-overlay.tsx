@@ -1,8 +1,8 @@
 "use client";
 
-import type { BicycleParkingResult } from "@/lib/schema/bicycle-parking.schema";
 import mapboxgl from "mapbox-gl";
 import { useEffect, useRef, useState } from "react";
+import type { BicycleParkingResult } from "@/lib/schema/bicycle-parking.schema";
 
 interface SavedBicycleParkingOverlayProps {
   map: mapboxgl.Map;
