@@ -1,6 +1,5 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
 import { BicycleParkingOverlay } from "@/components/bicycle-parking-overlay";
 import { BicycleParkingPanel } from "@/components/bicycle-parking-panel";
 import { ErrorToastHandler } from "@/components/error-toast-handler";
@@ -16,6 +15,7 @@ import { MAPBOX_STYLES } from "@/lib/map-styles";
 import type { BicycleParkingResult } from "@/lib/schema/bicycle-parking.schema";
 import type { GeocodeResult } from "@/lib/services/mapbox-service";
 import type { SearchResult } from "@/lib/services/search-state-service";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface SingaporeMapExplorerProps {
   initialRandomCoords: { latitude: number; longitude: number };
@@ -95,6 +95,7 @@ export function SingaporeMapExplorer({
 
       // Fly to initial location with a gentle animation
       logger.debug("Map ready, flying to initial location");
+      map.stop(); // Stop any ongoing animations
       map.flyTo({
         center: [initialRandomCoords.longitude, initialRandomCoords.latitude],
         zoom: 13,
@@ -118,6 +119,7 @@ export function SingaporeMapExplorer({
         const map = mapInstanceRef.current;
 
         const executeFlyTo = () => {
+          map.stop(); // Stop any ongoing animations before starting new one
           map.flyTo({
             center: [newCoords.longitude, newCoords.latitude],
             zoom: 14,
@@ -154,6 +156,7 @@ export function SingaporeMapExplorer({
         const map = mapInstanceRef.current;
 
         const executeFlyTo = () => {
+          map.stop(); // Stop any ongoing animations before starting new one
           map.flyTo({
             center: [coords.longitude, coords.latitude],
             zoom: 16,
@@ -198,6 +201,7 @@ export function SingaporeMapExplorer({
       const map = mapInstanceRef.current;
 
       const executeFlyTo = () => {
+        map.stop(); // Stop any ongoing animations before starting new one
         map.flyTo({
           center: [parking.longitude, parking.latitude],
           zoom: 18, // Zoom in very close
@@ -239,6 +243,7 @@ export function SingaporeMapExplorer({
 
       // Function to execute flyTo
       const executeFlyTo = () => {
+        map.stop(); // Stop any ongoing animations before starting new one
         map.flyTo({
           center: [result.location.longitude, result.location.latitude],
           zoom: 17, // Zoom in very close for POIs

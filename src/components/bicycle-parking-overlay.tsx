@@ -354,18 +354,8 @@ export function BicycleParkingOverlay({
             layout: {
               // Use bicycle icon image
               "icon-image": bicycleIconId,
-              // Zoom-based icon sizing
-              "icon-size": [
-                "interpolate",
-                ["exponential", 2],
-                ["zoom"],
-                14,
-                0.5, // Start visible at zoom 14
-                16,
-                0.7,
-                18,
-                1.0, // Full size at zoom 18
-              ],
+              // Constant size for all zoom levels (small and consistent)
+              "icon-size": 0.4, // Small, consistent size
               "icon-allow-overlap": true,
               "icon-ignore-placement": true,
               "icon-rotation-alignment": "map",
