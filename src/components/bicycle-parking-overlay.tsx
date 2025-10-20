@@ -1,10 +1,11 @@
 "use client";
 
+import { logger } from "@/lib/client-logger";
+import type { BicycleParkingResult } from "@/lib/schema/bicycle-parking.schema";
+import { MapReadinessServiceImpl } from "@/lib/services/map-readiness-service";
 import { Effect } from "effect";
 import mapboxgl from "mapbox-gl";
 import { useEffect, useRef } from "react";
-import type { BicycleParkingResult } from "@/lib/schema/bicycle-parking.schema";
-import { MapReadinessServiceImpl } from "@/lib/services/map-readiness-service";
 
 interface BicycleParkingOverlayProps {
   map: mapboxgl.Map;
@@ -88,36 +89,28 @@ export function BicycleParkingOverlay({
     const LAYER_ID = "bicycle-parking-circles";
     const isDev = process.env.NODE_ENV === "development";
 
-    if (isDev) {
-      console.log(
-        `[BicycleParkingOverlay] Effect triggered with ${parkingLocations.length} parking locations`,
-      );
-    }
+    logger.debug(
+      `[BicycleParkingOverlay] Effect triggered with ${parkingLocations.length} parking locations`,
+    );
 
     // Setup layers initially and whenever style changes
     // Use ref so we always have the latest parking locations
     const setupLayers = () => {
       const currentParkingLocations = parkingLocationsRef.current;
 
-      if (isDev) {
-        console.log(
-          `[BicycleParkingOverlay] setupLayers called, style loaded: ${map.isStyleLoaded()}, parking locations: ${currentParkingLocations.length}, layer exists: ${!!map.getLayer(LAYER_ID)}`,
-        );
-      }
+      logger.debug(
+        `[BicycleParkingOverlay] setupLayers called, style loaded: ${map.isStyleLoaded()}, parking locations: ${currentParkingLocations.length}, layer exists: ${!!map.getLayer(LAYER_ID)}`,
+      );
 
       // Check if map is animating, if so wait for it to finish
       if (map.isMoving()) {
-        if (isDev) {
-          console.log(
-            "[BicycleParkingOverlay] Map is animating, waiting for moveend event",
-          );
-        }
+        logger.debug(
+          "[BicycleParkingOverlay] Map is animating, waiting for moveend event",
+        );
         map.once("moveend", () => {
-          if (isDev) {
-            console.log(
-              "[BicycleParkingOverlay] Map animation finished, setting up layers",
-            );
-          }
+          logger.debug(
+            "[BicycleParkingOverlay] Map animation finished, setting up layers",
+          );
           setupLayers();
         });
         return;
@@ -127,24 +120,20 @@ export function BicycleParkingOverlay({
       Effect.runPromise(mapReadinessService.createReadinessCheck(map))
         .then((isReady) => {
           if (!isReady) {
-            if (isDev) {
-              console.log(
-                "[BicycleParkingOverlay] Map not ready after retries, will try on next update",
-              );
-            }
+            logger.warn(
+              "[BicycleParkingOverlay] Map not ready after retries, will try on next update",
+            );
             return;
           }
 
-          if (isDev) {
-            console.log(
-              "[BicycleParkingOverlay] Map is ready, proceeding with setup",
-            );
-          }
+          logger.debug(
+            "[BicycleParkingOverlay] Map is ready, proceeding with setup",
+          );
           // Continue with setup after readiness check passes
           proceedWithSetup();
         })
         .catch((error) => {
-          console.error(
+          logger.error(
             "[BicycleParkingOverlay] Map readiness check failed:",
             error,
           );
@@ -159,11 +148,9 @@ export function BicycleParkingOverlay({
       // If no parking locations, remove any existing layers and return
       if (currentParkingLocations.length === 0) {
         if (map.getLayer(LAYER_ID)) {
-          if (isDev) {
-            console.log(
-              "[BicycleParkingOverlay] No parking locations, removing existing layers",
-            );
-          }
+          logger.debug(
+            "[BicycleParkingOverlay] No parking locations, removing existing layers",
+          );
           map.removeLayer(LAYER_ID);
         }
         if (map.getSource(SOURCE_ID)) {
@@ -172,11 +159,9 @@ export function BicycleParkingOverlay({
         return;
       }
 
-      if (isDev) {
-        console.log(
-          `[BicycleParkingOverlay] Creating/updating markers for ${currentParkingLocations.length} locations`,
-        );
-      }
+      logger.debug(
+        `[BicycleParkingOverlay] Creating/updating markers for ${currentParkingLocations.length} locations`,
+      );
 
       // Create GeoJSON features from parking locations
       const features = currentParkingLocations.map((parking) => ({
@@ -208,9 +193,7 @@ export function BicycleParkingOverlay({
         | undefined;
 
       if (existingSource) {
-        if (isDev) {
-          console.log("[BicycleParkingOverlay] Updating existing source data");
-        }
+        logger.debug("[BicycleParkingOverlay] Updating existing source data");
         existingSource.setData(featureCollection);
 
         // Check if layers still exist (may be removed after style change)
@@ -220,16 +203,12 @@ export function BicycleParkingOverlay({
           map.getLayer(`${LAYER_ID}-cluster-count`);
 
         if (layersExist) {
-          if (isDev) {
-            console.log("[BicycleParkingOverlay] Layers exist, data updated");
-          }
+          logger.debug("[BicycleParkingOverlay] Layers exist, data updated");
           return; // Layers already exist with updated data
         } else {
-          if (isDev) {
-            console.log(
-              "[BicycleParkingOverlay] Layers missing after style change, re-adding",
-            );
-          }
+          logger.debug(
+            "[BicycleParkingOverlay] Layers missing after style change, re-adding",
+          );
           // Fall through to add layers again
         }
       }
@@ -242,22 +221,18 @@ export function BicycleParkingOverlay({
       ];
       for (const layerId of layersToRemove) {
         if (map.getLayer(layerId)) {
-          if (isDev) {
-            console.log(
-              `[BicycleParkingOverlay] Removing orphaned layer: ${layerId}`,
-            );
-          }
+          logger.debug(
+            `[BicycleParkingOverlay] Removing orphaned layer: ${layerId}`,
+          );
           map.removeLayer(layerId);
         }
       }
 
       // Add source only if it doesn't exist
       if (!existingSource) {
-        if (isDev) {
-          console.log(
-            "[BicycleParkingOverlay] Adding new source with clustering",
-          );
-        }
+        logger.debug(
+          "[BicycleParkingOverlay] Adding new source with clustering",
+        );
         map.addSource(SOURCE_ID, {
           type: "geojson",
           data: featureCollection,
@@ -272,9 +247,7 @@ export function BicycleParkingOverlay({
 
       // Check if icon is already loaded
       if (!map.hasImage(bicycleIconId)) {
-        if (isDev) {
-          console.log("[BicycleParkingOverlay] Loading bicycle icon");
-        }
+        logger.debug("[BicycleParkingOverlay] Loading bicycle icon");
 
         // Create a vibrant bicycle SVG icon with bright colors and shadow
         const size = 50; // Larger canvas for better quality
@@ -296,7 +269,7 @@ export function BicycleParkingOverlay({
         canvas.height = size;
         const ctx = canvas.getContext("2d");
         if (!ctx) {
-          console.error("[BicycleParkingOverlay] Failed to get canvas context");
+          logger.error("[BicycleParkingOverlay] Failed to get canvas context");
           return;
         }
 
@@ -309,11 +282,9 @@ export function BicycleParkingOverlay({
             if (!map.hasImage(bicycleIconId)) {
               map.addImage(bicycleIconId, imageData);
 
-              if (isDev) {
-                console.log(
-                  "[BicycleParkingOverlay] Bicycle icon loaded successfully",
-                );
-              }
+              logger.debug(
+                "[BicycleParkingOverlay] Bicycle icon loaded successfully",
+              );
             }
 
             // Add the cluster layers after image is loaded
@@ -342,11 +313,9 @@ export function BicycleParkingOverlay({
       }
 
       function addClusterLayers() {
-        if (isDev) {
-          console.log(
-            "[BicycleParkingOverlay] Adding clustered bicycle parking layers",
-          );
-        }
+        logger.debug(
+          "[BicycleParkingOverlay] Adding clustered bicycle parking layers",
+        );
 
         try {
           // Layer 1: Cluster circles (for grouped markers)
@@ -555,18 +524,14 @@ export function BicycleParkingOverlay({
     }
 
     // Setup layers initially - the polling mechanism will handle timing
-    if (isDev) {
-      console.log("[BicycleParkingOverlay] Setting up layers initially");
-    }
+    logger.debug("[BicycleParkingOverlay] Setting up layers initially");
     setupLayers();
 
     // Listen for style changes and re-add layers
     const handleStyleData = () => {
-      if (isDev) {
-        console.log(
-          "[BicycleParkingOverlay] Style changed, re-adding bicycle parking layers",
-        );
-      }
+      logger.debug(
+        "[BicycleParkingOverlay] Style changed, re-adding bicycle parking layers",
+      );
       // Re-add layers after style has fully loaded
       setupLayers();
     };
@@ -575,9 +540,7 @@ export function BicycleParkingOverlay({
 
     // Cleanup function
     return () => {
-      if (isDev) {
-        console.log("[BicycleParkingOverlay] Cleaning up layers");
-      }
+      logger.debug("[BicycleParkingOverlay] Cleaning up layers");
 
       // Remove style change listener
       map.off("styledata", handleStyleData);

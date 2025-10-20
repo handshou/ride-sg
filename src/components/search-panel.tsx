@@ -6,6 +6,7 @@ import { useMobile } from "@/hooks/use-mobile";
 import { useSearchState } from "@/hooks/use-search-state";
 import { deleteLocationFromConvexAction } from "@/lib/actions/delete-location-action";
 import { saveLocationToConvexAction } from "@/lib/actions/save-location-action";
+import { logger } from "@/lib/client-logger";
 import type { SearchResult } from "@/lib/services/search-state-service";
 import { cleanAndTruncateDescription } from "@/lib/text-utils";
 import { Exa } from "@lobehub/icons";
@@ -116,16 +117,16 @@ export function SearchPanel({
         await saveLocationToConvexAction(result);
 
       if (saveError) {
-        console.error("Save failed:", saveError);
+        logger.error("Save failed:", saveError);
       } else if (success) {
-        console.log(`✓ Saved to Convex: ${result.title}`);
+        logger.success(`Saved to Convex: ${result.title}`);
         // Mark as saved (turns green)
         setSavedIds((prev) => new Set(prev).add(result.id));
         // Trigger a new search to refresh the results list (will now show from Convex)
         await search(query);
       }
     } catch (error) {
-      console.error("Save error:", error);
+      logger.error("Save error:", error);
     } finally {
       setSavingId(null);
     }
@@ -143,14 +144,14 @@ export function SearchPanel({
         await deleteLocationFromConvexAction(result.id);
 
       if (deleteError) {
-        console.error("Delete failed:", deleteError);
+        logger.error("Delete failed:", deleteError);
       } else if (success) {
-        console.log(`✓ Deleted from Convex: ${result.title}`);
+        logger.success(`Deleted from Convex: ${result.title}`);
         // Trigger a new search to refresh the results list (will now search Exa)
         await search(query);
       }
     } catch (error) {
-      console.error("Delete error:", error);
+      logger.error("Delete error:", error);
     } finally {
       setDeletingId(null);
     }

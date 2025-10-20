@@ -37,8 +37,8 @@ class ClientLogger {
     message: string,
     data?: unknown,
   ): void {
-    if (!this.isDevelopment && level === "log") {
-      // In production, only log warnings and errors
+    // In production, suppress all logs except errors
+    if (!this.isDevelopment && level !== "error") {
       return;
     }
 

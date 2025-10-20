@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/client-logger";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
 import { useMemo } from "react";
 
@@ -13,8 +14,8 @@ export function ConvexClientProvider({ children }: ConvexClientProviderProps) {
     const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
 
     if (!convexUrl) {
-      console.warn(
-        "⚠️ NEXT_PUBLIC_CONVEX_URL not configured, Convex features will be disabled",
+      logger.warn(
+        "NEXT_PUBLIC_CONVEX_URL not configured, Convex features will be disabled",
       );
       return null;
     }
@@ -24,7 +25,7 @@ export function ConvexClientProvider({ children }: ConvexClientProviderProps) {
       return null;
     }
 
-    console.log(`🔗 Initializing Convex client: ${convexUrl}`);
+    logger.info(`Initializing Convex client: ${convexUrl}`);
     return new ConvexReactClient(convexUrl);
   }, []);
 

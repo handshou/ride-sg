@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { logger } from "@/lib/client-logger";
 import { generateRandomCoordinatesEffect } from "@/lib/services/random-coordinates-service";
 import { Effect } from "effect";
 import { Dices } from "lucide-react";
@@ -40,11 +41,11 @@ export function RandomCoordinatesButton({
         const location = savedLocations[currentIndex];
         const nextIndex = (currentIndex + 1) % savedLocations.length;
 
-        console.log(
-          `➡️ Sequential navigation: ${currentIndex + 1}/${savedLocations.length} - "${location.title}"`,
+        logger.info(
+          `Sequential navigation: ${currentIndex + 1}/${savedLocations.length} - "${location.title}"`,
         );
-        console.log(
-          `   Next will be: ${nextIndex + 1}. "${savedLocations[nextIndex]?.title}"`,
+        logger.debug(
+          `Next will be: ${nextIndex + 1}. "${savedLocations[nextIndex]?.title}"`,
         );
 
         onCoordinatesGenerated({
@@ -59,8 +60,8 @@ export function RandomCoordinatesButton({
         return;
       }
 
-      console.log(
-        "🎲 No saved locations, generating random Singapore coordinates",
+      logger.debug(
+        "No saved locations, generating random Singapore coordinates",
       );
 
       // Fall back to random Singapore coordinates
