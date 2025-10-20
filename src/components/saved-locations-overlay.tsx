@@ -1,102 +1,69 @@
 "use client";
 
-import { ConvexHttpClient } from "convex/browser";
-import { Effect } from "effect";
+import { logger } from "@/lib/client-logger";
+import { useQuery } from "convex/react";
 import mapboxgl from "mapbox-gl";
 import { useEffect, useRef } from "react";
-import { logger } from "@/lib/client-logger";
-import { convexPublicDeploymentConfig } from "@/lib/services/config-service";
 import { api } from "../../convex/_generated/api";
 
 interface SavedLocationsOverlayProps {
   map: mapboxgl.Map;
 }
 
-interface SavedLocation {
-  _id: string;
-  title: string;
-  description: string;
-  latitude: number;
-  longitude: number;
-  source: "mapbox" | "exa" | "database";
-  timestamp: number;
-  isRandomizable?: boolean;
-}
-
 export function SavedLocationsOverlay({ map }: SavedLocationsOverlayProps) {
   const markersRef = useRef<mapboxgl.Marker[]>([]);
+  
+  // Use Convex reactive query - automatically updates when data changes!
+  const locations = useQuery(api.locations.getRandomizableLocations, {});
 
+  // Reactively render markers whenever Convex data changes
   useEffect(() => {
-    // Function to load and render saved locations from Convex
-    const renderSavedLocations = async () => {
-      // Clear existing markers
-      for (const marker of markersRef.current) {
-        marker.remove();
-      }
-      markersRef.current = [];
+    // Clear existing markers
+    for (const marker of markersRef.current) {
+      marker.remove();
+    }
+    markersRef.current = [];
 
-      try {
-        // Use Effect config service to get Convex URL
-        const deployment = await Effect.runPromise(
-          convexPublicDeploymentConfig,
-        );
-        if (!deployment) {
-          logger.warn("NEXT_PUBLIC_CONVEX_URL not configured");
-          return;
-        }
-
-        const client = new ConvexHttpClient(deployment);
-        const locations = (await client.query(
-          api.locations.getRandomizableLocations,
-          {},
-        )) as SavedLocation[];
-
+    // If data is loading or empty, don't render anything
+    if (!locations || locations.length === 0) {
+      if (locations !== undefined) {
         logger.info(
-          `📍 Rendering ${locations.length} saved location pins on map`,
+          "[SavedLocationsOverlay] No saved locations to display",
         );
-
-        // Create native Mapbox pin marker for each saved location (blue color)
-        for (const location of locations) {
-          const marker = new mapboxgl.Marker({ color: "#3b82f6" }) // Blue pin
-            .setLngLat([location.longitude, location.latitude])
-            .setPopup(
-              new mapboxgl.Popup({ offset: 25 }).setHTML(
-                `<div style="padding: 8px;">
-                <strong>⭐ ${location.title}</strong><br/>
-                <small>${location.description}</small><br/>
-                <small style="color: #3b82f6;">Saved for Sequential Navigation</small>
-              </div>`,
-              ),
-            )
-            .addTo(map);
-
-          markersRef.current.push(marker);
-        }
-      } catch (error) {
-        logger.error("Failed to render saved locations", error);
       }
-    };
+      return;
+    }
 
-    // Render on mount
-    renderSavedLocations();
+    logger.info(
+      `[SavedLocationsOverlay] 🔄 Rendering ${locations.length} saved location pins (real-time update)`,
+    );
 
-    // Listen for changes to saved locations
-    const handleLocationSaved = () => {
-      logger.info("Location saved, re-rendering location pins...");
-      setTimeout(() => renderSavedLocations(), 1000); // Wait 1s for Convex to sync
-    };
+    // Create native Mapbox pin marker for each saved location (blue color)
+    for (const location of locations) {
+      const marker = new mapboxgl.Marker({ color: "#3b82f6" }) // Blue pin
+        .setLngLat([location.longitude, location.latitude])
+        .setPopup(
+          new mapboxgl.Popup({ offset: 25 }).setHTML(
+            `<div class="p-2">
+            <strong class="text-gray-900 dark:text-white">⭐ ${location.title}</strong><br/>
+            <small class="text-gray-600 dark:text-gray-400">${location.description}</small><br/>
+            <small class="text-blue-500 dark:text-blue-400">Saved for Sequential Navigation</small>
+          </div>`,
+          ),
+        )
+        .addTo(map);
 
-    window.addEventListener("locationSaved", handleLocationSaved);
+      markersRef.current.push(marker);
+    }
 
-    // Cleanup
+    // Cleanup on re-render
     return () => {
       for (const marker of markersRef.current) {
         marker.remove();
       }
       markersRef.current = [];
-      window.removeEventListener("locationSaved", handleLocationSaved);
     };
-  }, [map]);
+  }, [locations, map]); // Re-run whenever locations data changes from Convex!
 
   return null;
 }

@@ -119,3 +119,71 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Mapbox Popup Styling */
+.mapboxgl-popup-content {
+  @apply bg-white dark:bg-gray-900 text-gray-900 dark:text-white;
+  @apply border border-gray-200 dark:border-gray-700;
+  border-radius: 8px;
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+.dark .mapboxgl-popup-content {
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.4),
+    0 4px 6px -2px rgba(0, 0, 0, 0.3);
+}
+
+/* Close button positioning - move 2-3px to the left */
+.mapboxgl-popup-close-button {
+  @apply text-gray-400 dark:text-gray-500;
+  @apply hover:text-gray-600 dark:hover:text-gray-300;
+  font-size: 20px;
+  padding: 0;
+  margin: 0;
+  right: 5px !important; /* Move 3px left from default 8px */
+  top: 5px;
+  width: 20px;
+  height: 20px;
+  line-height: 20px;
+  text-align: center;
+}
+
+/* Popup arrow/tip */
+.mapboxgl-popup-tip {
+  @apply border-t-white dark:border-t-gray-900;
+}
+
+/* Adjust popup anchor for bottom */
+.mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip {
+  @apply border-t-white dark:border-t-gray-900;
+  border-bottom-color: transparent !important;
+  border-left-color: transparent !important;
+  border-right-color: transparent !important;
+}
+
+/* Adjust popup anchor for top */
+.mapboxgl-popup-anchor-top .mapboxgl-popup-tip {
+  @apply border-b-white dark:border-b-gray-900;
+  border-top-color: transparent !important;
+  border-left-color: transparent !important;
+  border-right-color: transparent !important;
+}
+
+/* Adjust popup anchor for left */
+.mapboxgl-popup-anchor-left .mapboxgl-popup-tip {
+  @apply border-r-white dark:border-r-gray-900;
+  border-left-color: transparent !important;
+  border-top-color: transparent !important;
+  border-bottom-color: transparent !important;
+}
+
+/* Adjust popup anchor for right */
+.mapboxgl-popup-anchor-right .mapboxgl-popup-tip {
+  @apply border-l-white dark:border-l-gray-900;
+  border-right-color: transparent !important;
+  border-top-color: transparent !important;
+  border-bottom-color: transparent !important;
+}

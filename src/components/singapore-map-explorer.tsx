@@ -1,6 +1,6 @@
 "use client";
 
-import { ConvexHttpClient } from "convex/browser";
+import { useQuery } from "convex/react";
 import { Effect } from "effect";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BicycleParkingOverlay } from "@/components/bicycle-parking-overlay";
@@ -19,7 +19,6 @@ import { useMobile } from "@/hooks/use-mobile";
 import { logger } from "@/lib/client-logger";
 import { MAPBOX_STYLES } from "@/lib/map-styles";
 import type { BicycleParkingResult } from "@/lib/schema/bicycle-parking.schema";
-import { convexPublicDeploymentConfig } from "@/lib/services/config-service";
 import type { GeocodeResult } from "@/lib/services/mapbox-service";
 import type { SearchResult } from "@/lib/services/search-state-service";
 import { api } from "../../convex/_generated/api";
@@ -59,79 +58,48 @@ export function SingaporeMapExplorer({
   // Always use satellite-streets as default map style
   const [mapStyle, setMapStyle] = useState(MAPBOX_STYLES.satelliteStreets);
 
-  // Saved locations for random navigation
+  // Saved locations for random navigation - using Convex reactive query
+  const convexLocations = useQuery(api.locations.getRandomizableLocations, {});
   const [savedLocations, setSavedLocations] = useState<
     Array<{ latitude: number; longitude: number; title: string }>
   >([]);
   const [currentLocationIndex, setCurrentLocationIndex] = useState(0);
 
-  // Fetch saved locations on mount and when they're updated
+  // Reactively update saved locations when Convex data changes
   useEffect(() => {
-    const fetchSavedLocations = async () => {
-      try {
-        // Use Effect config service to get Convex URL
-        const deployment = await Effect.runPromise(
-          convexPublicDeploymentConfig,
+    if (!convexLocations || convexLocations.length === 0) {
+      if (convexLocations !== undefined) {
+        logger.warn(
+          "No saved locations found with isRandomizable=true. Make sure Convex schema is deployed with 'pnpm run dev:convex'",
         );
-        if (!deployment) {
-          logger.warn("NEXT_PUBLIC_CONVEX_URL not configured");
-          return;
-        }
-
-        logger.info("Fetching saved randomizable locations from Convex...");
-        const client = new ConvexHttpClient(deployment);
-        const locations = await client.query(
-          api.locations.getRandomizableLocations,
-          {},
-        );
-
-        logger.info(
-          `✅ Loaded ${locations.length} saved locations for sequential navigation`,
-        );
-
-        // Shuffle the locations array using Fisher-Yates algorithm
-        const shuffled = [...locations].sort(() => Math.random() - 0.5);
-
-        // Log the actual locations for debugging
-        if (locations.length > 0) {
-          logger.info(
-            "🔀 Shuffled order:",
-            shuffled.map((loc, idx) => `${idx + 1}. ${loc.title}`).join(", "),
-          );
-        } else {
-          logger.warn(
-            "No saved locations found with isRandomizable=true. Make sure Convex schema is deployed with 'pnpm run dev:convex'",
-          );
-        }
-
-        // Map to simple format and shuffle
-        const mappedLocations = shuffled.map((loc) => ({
-          latitude: loc.latitude,
-          longitude: loc.longitude,
-          title: loc.title,
-        }));
-
-        setSavedLocations(mappedLocations);
-        setCurrentLocationIndex(0); // Reset to start of shuffled list
-      } catch (error) {
-        logger.error("Failed to fetch saved locations", error);
       }
-    };
+      setSavedLocations([]);
+      return;
+    }
 
-    fetchSavedLocations();
+    logger.info(
+      `🔄 Convex update: ${convexLocations.length} saved locations for sequential navigation`,
+    );
 
-    // Listen for custom event when a location is saved
-    const handleLocationSaved = () => {
-      logger.info("Location saved, refetching randomizable locations...");
-      setTimeout(() => fetchSavedLocations(), 1000); // Wait 1s for Convex to sync
-    };
+    // Shuffle the locations array
+    const shuffled = [...convexLocations].sort(() => Math.random() - 0.5);
 
-    window.addEventListener("locationSaved", handleLocationSaved);
+    // Log the shuffled order
+    logger.info(
+      "🔀 Shuffled order:",
+      shuffled.map((loc, idx) => `${idx + 1}. ${loc.title}`).join(", "),
+    );
 
-    return () => {
-      window.removeEventListener("locationSaved", handleLocationSaved);
-    };
-  }, []);
+    // Map to simple format
+    const mappedLocations = shuffled.map((loc) => ({
+      latitude: loc.latitude,
+      longitude: loc.longitude,
+      title: loc.title,
+    }));
+
+    setSavedLocations(mappedLocations);
+    setCurrentLocationIndex(0); // Reset to start of shuffled list
+  }, [convexLocations]); // This will re-run whenever Convex data changes!
 
   // Fetch bicycle parking for a location
   const fetchBicycleParking = useCallback(async (lat: number, long: number) => {

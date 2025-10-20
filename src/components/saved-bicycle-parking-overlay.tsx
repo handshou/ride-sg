@@ -1,8 +1,8 @@
 "use client";
 
-import mapboxgl from "mapbox-gl";
-import { useEffect, useRef, useState } from "react";
 import type { BicycleParkingResult } from "@/lib/schema/bicycle-parking.schema";
+import mapboxgl from "mapbox-gl";
+import { useEffect, useRef } from "react";
 
 interface SavedBicycleParkingOverlayProps {
   map: mapboxgl.Map;
@@ -12,7 +12,6 @@ export function SavedBicycleParkingOverlay({
   map,
 }: SavedBicycleParkingOverlayProps) {
   const markersRef = useRef<mapboxgl.Marker[]>([]);
-  const [, setUpdateTrigger] = useState(0);
 
   useEffect(() => {
     // Function to load and render saved bicycle parking
@@ -36,10 +35,10 @@ export function SavedBicycleParkingOverlay({
           .setLngLat([location.longitude, location.latitude])
           .setPopup(
             new mapboxgl.Popup({ offset: 25 }).setHTML(
-              `<div style="padding: 8px;">
-              <strong>💾 ${location.description}</strong><br/>
-              <small>${location.rackType} • ${location.rackCount} racks</small><br/>
-              <small style="color: #ef4444;">Saved Location</small>
+              `<div class="p-2">
+              <strong class="text-gray-900 dark:text-white">💾 ${location.description}</strong><br/>
+              <small class="text-gray-600 dark:text-gray-400">${location.rackType} • ${location.rackCount} racks</small><br/>
+              <small class="text-red-500 dark:text-red-400">Saved Location</small>
             </div>`,
             ),
           )
@@ -55,7 +54,6 @@ export function SavedBicycleParkingOverlay({
     // Listen for changes to saved bicycle parking
     const handleSavedChanged = () => {
       renderSavedLocations();
-      setUpdateTrigger((prev) => prev + 1);
     };
 
     window.addEventListener("savedBicycleParkingChanged", handleSavedChanged);
