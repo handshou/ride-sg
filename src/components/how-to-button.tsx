@@ -98,7 +98,8 @@ export function HowToButton() {
                 <Heart className="h-5 w-5 flex-shrink-0 text-red-500 dark:text-red-400 fill-current" />
                 <div>
                   <strong>Save:</strong> Click the heart on search results to
-                  add them to your randomized list
+                  add them to your randomized list. Blue pins show saved
+                  locations on the map.
                 </div>
               </div>
 

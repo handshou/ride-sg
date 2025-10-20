@@ -13,6 +13,7 @@ import { MapboxGLMap } from "@/components/mapbox-gl-map";
 import { MapboxSimpleOverlay } from "@/components/mapbox-simple-overlay";
 import { RandomCoordinatesButton } from "@/components/random-coordinates-button";
 import { SavedBicycleParkingOverlay } from "@/components/saved-bicycle-parking-overlay";
+import { SavedLocationsOverlay } from "@/components/saved-locations-overlay";
 import { SearchPanel } from "@/components/search-panel";
 import { useMobile } from "@/hooks/use-mobile";
 import { logger } from "@/lib/client-logger";
@@ -412,6 +413,7 @@ export function SingaporeMapExplorer({
               selectedParking={selectedParking}
             />
             <SavedBicycleParkingOverlay map={mapInstanceRef.current} />
+            <SavedLocationsOverlay map={mapInstanceRef.current} />
           </>
         )}
       </div>
