@@ -481,6 +481,7 @@ export function SingaporeMapExplorer({
               <RainfallHeatMapOverlay
                 map={mapInstanceRef.current}
                 useMockData={useMockRainfall}
+                useInterpolation={false}
               />
             )}
           </>
