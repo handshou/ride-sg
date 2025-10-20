@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import { Exa } from "@lobehub/icons";
 import {
   Bike,
@@ -13,7 +14,6 @@ import {
   X,
 } from "lucide-react";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 
 export function HowToButton() {
   const [isOpen, setIsOpen] = useState(false);
@@ -89,8 +89,8 @@ export function HowToButton() {
                 <div>
                   <strong>Search:</strong> Type a location name to find places
                   in Singapore. Results from{" "}
-                  <Database className="inline h-3 w-3" /> Convex (cached) and{" "}
-                  <Exa.Combine className="inline h-3 w-3" /> Exa (AI search)
+                  <Database className="inline h-3 w-3" /> and{" "}
+                  <Exa.Combine className="inline h-3 w-3" />
                 </div>
               </div>
 
