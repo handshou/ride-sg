@@ -87,11 +87,17 @@ export function HowToButton() {
 
               <div className="flex items-start gap-3">
                 <Search className="h-5 w-5 flex-shrink-0 text-gray-600 dark:text-gray-400" />
-                <div>
-                  <strong>Search:</strong> Type a location name to find places
-                  in Singapore. Results from{" "}
-                  <Database className="inline h-3 w-3 align-baseline" /> and{" "}
-                  <Exa.Combine className="inline h-3 w-3 align-baseline" />
+                <div className="flex items-center gap-1 flex-wrap">
+                  <span>
+                    <strong>Search:</strong> Type a location name to find places
+                    in Singapore. Results from
+                  </span>
+                  <Database className="h-3 w-3" />
+                  <span>and</span>
+                  <Exa.Combine
+                    size={12}
+                    style={{ display: "inline-block", verticalAlign: "middle" }}
+                  />
                 </div>
               </div>
 

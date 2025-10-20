@@ -1,11 +1,11 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
+import { getCurrentPositionEffect } from "@/lib/services/geolocation-service";
 import { Effect } from "effect";
 import { Navigation } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { getCurrentPositionEffect } from "@/lib/services/geolocation-service";
 
 interface LocateMeButtonProps {
   onLocationFound: (coords: { latitude: number; longitude: number }) => void;
@@ -49,9 +49,6 @@ export function LocateMeButton({ onLocationFound }: LocateMeButtonProps) {
 
       // Success case
       onLocationFound(result);
-      toast.success(
-        `Location found: ${result.latitude.toFixed(4)}, ${result.longitude.toFixed(4)}`,
-      );
     } catch (_error) {
       // Error is already handled and logged in the Effect.catchAll above
       // No additional logging needed here

@@ -1,11 +1,11 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
+import { generateRandomCoordinatesEffect } from "@/lib/services/random-coordinates-service";
 import { Effect } from "effect";
 import { Dices } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { generateRandomCoordinatesEffect } from "@/lib/services/random-coordinates-service";
 
 interface RandomCoordinatesButtonProps {
   onCoordinatesGenerated: (coords: {
@@ -50,9 +50,6 @@ export function RandomCoordinatesButton({
           onIndexChange(nextIndex);
         }
 
-        toast.success(
-          `Location ${currentIndex + 1}/${savedLocations.length}: ${location.title}`,
-        );
         setIsGenerating(false);
         return;
       }
@@ -82,7 +79,6 @@ export function RandomCoordinatesButton({
 
       // Success case
       onCoordinatesGenerated(result);
-      toast.success("New random coordinates generated");
     } catch (_error) {
       // Error is already handled and logged in the Effect.catchAll above
       // No additional logging needed here
