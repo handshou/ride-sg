@@ -23,6 +23,7 @@ import {
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 
 interface SearchPanelProps {
   onResultSelect: (result: SearchResult) => void;
@@ -118,15 +119,19 @@ export function SearchPanel({
 
       if (saveError) {
         logger.error("Save failed:", saveError);
+        // Show user-friendly toast error
+        toast.error(`Failed to save: ${saveError}`);
       } else if (success) {
         logger.success(`Saved to Convex: ${result.title}`);
         // Mark as saved (turns green)
         setSavedIds((prev) => new Set(prev).add(result.id));
-        // Trigger a new search to refresh the results list (will now show from Convex)
-        await search(query);
+        // Show success toast
+        toast.success(`Saved ${result.title}`);
+        // Don't trigger a new search - Convex reactive queries will update automatically
       }
     } catch (error) {
       logger.error("Save error:", error);
+      toast.error("Failed to save location");
     } finally {
       setSavingId(null);
     }

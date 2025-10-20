@@ -4,6 +4,18 @@ import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../../convex/_generated/api";
 import type { SearchResult } from "../services/search-state-service";
 
+// Production-safe logging (only logs in development or errors in production)
+const log = {
+  info: (message: string) => {
+    if (process.env.NODE_ENV === "development") {
+      console.log(message);
+    }
+  },
+  error: (message: string, error?: unknown) => {
+    console.error(message, error);
+  },
+};
+
 /**
  * Server Action: Manually save a location to Convex (with override support)
  *
@@ -17,14 +29,14 @@ export async function saveLocationToConvexAction(
     const deployment = process.env.NEXT_PUBLIC_CONVEX_URL;
 
     if (!deployment) {
-      console.error("❌ NEXT_PUBLIC_CONVEX_URL not configured");
+      log.error("❌ NEXT_PUBLIC_CONVEX_URL not configured");
       return {
         success: false,
         error: "Convex not configured. Run 'npx convex dev' first.",
       };
     }
 
-    console.log(`🔗 Connecting to Convex: ${deployment}`);
+    log.info(`🔗 Connecting to Convex: ${deployment}`);
     const client = new ConvexHttpClient(deployment);
 
     // Add timeout wrapper for Convex operations
@@ -44,7 +56,7 @@ export async function saveLocationToConvexAction(
     };
 
     // First, search for existing results with similar titles (with timeout)
-    console.log(`🔍 Searching for existing results: "${result.title}"`);
+    log.info(`🔍 Searching for existing results: "${result.title}"`);
     const existingResults = await withTimeout(
       client.query(api.locations.searchLocations, {
         query: result.title,
@@ -54,7 +66,7 @@ export async function saveLocationToConvexAction(
 
     // Delete any existing results that match closely (to override)
     if (existingResults.length > 0) {
-      console.log(
+      log.info(
         `📝 Found ${existingResults.length} existing results, will override...`,
       );
 
@@ -71,13 +83,13 @@ export async function saveLocationToConvexAction(
             }),
             10000,
           );
-          console.log(`🗑️ Deleted existing result: ${existing.title}`);
+          log.info(`🗑️ Deleted existing result: ${existing.title}`);
         }
       }
     }
 
     // Save the new result (with timeout)
-    console.log(`💾 Saving new result: "${result.title}"`);
+    log.info(`💾 Saving new result: "${result.title}"`);
     await withTimeout(
       client.mutation(api.locations.saveLocation, {
         title: result.title,
@@ -91,14 +103,14 @@ export async function saveLocationToConvexAction(
       10000,
     );
 
-    console.log(`✅ Successfully saved to Convex: ${result.title}`);
+    log.info(`✅ Successfully saved to Convex: ${result.title}`);
 
     // Note: No need to dispatch custom events anymore!
     // Convex reactive queries will automatically update all components in real-time
 
     return { success: true };
   } catch (error) {
-    console.error("❌ Save location action failed:", error);
+    log.error("❌ Save location action failed:", error);
 
     // More helpful error messages
     if (error instanceof Error) {
