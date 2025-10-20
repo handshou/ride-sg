@@ -1,11 +1,11 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { generateRandomCoordinatesEffect } from "@/lib/services/random-coordinates-service";
 import { Effect } from "effect";
 import { Dices } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { generateRandomCoordinatesEffect } from "@/lib/services/random-coordinates-service";
 
 interface RandomCoordinatesButtonProps {
   onCoordinatesGenerated: (coords: {

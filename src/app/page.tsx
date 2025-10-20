@@ -1,6 +1,5 @@
 import { SingaporeMapExplorer } from "@/components/singapore-map-explorer";
 import {
-  getCurrentLocation,
   getMapboxPublicToken,
   getRandomSingaporeCoords,
   getSingaporeLocation,
@@ -14,7 +13,7 @@ export default function Home() {
 
   // Get Mapbox location data
   const singaporeLocations = runServerEffect(getSingaporeLocation());
-  const currentLocation = runServerEffect(getCurrentLocation());
+  // Note: currentLocation removed - use "Locate Me" button for actual GPS location
   const staticMapUrl = runServerEffect(
     getStaticMap(randomCoords, 12, {
       width: 400,
@@ -29,7 +28,6 @@ export default function Home() {
     <SingaporeMapExplorer
       initialRandomCoords={randomCoords}
       singaporeLocations={singaporeLocations}
-      currentLocation={currentLocation}
       staticMapUrl={staticMapUrl}
       mapboxPublicToken={mapboxPublicToken}
     />

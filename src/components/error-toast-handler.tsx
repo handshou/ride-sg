@@ -5,13 +5,11 @@ import { toastNotifications } from "@/hooks/use-toast";
 
 interface ErrorToastHandlerProps {
   singaporeLocationsCount: number;
-  currentLocationCount: number;
   staticMapUrl: string;
 }
 
 export function ErrorToastHandler({
   singaporeLocationsCount,
-  currentLocationCount,
   staticMapUrl,
 }: ErrorToastHandlerProps) {
   useEffect(() => {
@@ -22,12 +20,7 @@ export function ErrorToastHandler({
       );
     }
 
-    // Show warning if current location is empty
-    if (currentLocationCount === 0) {
-      toastNotifications.warning(
-        "Current location service unavailable - using fallback data",
-      );
-    }
+    // Note: currentLocation check removed - use "Locate Me" button for GPS location
 
     // Show error if static map is using placeholder
     if (staticMapUrl.includes("placeholder")) {
@@ -35,7 +28,7 @@ export function ErrorToastHandler({
         "Map service unavailable - showing placeholder image",
       );
     }
-  }, [singaporeLocationsCount, currentLocationCount, staticMapUrl]);
+  }, [singaporeLocationsCount, staticMapUrl]);
 
   return null; // This component doesn't render anything
 }
