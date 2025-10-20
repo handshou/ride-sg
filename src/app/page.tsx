@@ -7,6 +7,9 @@ import {
   runServerEffect,
 } from "@/lib/server-runtime";
 
+// Force dynamic rendering to enable Convex real-time subscriptions
+export const dynamic = "force-dynamic";
+
 export default function Home() {
   // Get random coordinates from MapboxService
   const randomCoords = runServerEffect(getRandomSingaporeCoords());

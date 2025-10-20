@@ -93,10 +93,8 @@ export async function saveLocationToConvexAction(
 
     console.log(`✅ Successfully saved to Convex: ${result.title}`);
 
-    // Dispatch event to notify components to refetch saved locations
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(new Event("locationSaved"));
-    }
+    // Note: No need to dispatch custom events anymore!
+    // Convex reactive queries will automatically update all components in real-time
 
     return { success: true };
   } catch (error) {

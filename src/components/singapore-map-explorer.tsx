@@ -1,7 +1,6 @@
 "use client";
 
 import { useQuery } from "convex/react";
-import { Effect } from "effect";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BicycleParkingOverlay } from "@/components/bicycle-parking-overlay";
 import { BicycleParkingPanel } from "@/components/bicycle-parking-panel";

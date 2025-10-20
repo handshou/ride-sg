@@ -91,7 +91,7 @@ export function HowToButton() {
                   <strong>Search:</strong> Type a location name to find places
                   in Singapore. Results from{" "}
                   <Database className="inline h-3 w-3" /> and{" "}
-                  <Exa.Combine className="inline h-3 w-3" />
+                  <Exa.Combine size={8} className="inline h-3 w-3" />
                 </div>
               </div>
 

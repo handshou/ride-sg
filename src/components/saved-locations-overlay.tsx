@@ -1,9 +1,9 @@
 "use client";
 
-import { logger } from "@/lib/client-logger";
 import { useQuery } from "convex/react";
 import mapboxgl from "mapbox-gl";
 import { useEffect, useRef } from "react";
+import { logger } from "@/lib/client-logger";
 import { api } from "../../convex/_generated/api";
 
 interface SavedLocationsOverlayProps {
@@ -12,7 +12,7 @@ interface SavedLocationsOverlayProps {
 
 export function SavedLocationsOverlay({ map }: SavedLocationsOverlayProps) {
   const markersRef = useRef<mapboxgl.Marker[]>([]);
-  
+
   // Use Convex reactive query - automatically updates when data changes!
   const locations = useQuery(api.locations.getRandomizableLocations, {});
 
@@ -27,9 +27,7 @@ export function SavedLocationsOverlay({ map }: SavedLocationsOverlayProps) {
     // If data is loading or empty, don't render anything
     if (!locations || locations.length === 0) {
       if (locations !== undefined) {
-        logger.info(
-          "[SavedLocationsOverlay] No saved locations to display",
-        );
+        logger.info("[SavedLocationsOverlay] No saved locations to display");
       }
       return;
     }

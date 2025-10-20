@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  Layers,
-  Map as MapIcon,
-  Moon,
-  Mountain,
-  Satellite,
-  Sun,
-} from "lucide-react";
+import { Layers, Moon, Mountain, Satellite, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -41,7 +34,7 @@ export function MapStyleSelector({ onStyleChange }: MapStyleSelectorProps) {
         data-testid="map-style-selector"
         className="h-10 w-10 bg-white/95 text-gray-900 border-gray-300 shadow-md"
       >
-        <MapIcon className="h-5 w-5" />
+        <Layers className="h-5 w-5" />
       </Button>
     );
   }
@@ -62,23 +55,6 @@ export function MapStyleSelector({ onStyleChange }: MapStyleSelectorProps) {
     }
   };
 
-  const getStyleIcon = (style: MapStyle) => {
-    switch (style) {
-      case "light":
-        return <Sun className="h-5 w-5" />;
-      case "dark":
-        return <Moon className="h-5 w-5" />;
-      case "satellite":
-        return <Satellite className="h-5 w-5" />;
-      case "satelliteStreets":
-        return <MapIcon className="h-5 w-5" />;
-      case "outdoors":
-        return <Mountain className="h-5 w-5" />;
-      default:
-        return <Layers className="h-5 w-5" />;
-    }
-  };
-
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -89,7 +65,7 @@ export function MapStyleSelector({ onStyleChange }: MapStyleSelectorProps) {
           className="h-10 w-10 bg-white/95 text-gray-900 border-gray-300 hover:bg-gray-100/95 shadow-md dark:bg-gray-900/95 dark:text-white dark:border-gray-700 dark:hover:bg-gray-800/95"
           title="Change map style"
         >
-          {getStyleIcon(currentStyle)}
+          <Layers className="h-5 w-5" />
           <span className="sr-only">Map style</span>
         </Button>
       </DropdownMenuTrigger>
@@ -122,7 +98,7 @@ export function MapStyleSelector({ onStyleChange }: MapStyleSelectorProps) {
           onClick={() => handleStyleChange("satelliteStreets")}
           className="text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-800"
         >
-          <MapIcon className="mr-2 h-4 w-4" />
+          <Satellite className="mr-2 h-4 w-4" />
           Satellite Streets
         </DropdownMenuItem>
         <DropdownMenuItem
