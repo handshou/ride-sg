@@ -39,6 +39,14 @@ export interface IMapboxService {
     { latitude: number; longitude: number },
     never
   >;
+
+  /**
+   * Get Singapore's geographic center coordinates
+   */
+  getSingaporeCenterCoords(): Effect.Effect<
+    { latitude: number; longitude: number },
+    never
+  >;
 }
 
 /**
@@ -135,6 +143,16 @@ class MapboxServiceImpl {
         latitude: minLat + Math.random() * (maxLat - minLat),
         longitude: minLng + Math.random() * (maxLng - minLng),
       };
+    });
+  }
+
+  getSingaporeCenterCoords(): Effect.Effect<
+    { latitude: number; longitude: number },
+    never
+  > {
+    return Effect.succeed({
+      latitude: 1.3521,
+      longitude: 103.8198,
     });
   }
 }

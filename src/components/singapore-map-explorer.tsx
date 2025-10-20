@@ -153,18 +153,18 @@ export function SingaporeMapExplorer({
       mapInstanceRef.current = map;
       setIsMapReady(true);
 
-      // Fly to initial location with a gentle animation
-      logger.debug("Map ready, flying to initial location");
+      // Fly to initial location with a dramatic zoom-in animation
+      logger.debug("Map ready, flying in from zoom 2 to 10");
       map.stop(); // Stop any ongoing animations
 
       // Wait for next frame to ensure stop() has completed
       requestAnimationFrame(() => {
         map.flyTo({
           center: [initialRandomCoords.longitude, initialRandomCoords.latitude],
-          zoom: 15, // Higher zoom for better view of Singapore
-          duration: 1500,
+          zoom: 10, // Zoom in to show Singapore island
+          duration: 2500, // Longer duration for dramatic effect
           essential: true,
-          curve: 1.2,
+          curve: 1.5, // Higher curve for more dramatic arc
           easing: (t) => t * (2 - t),
         });
       });
@@ -281,7 +281,7 @@ export function SingaporeMapExplorer({
           requestAnimationFrame(() => {
             map.flyTo({
               center: [newCoords.longitude, newCoords.latitude],
-              zoom: 15, // Match initial zoom level
+              zoom: 10, // Match final zoom level after initial animation
               duration: 1500,
               essential: true,
               curve: 1.2,
@@ -455,7 +455,7 @@ export function SingaporeMapExplorer({
       <div className="relative w-full h-screen">
         <MapboxGLMap
           center={[randomCoords.longitude, randomCoords.latitude]}
-          zoom={12}
+          zoom={2}
           className="w-full h-full"
           accessToken={mapboxPublicToken}
           onMapReady={handleMapReady}

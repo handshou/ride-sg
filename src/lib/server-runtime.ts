@@ -122,6 +122,22 @@ export const getStaticMap = (
 };
 
 /**
+ * Helper function to get Singapore center coordinates with proper context
+ */
+export const getSingaporeCenterCoords = (): Effect.Effect<
+  { latitude: number; longitude: number },
+  never
+> => {
+  return Effect.gen(function* () {
+    const mapboxService = yield* MapboxService;
+    return yield* mapboxService.getSingaporeCenterCoords();
+  }).pipe(
+    Effect.provide(ServerLayer),
+    Effect.orDie, // This should never fail as it's a constant value
+  );
+};
+
+/**
  * Helper function to get random Singapore coordinates with proper context
  */
 export const getRandomSingaporeCoords = (): Effect.Effect<

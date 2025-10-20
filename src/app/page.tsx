@@ -2,7 +2,7 @@ import { ClientOnly } from "@/components/client-only";
 import { SingaporeMapExplorer } from "@/components/singapore-map-explorer";
 import {
   getMapboxPublicToken,
-  getRandomSingaporeCoords,
+  getSingaporeCenterCoords,
   getSingaporeLocation,
   getStaticMap,
   runServerEffect,
@@ -12,14 +12,14 @@ import {
 export const dynamic = "force-dynamic";
 
 export default function Home() {
-  // Get random coordinates from MapboxService
-  const randomCoords = runServerEffect(getRandomSingaporeCoords());
+  // Start at Singapore's center from MapboxService
+  const singaporeCenter = runServerEffect(getSingaporeCenterCoords());
 
   // Get Mapbox location data
   const singaporeLocations = runServerEffect(getSingaporeLocation());
   // Note: currentLocation removed - use "Locate Me" button for actual GPS location
   const staticMapUrl = runServerEffect(
-    getStaticMap(randomCoords, 12, {
+    getStaticMap(singaporeCenter, 10, {
       width: 400,
       height: 300,
     }),
@@ -40,7 +40,7 @@ export default function Home() {
       }
     >
       <SingaporeMapExplorer
-        initialRandomCoords={randomCoords}
+        initialRandomCoords={singaporeCenter}
         singaporeLocations={singaporeLocations}
         staticMapUrl={staticMapUrl}
         mapboxPublicToken={mapboxPublicToken}
