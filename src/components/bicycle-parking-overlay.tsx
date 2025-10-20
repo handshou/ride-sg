@@ -1,8 +1,8 @@
 "use client";
 
+import type { BicycleParkingResult } from "@/lib/schema/bicycle-parking.schema";
 import mapboxgl from "mapbox-gl";
 import { useEffect, useRef } from "react";
-import type { BicycleParkingResult } from "@/lib/schema/bicycle-parking.schema";
 
 interface BicycleParkingOverlayProps {
   map: mapboxgl.Map;
@@ -13,15 +13,22 @@ interface BicycleParkingOverlayProps {
 /**
  * Bicycle Parking Overlay Component
  *
- * Renders bicycle parking locations as Mapbox GL layers (GeoJSON source + circle layer).
+ * Renders bicycle parking locations with intelligent clustering using Mapbox GL layers.
+ * Uses three layers: cluster circles, cluster counts, and individual bicycle icons.
  * This ensures perfect synchronization with map animations (flyTo) as the markers
  * are rendered directly on the map canvas rather than as DOM overlays.
  *
  * Features:
- * - Circle size scales with rack count
- * - Different colors for sheltered (green) vs non-sheltered (light green)
- * - Clickable circles that trigger onParkingSelect callback
- * - Popups on hover showing parking details
+ * - 🎯 Smart Clustering: Groups nearby markers when zoomed out (up to zoom 16)
+ *   - Green cluster circles with counts (e.g., "15")
+ *   - Color-coded by size: light green (< 10), emerald (10-30), dark emerald (30+)
+ *   - Click clusters to zoom in and expand
+ * - 🚲 Individual Markers (zoom 17+):
+ *   - Vibrant bicycle SVG icon with shadow and white background
+ *   - 3D-aware: Icons rotate with map bearing and tilt with pitch
+ *   - Clickable icons that trigger onParkingSelect callback
+ *   - Popups on hover showing parking details
+ * - ⚡ Performance: Efficiently handles hundreds of markers
  */
 export function BicycleParkingOverlay({
   map,
@@ -58,37 +65,23 @@ export function BicycleParkingOverlay({
         );
       }
 
-      // If style is not loaded yet, poll until it is (with timeout)
+      // If style is not loaded yet, try anyway after a short delay
       if (!map.isStyleLoaded()) {
         if (isDev) {
           console.log(
-            "[BicycleParkingOverlay] Map style not loaded yet, polling until ready...",
+            "[BicycleParkingOverlay] Map style not fully loaded, waiting briefly...",
           );
         }
 
-        let attempts = 0;
-        const maxAttempts = 50; // 50 * 100ms = 5 seconds max
-
-        const pollStyleLoaded = () => {
-          attempts++;
-
-          if (map.isStyleLoaded()) {
-            if (isDev) {
-              console.log(
-                `[BicycleParkingOverlay] Style loaded after ${attempts} attempts, retrying setup`,
-              );
-            }
-            setupLayers();
-          } else if (attempts < maxAttempts) {
-            setTimeout(pollStyleLoaded, 100); // Check every 100ms
-          } else {
-            console.error(
-              "[BicycleParkingOverlay] Timeout waiting for style to load",
+        // Wait a bit and try anyway - style might be "ready enough"
+        setTimeout(() => {
+          if (isDev) {
+            console.log(
+              "[BicycleParkingOverlay] Attempting to add layers despite style status",
             );
           }
-        };
-
-        setTimeout(pollStyleLoaded, 100);
+          setupLayers();
+        }, 500); // Wait 500ms and try anyway
         return;
       }
 
@@ -148,44 +141,243 @@ export function BicycleParkingOverlay({
           console.log("[BicycleParkingOverlay] Updating existing source data");
         }
         existingSource.setData(featureCollection);
-        return; // Layer already exists with updated data
-      }
 
-      // Remove existing layer if it exists without source (cleanup edge case)
-      if (map.getLayer(LAYER_ID)) {
-        if (isDev) {
-          console.log("[BicycleParkingOverlay] Removing orphaned layer");
+        // Check if layers still exist (may be removed after style change)
+        const layersExist =
+          map.getLayer(LAYER_ID) &&
+          map.getLayer(`${LAYER_ID}-clusters`) &&
+          map.getLayer(`${LAYER_ID}-cluster-count`);
+
+        if (layersExist) {
+          if (isDev) {
+            console.log("[BicycleParkingOverlay] Layers exist, data updated");
+          }
+          return; // Layers already exist with updated data
+        } else {
+          if (isDev) {
+            console.log(
+              "[BicycleParkingOverlay] Layers missing after style change, re-adding",
+            );
+          }
+          // Fall through to add layers again
         }
-        map.removeLayer(LAYER_ID);
       }
 
-      // Add source (first time)
-      if (isDev) {
-        console.log("[BicycleParkingOverlay] Adding new source and layer");
+      // Remove existing layers if they exist without source (cleanup edge case)
+      const layersToRemove = [
+        LAYER_ID,
+        `${LAYER_ID}-clusters`,
+        `${LAYER_ID}-cluster-count`,
+      ];
+      for (const layerId of layersToRemove) {
+        if (map.getLayer(layerId)) {
+          if (isDev) {
+            console.log(
+              `[BicycleParkingOverlay] Removing orphaned layer: ${layerId}`,
+            );
+          }
+          map.removeLayer(layerId);
+        }
       }
-      map.addSource(SOURCE_ID, {
-        type: "geojson",
-        data: featureCollection,
-      });
 
-      // Add circle layer
-      map.addLayer({
-        id: LAYER_ID,
-        type: "circle",
-        source: SOURCE_ID,
-        paint: {
-          "circle-radius": ["get", "size"],
-          "circle-color": ["get", "color"],
-          "circle-stroke-color": "#ffffff",
-          "circle-stroke-width": 2,
-          "circle-opacity": 1,
-        },
-      });
+      // Add source only if it doesn't exist
+      if (!existingSource) {
+        if (isDev) {
+          console.log(
+            "[BicycleParkingOverlay] Adding new source with clustering",
+          );
+        }
+        map.addSource(SOURCE_ID, {
+          type: "geojson",
+          data: featureCollection,
+          cluster: true, // Enable clustering
+          clusterMaxZoom: 16, // Max zoom to cluster points (start showing individual markers at zoom 17+)
+          clusterRadius: 50, // Radius in pixels to group points into clusters
+        });
+      }
 
-      if (isDev) {
-        console.log(
-          `[BicycleParkingOverlay] ✓ Successfully added ${features.length} bicycle parking markers to map`,
-        );
+      // Load bicycle icon as SVG and add symbol layer
+      const bicycleIconId = "bicycle-icon";
+
+      // Check if icon is already loaded
+      if (!map.hasImage(bicycleIconId)) {
+        if (isDev) {
+          console.log("[BicycleParkingOverlay] Loading bicycle icon");
+        }
+
+        // Create a vibrant bicycle SVG icon with bright colors and shadow
+        const size = 50; // Larger canvas for better quality
+        const bicycleSVG = `
+          <svg width="${size}" height="${size}" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+                <feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="#000000" flood-opacity="0.5"/>
+              </filter>
+            </defs>
+            <circle cx="12" cy="12" r="11" fill="#ffffff" opacity="0.9"/>
+            <path fill="#22c55e" stroke="#047857" stroke-width="1" filter="url(#shadow)" d="M5 20.5A3.5 3.5 0 0 1 1.5 17A3.5 3.5 0 0 1 5 13.5A3.5 3.5 0 0 1 8.5 17A3.5 3.5 0 0 1 5 20.5M5 12A5 5 0 0 0 0 17A5 5 0 0 0 5 22A5 5 0 0 0 10 17A5 5 0 0 0 5 12M14.8 10H19V8.2H15.8L14.8 10M19 20.5A3.5 3.5 0 0 1 15.5 17A3.5 3.5 0 0 1 19 13.5A3.5 3.5 0 0 1 22.5 17A3.5 3.5 0 0 1 19 20.5M19 12A5 5 0 0 0 14 17A5 5 0 0 0 19 22A5 5 0 0 0 24 17A5 5 0 0 0 19 12M13.5 5.5C14.3 5.5 15 6.2 15 7C15 7.8 14.3 8.5 13.5 8.5C12.7 8.5 12 7.8 12 7C12 6.2 12.7 5.5 13.5 5.5M10 6L8.5 10L11.1 11.9L12.1 13.5L14.2 13.2L13.1 11.2L11.5 10.6L12.4 8H15.5L17 11.8L19 12L17.4 6H10Z"/>
+          </svg>
+        `;
+
+        // Convert SVG to image
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          console.error("[BicycleParkingOverlay] Failed to get canvas context");
+          return;
+        }
+
+        const img = new Image();
+        img.onload = () => {
+          try {
+            ctx.drawImage(img, 0, 0, size, size);
+            const imageData = ctx.getImageData(0, 0, size, size);
+
+            if (!map.hasImage(bicycleIconId)) {
+              map.addImage(bicycleIconId, imageData);
+
+              if (isDev) {
+                console.log(
+                  "[BicycleParkingOverlay] Bicycle icon loaded successfully",
+                );
+              }
+            }
+
+            // Add the cluster layers after image is loaded
+            addClusterLayers();
+          } catch (error) {
+            console.error(
+              "[BicycleParkingOverlay] Error loading bicycle icon:",
+              error,
+            );
+          }
+        };
+
+        img.onerror = (error) => {
+          console.error(
+            "[BicycleParkingOverlay] Failed to load bicycle SVG:",
+            error,
+          );
+          // Try to add layers anyway with a fallback approach
+          addClusterLayers();
+        };
+
+        img.src = `data:image/svg+xml;base64,${btoa(bicycleSVG)}`;
+      } else {
+        // Image already exists, just add the layers
+        addClusterLayers();
+      }
+
+      function addClusterLayers() {
+        if (isDev) {
+          console.log(
+            "[BicycleParkingOverlay] Adding clustered bicycle parking layers",
+          );
+        }
+
+        try {
+          // Layer 1: Cluster circles (for grouped markers)
+          map.addLayer({
+            id: `${LAYER_ID}-clusters`,
+            type: "circle",
+            source: SOURCE_ID,
+            filter: ["has", "point_count"], // Only show clusters
+            paint: {
+              // Color based on cluster size
+              "circle-color": [
+                "step",
+                ["get", "point_count"],
+                "#22c55e", // Green for small clusters (< 10)
+                10,
+                "#10b981", // Emerald for medium clusters (10-30)
+                30,
+                "#059669", // Dark emerald for large clusters (30+)
+              ],
+              // Size based on cluster size
+              "circle-radius": [
+                "step",
+                ["get", "point_count"],
+                20, // Small clusters: 20px
+                10,
+                30, // Medium clusters: 30px
+                30,
+                40, // Large clusters: 40px
+              ],
+              "circle-stroke-width": 3,
+              "circle-stroke-color": "#ffffff",
+              "circle-opacity": 0.9,
+            },
+          });
+
+          // Layer 2: Cluster count text
+          map.addLayer({
+            id: `${LAYER_ID}-cluster-count`,
+            type: "symbol",
+            source: SOURCE_ID,
+            filter: ["has", "point_count"],
+            layout: {
+              "text-field": ["get", "point_count_abbreviated"],
+              "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
+              "text-size": 14,
+            },
+            paint: {
+              "text-color": "#ffffff",
+            },
+          });
+
+          // Layer 3: Individual unclustered bicycle markers
+          map.addLayer({
+            id: LAYER_ID,
+            type: "symbol",
+            source: SOURCE_ID,
+            filter: ["!", ["has", "point_count"]], // Only show individual markers
+            layout: {
+              // Use bicycle icon image
+              "icon-image": bicycleIconId,
+              // Zoom-based icon sizing
+              "icon-size": [
+                "interpolate",
+                ["exponential", 2],
+                ["zoom"],
+                14,
+                0.5, // Start visible at zoom 14
+                16,
+                0.7,
+                18,
+                1.0, // Full size at zoom 18
+              ],
+              "icon-allow-overlap": true,
+              "icon-ignore-placement": true,
+              "icon-rotation-alignment": "map",
+              "icon-pitch-alignment": "map",
+            },
+            paint: {
+              "icon-opacity": 1,
+            },
+          });
+
+          if (isDev) {
+            console.log(
+              `[BicycleParkingOverlay] ✓ Successfully added ${features.length} bicycle parking markers with clustering`,
+            );
+          }
+        } catch (error) {
+          console.error(
+            "[BicycleParkingOverlay] Error adding cluster layers:",
+            error,
+          );
+          // Log more details about what failed
+          if (isDev) {
+            console.error(
+              "Failed to add cluster layers. Map style loaded:",
+              map.isStyleLoaded(),
+              "Has bicycle icon:",
+              map.hasImage(bicycleIconId),
+            );
+          }
+        }
       }
 
       // Create popup for hover
@@ -247,7 +439,7 @@ export function BicycleParkingOverlay({
         popup.remove();
       });
 
-      // Click: trigger onParkingSelect callback
+      // Click: trigger onParkingSelect callback for individual markers
       map.on("click", LAYER_ID, (e) => {
         if (e.features && e.features.length > 0 && onParkingSelect) {
           const feature = e.features[0];
@@ -262,6 +454,39 @@ export function BicycleParkingOverlay({
             onParkingSelect(parking);
           }
         }
+      });
+
+      // Click on cluster: zoom in
+      map.on("click", `${LAYER_ID}-clusters`, (e) => {
+        if (e.features && e.features.length > 0) {
+          const features = map.queryRenderedFeatures(e.point, {
+            layers: [`${LAYER_ID}-clusters`],
+          });
+          const clusterId = features[0]?.properties?.cluster_id;
+          if (clusterId !== undefined) {
+            const source = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource;
+            source.getClusterExpansionZoom(clusterId, (err, zoom) => {
+              if (err) return;
+
+              const geometry = features[0].geometry;
+              if (geometry.type === "Point") {
+                map.easeTo({
+                  center: geometry.coordinates as [number, number],
+                  zoom: zoom ?? map.getZoom() + 2,
+                });
+              }
+            });
+          }
+        }
+      });
+
+      // Hover effects for clusters
+      map.on("mouseenter", `${LAYER_ID}-clusters`, () => {
+        map.getCanvas().style.cursor = "pointer";
+      });
+
+      map.on("mouseleave", `${LAYER_ID}-clusters`, () => {
+        map.getCanvas().style.cursor = "";
       });
     };
 
@@ -295,9 +520,18 @@ export function BicycleParkingOverlay({
 
       // Only cleanup if style is loaded, otherwise we'll get errors
       if (map.isStyleLoaded()) {
-        if (map.getLayer(LAYER_ID)) {
-          map.removeLayer(LAYER_ID);
+        // Remove all three layers
+        const layersToCleanup = [
+          LAYER_ID,
+          `${LAYER_ID}-clusters`,
+          `${LAYER_ID}-cluster-count`,
+        ];
+        for (const layerId of layersToCleanup) {
+          if (map.getLayer(layerId)) {
+            map.removeLayer(layerId);
+          }
         }
+        // Remove source
         if (map.getSource(SOURCE_ID)) {
           map.removeSource(SOURCE_ID);
         }
