@@ -1,7 +1,5 @@
 "use client";
 
-import { useQuery } from "convex/react";
-import { useCallback, useEffect, useRef, useState } from "react";
 import { BicycleParkingOverlay } from "@/components/bicycle-parking-overlay";
 import { BicycleParkingPanel } from "@/components/bicycle-parking-panel";
 import { ErrorToastHandler } from "@/components/error-toast-handler";
@@ -20,6 +18,8 @@ import { MAPBOX_STYLES } from "@/lib/map-styles";
 import type { BicycleParkingResult } from "@/lib/schema/bicycle-parking.schema";
 import type { GeocodeResult } from "@/lib/services/mapbox-service";
 import type { SearchResult } from "@/lib/services/search-state-service";
+import { useQuery } from "convex/react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../../convex/_generated/api";
 
 interface SingaporeMapExplorerProps {
@@ -142,13 +142,17 @@ export function SingaporeMapExplorer({
       // Fly to initial location with a gentle animation
       logger.debug("Map ready, flying to initial location");
       map.stop(); // Stop any ongoing animations
-      map.flyTo({
-        center: [initialRandomCoords.longitude, initialRandomCoords.latitude],
-        zoom: 13,
-        duration: 1500,
-        essential: true,
-        curve: 1.2,
-        easing: (t) => t * (2 - t),
+
+      // Wait for next frame to ensure stop() has completed
+      requestAnimationFrame(() => {
+        map.flyTo({
+          center: [initialRandomCoords.longitude, initialRandomCoords.latitude],
+          zoom: 13,
+          duration: 1500,
+          essential: true,
+          curve: 1.2,
+          easing: (t) => t * (2 - t),
+        });
       });
     },
     [initialRandomCoords],
@@ -166,19 +170,23 @@ export function SingaporeMapExplorer({
 
         const executeFlyTo = () => {
           map.stop(); // Stop any ongoing animations before starting new one
-          map.flyTo({
-            center: [newCoords.longitude, newCoords.latitude],
-            zoom: 14,
-            duration: 1500,
-            essential: true,
-            curve: 1.2,
-            easing: (t) => t * (2 - t),
-          });
 
-          // Update state after flyTo starts
-          setRandomCoords(newCoords);
-          setMapLocation(newCoords);
-          setIsUserLocation(false);
+          // Wait for next frame to ensure stop() has completed
+          requestAnimationFrame(() => {
+            map.flyTo({
+              center: [newCoords.longitude, newCoords.latitude],
+              zoom: 14,
+              duration: 1500,
+              essential: true,
+              curve: 1.2,
+              easing: (t) => t * (2 - t),
+            });
+
+            // Update state after flyTo starts
+            setRandomCoords(newCoords);
+            setMapLocation(newCoords);
+            setIsUserLocation(false);
+          });
         };
 
         if (!map.isStyleLoaded()) {
@@ -203,19 +211,23 @@ export function SingaporeMapExplorer({
 
         const executeFlyTo = () => {
           map.stop(); // Stop any ongoing animations before starting new one
-          map.flyTo({
-            center: [coords.longitude, coords.latitude],
-            zoom: 16,
-            duration: 1800,
-            essential: true,
-            curve: 1.3,
-            easing: (t) => t * (2 - t),
-          });
 
-          // Update state after flyTo starts
-          setRandomCoords(coords);
-          setMapLocation(coords);
-          setIsUserLocation(true);
+          // Wait for next frame to ensure stop() has completed
+          requestAnimationFrame(() => {
+            map.flyTo({
+              center: [coords.longitude, coords.latitude],
+              zoom: 16,
+              duration: 1800,
+              essential: true,
+              curve: 1.3,
+              easing: (t) => t * (2 - t),
+            });
+
+            // Update state after flyTo starts
+            setRandomCoords(coords);
+            setMapLocation(coords);
+            setIsUserLocation(true);
+          });
         };
 
         if (!map.isStyleLoaded()) {
@@ -248,13 +260,17 @@ export function SingaporeMapExplorer({
 
       const executeFlyTo = () => {
         map.stop(); // Stop any ongoing animations before starting new one
-        map.flyTo({
-          center: [parking.longitude, parking.latitude],
-          zoom: 18, // Zoom in very close
-          duration: 2000,
-          essential: true,
-          curve: 1.4,
-          easing: (t) => t * (2 - t),
+
+        // Wait for next frame to ensure stop() has completed
+        requestAnimationFrame(() => {
+          map.flyTo({
+            center: [parking.longitude, parking.latitude],
+            zoom: 18, // Zoom in very close
+            duration: 2000,
+            essential: true,
+            curve: 1.4,
+            easing: (t) => t * (2 - t),
+          });
         });
       };
 
@@ -290,24 +306,28 @@ export function SingaporeMapExplorer({
       // Function to execute flyTo
       const executeFlyTo = () => {
         map.stop(); // Stop any ongoing animations before starting new one
-        map.flyTo({
-          center: [result.location.longitude, result.location.latitude],
-          zoom: 17, // Zoom in very close for POIs
-          duration: 2500, // 2.5 second cinematic animation
-          essential: true,
-          curve: 1.6, // High arc for sweeping motion
-          easing: (t) => {
-            // Custom easing: slow start, fast middle, slow end
-            return t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
-          },
-          pitch: 50, // Tilt for dramatic 3D view
-          bearing: 30, // Slight rotation for visual interest
-        });
-        logger.success("flyTo called successfully");
 
-        // Update marker location AFTER flyTo starts (to avoid re-render before animation)
-        setMapLocation(result.location);
-        setIsUserLocation(false);
+        // Wait for next frame to ensure stop() has completed
+        requestAnimationFrame(() => {
+          map.flyTo({
+            center: [result.location.longitude, result.location.latitude],
+            zoom: 17, // Zoom in very close for POIs
+            duration: 2500, // 2.5 second cinematic animation
+            essential: true,
+            curve: 1.6, // High arc for sweeping motion
+            easing: (t) => {
+              // Custom easing: slow start, fast middle, slow end
+              return t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
+            },
+            pitch: 50, // Tilt for dramatic 3D view
+            bearing: 30, // Slight rotation for visual interest
+          });
+          logger.success("flyTo called successfully");
+
+          // Update marker location AFTER flyTo starts (to avoid re-render before animation)
+          setMapLocation(result.location);
+          setIsUserLocation(false);
+        });
       };
 
       // If map style is still loading, wait for it to finish
