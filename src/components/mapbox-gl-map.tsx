@@ -98,6 +98,25 @@ export function MapboxGLMap({
         }
         lastErrorRef.current = errorMessage;
 
+        // Ignore non-critical errors that don't need user notification
+        const ignoredErrors = [
+          "image", // Image loading errors (often recoverable)
+          "layer", // Layer errors (often during transitions)
+          "source", // Source errors (often timing-related)
+          "telemetry", // Analytics/telemetry errors (non-functional)
+          "events.mapbox.com", // Telemetry endpoint CORS (non-functional)
+          "Network request failed", // Transient network issues
+        ];
+
+        const shouldIgnore = ignoredErrors.some((ignore) =>
+          errorMessage.toLowerCase().includes(ignore.toLowerCase()),
+        );
+
+        if (shouldIgnore) {
+          logger.debug("Mapbox GL error (non-critical, suppressed)", e);
+          return;
+        }
+
         // Token-related errors
         if (
           errorMessage.includes("secret access token") ||
@@ -132,11 +151,10 @@ export function MapboxGLMap({
         ) {
           toastNotifications.error("Failed to load map style");
         }
-        // Generic errors
+        // Generic errors (only show for truly unexpected errors)
         else {
-          toastNotifications.error(
-            "Map error occurred - see console for details",
-          );
+          logger.error("Mapbox GL error (unexpected)", e);
+          // Don't show toast for generic errors - they're often non-critical
         }
 
         logger.error("Mapbox GL error", e);

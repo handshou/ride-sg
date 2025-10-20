@@ -1,6 +1,8 @@
 "use client";
 
 import type { BicycleParkingResult } from "@/lib/schema/bicycle-parking.schema";
+import { MapReadinessServiceImpl } from "@/lib/services/map-readiness-service";
+import { Effect } from "effect";
 import mapboxgl from "mapbox-gl";
 import { useEffect, useRef } from "react";
 
@@ -38,6 +40,9 @@ export function BicycleParkingOverlay({
   // Use ref to always have access to latest parking locations
   const parkingLocationsRef = useRef(parkingLocations);
 
+  // Map readiness service for proper map state checking
+  const mapReadinessService = useRef(new MapReadinessServiceImpl()).current;
+
   // Update ref whenever parkingLocations changes
   useEffect(() => {
     parkingLocationsRef.current = parkingLocations;
@@ -65,25 +70,38 @@ export function BicycleParkingOverlay({
         );
       }
 
-      // If style is not loaded yet, try anyway after a short delay
-      if (!map.isStyleLoaded()) {
-        if (isDev) {
-          console.log(
-            "[BicycleParkingOverlay] Map style not fully loaded, waiting briefly...",
-          );
-        }
+      // Use MapReadinessService to check if map is ready
+      Effect.runPromise(mapReadinessService.createReadinessCheck(map))
+        .then((isReady) => {
+          if (!isReady) {
+            if (isDev) {
+              console.log(
+                "[BicycleParkingOverlay] Map not ready after retries, will try on next update",
+              );
+            }
+            return;
+          }
 
-        // Wait a bit and try anyway - style might be "ready enough"
-        setTimeout(() => {
           if (isDev) {
             console.log(
-              "[BicycleParkingOverlay] Attempting to add layers despite style status",
+              "[BicycleParkingOverlay] Map is ready, proceeding with setup",
             );
           }
-          setupLayers();
-        }, 500); // Wait 500ms and try anyway
-        return;
-      }
+          // Continue with setup after readiness check passes
+          proceedWithSetup();
+        })
+        .catch((error) => {
+          console.error(
+            "[BicycleParkingOverlay] Map readiness check failed:",
+            error,
+          );
+        });
+
+      return; // Exit early, let the readiness check handle the rest
+    };
+
+    function proceedWithSetup() {
+      const currentParkingLocations = parkingLocationsRef.current;
 
       // If no parking locations, remove any existing layers and return
       if (currentParkingLocations.length === 0) {
@@ -488,7 +506,7 @@ export function BicycleParkingOverlay({
       map.on("mouseleave", `${LAYER_ID}-clusters`, () => {
         map.getCanvas().style.cursor = "";
       });
-    };
+    }
 
     // Setup layers initially - the polling mechanism will handle timing
     if (isDev) {
@@ -537,7 +555,12 @@ export function BicycleParkingOverlay({
         }
       }
     };
-  }, [map, parkingLocations, onParkingSelect]);
+  }, [
+    map,
+    parkingLocations,
+    onParkingSelect,
+    mapReadinessService.createReadinessCheck,
+  ]);
 
   return null; // This component renders directly to the map
 }
