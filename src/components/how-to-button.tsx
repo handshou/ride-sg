@@ -90,8 +90,8 @@ export function HowToButton() {
                 <div>
                   <strong>Search:</strong> Type a location name to find places
                   in Singapore. Results from{" "}
-                  <Database className="inline h-3 w-3" /> and{" "}
-                  <Exa.Combine size={8} className="inline h-3 w-3" />
+                  <Database className="inline h-3 w-3 align-baseline" /> and{" "}
+                  <Exa.Combine className="inline h-3 w-3 align-baseline" />
                 </div>
               </div>
 
@@ -114,6 +114,14 @@ export function HowToButton() {
                   for red pin markers
                 </div>
               </div>
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <p className="text-xs text-gray-600 dark:text-gray-400 italic">
+                <strong>Privacy:</strong> We do not store any data except when
+                you click save (❤️) on a location search result. Saved bicycle
+                parking is stored locally in your browser.
+              </p>
             </div>
           </div>
         </div>

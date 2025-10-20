@@ -64,11 +64,11 @@ export function BicycleParkingOverlay({
       popup
         .setLngLat([selectedParking.longitude, selectedParking.latitude])
         .setHTML(
-          `<div style="padding: 8px; min-width: 200px;">
-          <div style="font-weight: 600; margin-bottom: 4px; color: #1f2937;">
+          `<div class="p-2" style="min-width: 200px;">
+          <div class="font-semibold mb-1 text-gray-900 dark:text-white">
             ${selectedParking.description}
           </div>
-          <div style="font-size: 12px; color: #6b7280; margin-bottom: 4px;">
+          <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">
             ${selectedParking.rackType}
           </div>
           <div style="font-size: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
@@ -477,11 +477,11 @@ export function BicycleParkingOverlay({
             .setLngLat(coordinates)
             .setHTML(
               `
-            <div style="padding: 8px; min-width: 200px;">
-              <div style="font-weight: 600; margin-bottom: 4px; color: #1f2937;">
+            <div class="p-2" style="min-width: 200px;">
+              <div class="font-semibold mb-1 text-gray-900 dark:text-white">
                 ${props.description}
               </div>
-              <div style="font-size: 12px; color: #6b7280; margin-bottom: 4px;">
+              <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">
                 ${props.rackType}
               </div>
               <div style="font-size: 12px; display: flex; gap: 8px; flex-wrap: wrap;">

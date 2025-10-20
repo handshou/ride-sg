@@ -1,9 +1,9 @@
 "use client";
 
-import { logger } from "@/lib/client-logger";
 import { useQuery } from "convex/react";
 import mapboxgl from "mapbox-gl";
 import { useEffect, useRef } from "react";
+import { logger } from "@/lib/client-logger";
 import { api } from "../../convex/_generated/api";
 
 interface SavedLocationsOverlayProps {
