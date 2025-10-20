@@ -12,26 +12,22 @@ export class DatabaseError {
 }
 
 /**
- * Database Search Service Interface (for legacy compatibility)
+ * Database Search Service Interface
+ *
+ * Searches local database for saved locations, user favorites, etc.
+ * Uses Convex when configured, falls back to mock data otherwise.
+ * Coordinates with SearchStateService to update shared state.
  */
-export interface IDatabaseSearchService {
-  search: (
-    query: string,
-  ) => Effect.Effect<
-    SearchResult[],
-    DatabaseError,
-    SearchStateService | ConvexService
-  >;
+export interface DatabaseSearchService {
+  search: (query: string) => Effect.Effect<SearchResult[], DatabaseError>;
 
-  saveLocation: (
-    result: SearchResult,
-  ) => Effect.Effect<void, DatabaseError, ConvexService>;
+  saveLocation: (result: SearchResult) => Effect.Effect<void, DatabaseError>;
 }
 
 /**
  * Implementation of Database Search Service
  */
-class DatabaseSearchServiceImpl {
+class DatabaseSearchServiceImpl implements DatabaseSearchService {
   search(query: string) {
     return Effect.gen(function* () {
       const searchState = yield* SearchStateService;
@@ -186,4 +182,4 @@ export const saveLocationEffect = (result: SearchResult) =>
  * This will be removed once all services are migrated
  */
 export const DatabaseSearchServiceTag =
-  Context.GenericTag<IDatabaseSearchService>("DatabaseSearchService");
+  Context.GenericTag<DatabaseSearchService>("DatabaseSearchService");

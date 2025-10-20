@@ -1,6 +1,7 @@
 "use server";
 
 import { Effect } from "effect";
+import { ConfigService } from "../services/config-service";
 import { refreshLocationFromExa } from "../services/exa-search-service";
 import type { SearchResult } from "../services/search-state-service";
 
@@ -16,7 +17,9 @@ export async function refreshLocationAction(
 ): Promise<{ result: SearchResult | null; error?: string }> {
   try {
     const result = await Effect.runPromise(
-      refreshLocationFromExa(locationName, locationId),
+      refreshLocationFromExa(locationName, locationId).pipe(
+        Effect.provide(ConfigService.Default),
+      ),
     );
 
     if (!result) {

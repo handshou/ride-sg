@@ -1,17 +1,10 @@
 import { Effect, Layer } from "effect";
-import { ConvexServiceLive } from "./services/convex-service";
-import {
-  DatabaseSearchServiceLive,
-  DatabaseSearchServiceTag,
-} from "./services/database-search-service";
-import {
-  ExaSearchServiceLive,
-  ExaSearchServiceTag,
-} from "./services/exa-search-service";
+import { ConvexService } from "./services/convex-service";
+import { DatabaseSearchService } from "./services/database-search-service";
+import { ExaSearchService } from "./services/exa-search-service";
 import {
   type SearchResult,
-  SearchStateServiceLive,
-  SearchStateServiceTag,
+  SearchStateService,
 } from "./services/search-state-service";
 
 /**
@@ -27,10 +20,10 @@ import {
 // Combined layer with all search-related services
 // Note: Logger configuration removed to allow all logs in production for debugging
 export const SearchLayer = Layer.mergeAll(
-  SearchStateServiceLive,
-  ConvexServiceLive,
-  ExaSearchServiceLive,
-  DatabaseSearchServiceLive,
+  SearchStateService.Default,
+  ConvexService.Default,
+  ExaSearchService.Default,
+  DatabaseSearchService.Default,
 );
 
 /**
@@ -138,9 +131,9 @@ function deduplicateResults(
  */
 export const coordinatedSearchEffect = (query: string) =>
   Effect.gen(function* () {
-    const searchState = yield* SearchStateServiceTag;
-    const exaService = yield* ExaSearchServiceTag;
-    const dbService = yield* DatabaseSearchServiceTag;
+    const searchState = yield* SearchStateService;
+    const exaService = yield* ExaSearchService;
+    const dbService = yield* DatabaseSearchService;
 
     // Start search (sets loading state)
     yield* searchState.startSearch(query);
@@ -191,7 +184,7 @@ export const coordinatedSearchEffect = (query: string) =>
  */
 export const getSearchResultsEffect = () =>
   Effect.gen(function* () {
-    const searchState = yield* SearchStateServiceTag;
+    const searchState = yield* SearchStateService;
     return yield* searchState.getResults();
   });
 
@@ -200,7 +193,7 @@ export const getSearchResultsEffect = () =>
  */
 export const selectResultEffect = (result: SearchResult | null) =>
   Effect.gen(function* () {
-    const searchState = yield* SearchStateServiceTag;
+    const searchState = yield* SearchStateService;
     yield* searchState.selectResult(result);
 
     if (result) {
@@ -219,7 +212,7 @@ export const selectResultEffect = (result: SearchResult | null) =>
  */
 export const watchSelectedResultEffect = () =>
   Effect.gen(function* () {
-    const searchState = yield* SearchStateServiceTag;
+    const searchState = yield* SearchStateService;
     return yield* searchState.getSelectedResult();
   });
 

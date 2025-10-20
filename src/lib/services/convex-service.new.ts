@@ -18,9 +18,11 @@ export class ConvexError {
 }
 
 /**
- * Convex Service Interface (for legacy compatibility)
+ * Convex Service Interface
+ *
+ * Provides database operations using Convex backend
  */
-export interface IConvexService {
+export interface ConvexService {
   /**
    * Check if Convex is configured
    */
@@ -50,7 +52,7 @@ export interface IConvexService {
 /**
  * Live implementation of ConvexService
  */
-class ConvexServiceImpl {
+class ConvexServiceImpl implements ConvexService {
   private client: ConvexHttpClient | null = null;
 
   constructor(private readonly config: AppConfig) {}
@@ -369,4 +371,4 @@ export const deleteConvexLocationEffect = (id: string) =>
  * This will be removed once all services are migrated
  */
 export const ConvexServiceTag =
-  Context.GenericTag<IConvexService>("ConvexService");
+  Context.GenericTag<ConvexService>("ConvexService");

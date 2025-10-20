@@ -1,4 +1,4 @@
-import { Context, Effect, Layer, Schema } from "effect";
+import { Context, Effect, Schema } from "effect";
 import {
   type ExaAnswerResponse,
   ExaAnswerResponseSchema,
@@ -6,9 +6,10 @@ import {
   ExtractedLocationEntrySchema,
 } from "../schema/exa-answer.schema";
 import { SearchResultSchema } from "../schema/search-result.schema";
-import { exaApiKeyConfig, mapboxTokenConfig } from "./config-service";
-import type { SearchResult, SearchStateService } from "./search-state-service";
-import { SearchStateServiceTag } from "./search-state-service";
+import type { AppConfig } from "./config-service";
+import { ConfigService } from "./config-service";
+import type { SearchResult } from "./search-state-service";
+import { SearchStateService } from "./search-state-service";
 
 /**
  * Exa API Error
@@ -19,19 +20,13 @@ export class ExaError {
 }
 
 /**
- * Exa Search Service
- *
- * Integrates with Exa.ai Answer API for semantic search of Singapore landmarks.
- * Uses Effect.Schema for type-safe response parsing.
+ * Exa Search Service Interface (for legacy compatibility)
  */
-export interface ExaSearchService {
+export interface IExaSearchService {
   search: (
     query: string,
   ) => Effect.Effect<SearchResult[], ExaError, SearchStateService>;
 }
-
-export const ExaSearchServiceTag =
-  Context.GenericTag<ExaSearchService>("ExaSearchService");
 
 /**
  * Mapbox Geocoding Response Types
@@ -49,7 +44,8 @@ interface MapboxGeocodingResponse {
 /**
  * Implementation of Exa Search Service using Answer API
  */
-export class ExaSearchServiceImpl implements ExaSearchService {
+class ExaSearchServiceImpl {
+  constructor(private readonly config: AppConfig) {}
   /**
    * Geocode a location name to coordinates using Mapbox
    */
@@ -325,12 +321,12 @@ export class ExaSearchServiceImpl implements ExaSearchService {
   search(query: string) {
     return Effect.gen(
       function* (this: ExaSearchServiceImpl) {
-        const searchState = yield* SearchStateServiceTag;
+        const searchState = yield* SearchStateService;
 
         yield* searchState.startSearch(query);
 
-        const exaApiKey = yield* exaApiKeyConfig;
-        const mapboxToken = yield* mapboxTokenConfig;
+        const exaApiKey = this.config.exa.apiKey;
+        const mapboxToken = this.config.mapbox.token;
 
         // Fallback to mock data if API key not configured
         if (!exaApiKey || exaApiKey === "") {
@@ -526,7 +522,7 @@ Example format:
     ).pipe(
       Effect.catchAll((error) =>
         Effect.gen(function* () {
-          const searchState = yield* SearchStateServiceTag;
+          const searchState = yield* SearchStateService;
           const errorMessage =
             error && typeof error === "object" && "message" in error
               ? String((error as { message: unknown }).message)
@@ -542,10 +538,20 @@ Example format:
   }
 }
 
-export const ExaSearchServiceLive = Layer.succeed(
-  ExaSearchServiceTag,
-  new ExaSearchServiceImpl(),
-);
+/**
+ * ExaSearchService as Effect.Service
+ * Provides auto-generated accessors and cleaner DI
+ */
+export class ExaSearchService extends Effect.Service<ExaSearchService>()(
+  "ExaSearchService",
+  {
+    effect: Effect.gen(function* () {
+      const config = yield* ConfigService;
+      return new ExaSearchServiceImpl(config);
+    }),
+    dependencies: [ConfigService.Default, SearchStateService.Default],
+  },
+) {}
 
 /**
  * Refresh a single location from Exa Answer API
@@ -554,10 +560,11 @@ export const ExaSearchServiceLive = Layer.succeed(
 export function refreshLocationFromExa(
   locationName: string,
   locationId?: string,
-): Effect.Effect<SearchResult | null, ExaError> {
+): Effect.Effect<SearchResult | null, ExaError, ConfigService> {
   return Effect.gen(function* () {
-    const exaApiKey = yield* exaApiKeyConfig;
-    const mapboxToken = yield* mapboxTokenConfig;
+    const config = yield* ConfigService;
+    const exaApiKey = config.exa.apiKey;
+    const mapboxToken = config.mapbox.token;
 
     if (!exaApiKey || exaApiKey === "") {
       yield* Effect.logWarning(
@@ -617,7 +624,7 @@ Name | Full Address | Brief description (max 8 words)`;
     );
 
     // Extract location from answer
-    const service = new ExaSearchServiceImpl();
+    const service = new ExaSearchServiceImpl(config);
     const entries = yield* service.extractLocationEntries(answerData.answer);
 
     if (entries.length === 0) {
@@ -673,13 +680,8 @@ Name | Full Address | Brief description (max 8 words)`;
         try: async () => {
           const { ConvexHttpClient } = await import("convex/browser");
           const { api } = await import("../../../convex/_generated/api");
-          const { convexPublicDeploymentConfig } = await import(
-            "./config-service"
-          );
 
-          const deployment = await Effect.runPromise(
-            convexPublicDeploymentConfig,
-          );
+          const deployment = config.convex.publicUrl;
 
           if (!deployment) return;
 
@@ -724,3 +726,10 @@ Name | Full Address | Brief description (max 8 words)`;
     ),
   );
 }
+
+/**
+ * Legacy export for ExaSearchServiceTag (for backwards compatibility during migration)
+ * This will be removed once all services are migrated
+ */
+export const ExaSearchServiceTag =
+  Context.GenericTag<IExaSearchService>("ExaSearchService");

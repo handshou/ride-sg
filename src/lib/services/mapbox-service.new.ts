@@ -3,9 +3,12 @@ import type { AppConfig } from "./config-service";
 import { ConfigService } from "./config-service";
 
 /**
- * Mapbox Service Interface (for legacy compatibility)
+ * Mapbox Service Interface
+ *
+ * Provides geocoding and mapping functionality using Mapbox APIs.
+ * Migrated to Effect.Service pattern for better DI and auto-generated accessors.
  */
-export interface IMapboxService {
+export interface MapboxService {
   /**
    * Forward geocode an address to coordinates
    */
@@ -66,7 +69,7 @@ export class MapboxError {
 /**
  * Implementation of MapboxService
  */
-class MapboxServiceImpl {
+class MapboxServiceImpl implements MapboxService {
   constructor(private readonly config: AppConfig) {}
 
   forwardGeocode(
@@ -111,7 +114,7 @@ class MapboxServiceImpl {
     zoom: number,
     size: { width: number; height: number },
   ): Effect.Effect<string, MapboxError> {
-    return Effect.sync(() => {
+    return Effect.gen(() => {
       const { longitude, latitude } = center;
       const { width, height } = size;
 
@@ -213,4 +216,4 @@ export const getStaticMapEffect = (
  */
 import { Context } from "effect";
 export const MapboxServiceTag =
-  Context.GenericTag<IMapboxService>("MapboxService");
+  Context.GenericTag<MapboxService>("MapboxService");

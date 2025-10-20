@@ -1,6 +1,10 @@
-import { Effect } from "effect";
+import { Effect, Layer } from "effect";
 import { describe, expect, it } from "vitest";
-import { MapboxServiceLive, MapboxServiceTag } from "./mapbox-service";
+import { ConfigService } from "./config-service";
+import { MapboxService, MapboxServiceTag } from "./mapbox-service";
+
+// Layer with all dependencies
+const TestLayer = Layer.mergeAll(ConfigService.Default, MapboxService.Default);
 
 describe("Mapbox Service - Live Functionality", () => {
   describe("Basic Functionality", () => {
@@ -11,7 +15,7 @@ describe("Mapbox Service - Live Functionality", () => {
       });
 
       const result = await Effect.runPromise(
-        program.pipe(Effect.provide(MapboxServiceLive)),
+        program.pipe(Effect.provide(TestLayer)),
       );
 
       expect(result).toHaveLength(1);
@@ -28,7 +32,7 @@ describe("Mapbox Service - Live Functionality", () => {
       });
 
       const result = await Effect.runPromise(
-        program.pipe(Effect.provide(MapboxServiceLive)),
+        program.pipe(Effect.provide(TestLayer)),
       );
 
       expect(result).toHaveProperty("latitude");
@@ -50,7 +54,7 @@ describe("Mapbox Service - Live Functionality", () => {
       });
 
       const result = await Effect.runPromise(
-        program.pipe(Effect.provide(MapboxServiceLive)),
+        program.pipe(Effect.provide(TestLayer)),
       );
 
       expect(result).toContain("api.mapbox.com");

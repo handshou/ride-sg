@@ -1,9 +1,7 @@
-import { Effect } from "effect";
+import { BicycleParkingService } from "@/lib/services/bicycle-parking-service";
+import { ConfigService } from "@/lib/services/config-service";
+import { Effect, Layer } from "effect";
 import { NextResponse } from "next/server";
-import {
-  BicycleParkingServiceLive,
-  BicycleParkingServiceTag,
-} from "@/lib/services/bicycle-parking-service";
 
 /**
  * GET /api/bicycle-parking
@@ -52,7 +50,7 @@ export async function GET(request: Request) {
 
     // Fetch bicycle parking using Effect service
     const program = Effect.gen(function* () {
-      const bicycleParkingService = yield* BicycleParkingServiceTag;
+      const bicycleParkingService = yield* BicycleParkingService;
       const results = yield* bicycleParkingService.fetchNearbyParking(
         latitude,
         longitude,
@@ -60,8 +58,14 @@ export async function GET(request: Request) {
       return results;
     });
 
+    // Provide all required dependencies
+    const BicycleParkingLayer = Layer.mergeAll(
+      ConfigService.Default,
+      BicycleParkingService.Default,
+    );
+
     const results = await Effect.runPromise(
-      program.pipe(Effect.provide(BicycleParkingServiceLive)),
+      program.pipe(Effect.provide(BicycleParkingLayer)),
     );
 
     return NextResponse.json({

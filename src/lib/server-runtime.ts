@@ -1,13 +1,12 @@
 import { Effect, Layer } from "effect";
-import { mapboxPublicTokenConfig } from "./services/config-service";
+import { ConfigService } from "./services/config-service";
 import { MapReadinessServiceLive } from "./services/map-readiness-service";
 import {
   type GeocodeResult,
   getCurrentLocationEffect,
   getSingaporeLocationEffect,
   getStaticMapEffect,
-  MapboxServiceLive,
-  MapboxServiceTag,
+  MapboxService,
 } from "./services/mapbox-service";
 import {
   showErrorToast,
@@ -27,7 +26,8 @@ import {
 // Combined layer with all services
 // Note: Logger configuration removed to allow all logs in production for debugging
 export const ServerLayer = Layer.mergeAll(
-  MapboxServiceLive,
+  ConfigService.Default,
+  MapboxService.Default,
   ToastServiceLive,
   MapReadinessServiceLive,
 );
@@ -127,7 +127,7 @@ export const getRandomSingaporeCoords = (): Effect.Effect<
   never
 > => {
   return Effect.gen(function* () {
-    const mapboxService = yield* MapboxServiceTag;
+    const mapboxService = yield* MapboxService;
     return yield* mapboxService.getRandomSingaporeCoords();
   }).pipe(
     Effect.provide(ServerLayer),
@@ -150,7 +150,11 @@ export const getRandomSingaporeCoords = (): Effect.Effect<
  * Helper function to get Mapbox public token for client-side use
  */
 export const getMapboxPublicToken = (): Effect.Effect<string, never> => {
-  return mapboxPublicTokenConfig.pipe(
+  return Effect.gen(function* () {
+    const config = yield* ConfigService;
+    return config.mapbox.publicToken;
+  }).pipe(
+    Effect.provide(ServerLayer),
     Effect.catchAll((error) =>
       Effect.gen(function* () {
         yield* Effect.logError("Failed to get Mapbox public token", error);

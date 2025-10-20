@@ -1,15 +1,13 @@
 import { ConvexHttpClient } from "convex/browser";
-import { Context, Effect, Layer, Schema } from "effect";
+import { Context, Effect, Schema } from "effect";
 import { api } from "../../../convex/_generated/api";
 import type {
   BicycleParkingResponse,
   BicycleParkingResult,
 } from "../schema/bicycle-parking.schema";
 import { BicycleParkingResponseSchema } from "../schema/bicycle-parking.schema";
-import {
-  convexPublicDeploymentConfig,
-  ltaAccountKeyConfig,
-} from "./config-service";
+import type { AppConfig } from "./config-service";
+import { ConfigService } from "./config-service";
 
 /**
  * Bicycle Parking Service Error
@@ -20,25 +18,24 @@ export class BicycleParkingError {
 }
 
 /**
- * Bicycle Parking Service
+ * Bicycle Parking Service Interface
  *
  * Fetches bicycle parking data from LTA DataMall API with Convex caching
  */
-export interface BicycleParkingService {
+export interface IBicycleParkingService {
   fetchNearbyParking: (
     lat: number,
     long: number,
   ) => Effect.Effect<BicycleParkingResult[], BicycleParkingError>;
 }
 
-export const BicycleParkingServiceTag =
-  Context.GenericTag<BicycleParkingService>("BicycleParkingService");
-
 /**
  * Implementation of Bicycle Parking Service
  */
-export class BicycleParkingServiceImpl implements BicycleParkingService {
+class BicycleParkingServiceImpl {
   private convexClient: ConvexHttpClient | null = null;
+
+  constructor(private readonly config: AppConfig) {}
 
   private getConvexClient() {
     return Effect.gen(
@@ -47,7 +44,7 @@ export class BicycleParkingServiceImpl implements BicycleParkingService {
           return this.convexClient;
         }
 
-        const deployment = yield* convexPublicDeploymentConfig;
+        const deployment = this.config.convex.publicUrl;
 
         if (!deployment || deployment === "") {
           yield* Effect.logWarning(
@@ -118,7 +115,7 @@ export class BicycleParkingServiceImpl implements BicycleParkingService {
         // Step 2: Fetch from LTA API
         yield* Effect.log("No cache found, fetching from LTA DataMall API...");
 
-        const ltaKey = yield* ltaAccountKeyConfig;
+        const ltaKey = this.config.lta.accountKey;
 
         const apiUrl = `https://datamall2.mytransport.sg/ltaodataservice/BicycleParkingv2?Lat=${lat}&Long=${long}`;
 
@@ -253,7 +250,24 @@ export class BicycleParkingServiceImpl implements BicycleParkingService {
   }
 }
 
-export const BicycleParkingServiceLive = Layer.succeed(
-  BicycleParkingServiceTag,
-  new BicycleParkingServiceImpl(),
-);
+/**
+ * BicycleParkingService as Effect.Service
+ * Provides auto-generated accessors and cleaner DI
+ */
+export class BicycleParkingService extends Effect.Service<BicycleParkingService>()(
+  "BicycleParkingService",
+  {
+    effect: Effect.gen(function* () {
+      const config = yield* ConfigService;
+      return new BicycleParkingServiceImpl(config);
+    }),
+    dependencies: [ConfigService.Default],
+  },
+) {}
+
+/**
+ * Legacy export for BicycleParkingServiceTag (for backwards compatibility during migration)
+ * This will be removed once all services are migrated
+ */
+export const BicycleParkingServiceTag =
+  Context.GenericTag<IBicycleParkingService>("BicycleParkingService");
