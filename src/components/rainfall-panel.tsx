@@ -1,14 +1,15 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { useQuery } from "convex/react";
 import { ChevronDown, ChevronUp, Droplets } from "lucide-react";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
 import { api } from "../../convex/_generated/api";
 
 interface RainfallPanelProps {
   onStationClick?: (latitude: number, longitude: number) => void;
+  useMockData?: boolean;
 }
 
 /**
@@ -21,8 +22,13 @@ interface RainfallPanelProps {
  * - Color indicators matching heat map
  * - Loading/empty states
  */
-export function RainfallPanel({ onStationClick }: RainfallPanelProps) {
-  const rainfallData = useQuery(api.rainfall.getLatestRainfall, {});
+export function RainfallPanel({
+  onStationClick,
+  useMockData,
+}: RainfallPanelProps) {
+  const rainfallData = useQuery(api.rainfall.getLatestRainfall, {
+    useMockData: useMockData || false,
+  });
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Get rainfall color based on value

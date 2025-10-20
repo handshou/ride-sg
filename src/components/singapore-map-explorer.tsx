@@ -1,7 +1,5 @@
 "use client";
 
-import { useQuery } from "convex/react";
-import { useCallback, useEffect, useRef, useState } from "react";
 import { BicycleParkingOverlay } from "@/components/bicycle-parking-overlay";
 import { BicycleParkingPanel } from "@/components/bicycle-parking-panel";
 import { ErrorToastHandler } from "@/components/error-toast-handler";
@@ -11,6 +9,7 @@ import { MapStyleSelector } from "@/components/map-style-selector";
 import { MapboxGLMap } from "@/components/mapbox-gl-map";
 import { MapboxSimpleOverlay } from "@/components/mapbox-simple-overlay";
 import { RainfallHeatMapOverlay } from "@/components/rainfall-heat-map-overlay";
+import { RainfallMockToggleButton } from "@/components/rainfall-mock-toggle-button";
 import { RainfallPanel } from "@/components/rainfall-panel";
 import { RainfallToggleButton } from "@/components/rainfall-toggle-button";
 import { RandomCoordinatesButton } from "@/components/random-coordinates-button";
@@ -23,6 +22,8 @@ import { MAPBOX_STYLES } from "@/lib/map-styles";
 import type { BicycleParkingResult } from "@/lib/schema/bicycle-parking.schema";
 import type { GeocodeResult } from "@/lib/services/mapbox-service";
 import type { SearchResult } from "@/lib/services/search-state-service";
+import { useQuery } from "convex/react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../../convex/_generated/api";
 
 interface SingaporeMapExplorerProps {
@@ -67,6 +68,7 @@ export function SingaporeMapExplorer({
 
   // Rainfall visualization state
   const [showRainfall, setShowRainfall] = useState(false);
+  const [useMockRainfall, setUseMockRainfall] = useState(false);
 
   // Saved locations for random navigation - using Convex reactive query
   // Returns undefined during SSR or when ConvexProvider is not available
@@ -408,6 +410,12 @@ export function SingaporeMapExplorer({
           isActive={showRainfall}
           onClick={() => setShowRainfall(!showRainfall)}
         />
+        {showRainfall && (
+          <RainfallMockToggleButton
+            isMockMode={useMockRainfall}
+            onClick={() => setUseMockRainfall(!useMockRainfall)}
+          />
+        )}
         {/* <ThemeToggle /> */}
       </div>
 
@@ -430,6 +438,7 @@ export function SingaporeMapExplorer({
       {/* Rainfall Panel - Hide on Mobile, Show when rainfall is active */}
       {!isMobile && showRainfall && (
         <RainfallPanel
+          useMockData={useMockRainfall}
           onStationClick={(lat, lng) => {
             if (mapInstanceRef.current) {
               mapInstanceRef.current.flyTo({
@@ -469,7 +478,10 @@ export function SingaporeMapExplorer({
             <SavedBicycleParkingOverlay map={mapInstanceRef.current} />
             <SavedLocationsOverlay map={mapInstanceRef.current} />
             {showRainfall && (
-              <RainfallHeatMapOverlay map={mapInstanceRef.current} />
+              <RainfallHeatMapOverlay
+                map={mapInstanceRef.current}
+                useMockData={useMockRainfall}
+              />
             )}
           </>
         )}

@@ -1,12 +1,13 @@
 "use client";
 
+import { logger } from "@/lib/client-logger";
 import { useQuery } from "convex/react";
 import { useEffect, useRef } from "react";
-import { logger } from "@/lib/client-logger";
 import { api } from "../../convex/_generated/api";
 
 interface RainfallHeatMapOverlayProps {
   map: mapboxgl.Map | null;
+  useMockData?: boolean;
 }
 
 /**
@@ -21,8 +22,13 @@ interface RainfallHeatMapOverlayProps {
  * - Yellow (10mm): Moderate rain
  * - Red (20mm+): Heavy rain
  */
-export function RainfallHeatMapOverlay({ map }: RainfallHeatMapOverlayProps) {
-  const rainfallData = useQuery(api.rainfall.getLatestRainfall, {});
+export function RainfallHeatMapOverlay({
+  map,
+  useMockData,
+}: RainfallHeatMapOverlayProps) {
+  const rainfallData = useQuery(api.rainfall.getLatestRainfall, {
+    useMockData: useMockData || false,
+  });
   const layerAddedRef = useRef(false);
   const sourceIdRef = useRef("rainfall-data");
   const layerIdRef = useRef("rainfall-heat");

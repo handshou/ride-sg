@@ -109,11 +109,19 @@ export const cleanupOldRainfallData = internalMutation({
  *
  * Returns the most recent set of rainfall readings.
  * Used by client components for real-time visualization.
- * Falls back to mock data if no real data exists (useful for testing).
+ * Can force mock data for testing/demo purposes.
  */
 export const getLatestRainfall = query({
-  args: {},
-  handler: async (ctx) => {
+  args: {
+    useMockData: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    // Force mock data if requested
+    if (args.useMockData) {
+      console.log("Mock data requested, returning mock rainfall data");
+      return getMockRainfallData();
+    }
+
     // Get the most recent fetchedAt timestamp
     const allReadings = await ctx.db
       .query("rainfall")
