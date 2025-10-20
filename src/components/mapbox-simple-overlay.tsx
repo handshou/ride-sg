@@ -61,6 +61,7 @@ export function MapboxSimpleOverlay({
       // Create a custom marker element
       const markerElement = document.createElement("div");
       markerElement.className = "location-marker";
+      markerElement.style.zIndex = "50"; // Lower than saved location pins
       markerElement.innerHTML = `
         <div style="
           width: 20px;

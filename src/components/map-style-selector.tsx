@@ -1,8 +1,5 @@
 "use client";
 
-import { Layers, Moon, Mountain, Satellite, Sun } from "lucide-react";
-import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -11,6 +8,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { getMapStyleForStyle, type MapStyle } from "@/lib/map-styles";
+import { Layers, Moon, Mountain, Satellite, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
+import { useEffect, useState } from "react";
 
 interface MapStyleSelectorProps {
   onStyleChange: (style: string) => void;
@@ -19,7 +19,7 @@ interface MapStyleSelectorProps {
 export function MapStyleSelector({ onStyleChange }: MapStyleSelectorProps) {
   const { setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  const [currentStyle, setCurrentStyle] =
+  const [_currentStyle, setCurrentStyle] =
     useState<MapStyle>("satelliteStreets"); // Match default map style
 
   useEffect(() => {

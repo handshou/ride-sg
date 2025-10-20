@@ -44,6 +44,12 @@ export function SavedBicycleParkingOverlay({
           )
           .addTo(map);
 
+        // Set z-index to appear above bicycle icons but below blue saved location pins
+        const markerElement = marker.getElement();
+        if (markerElement) {
+          markerElement.style.zIndex = "90";
+        }
+
         markersRef.current.push(marker);
       }
     };

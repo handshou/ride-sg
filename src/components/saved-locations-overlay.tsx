@@ -1,9 +1,9 @@
 "use client";
 
+import { logger } from "@/lib/client-logger";
 import { useQuery } from "convex/react";
 import mapboxgl from "mapbox-gl";
 import { useEffect, useRef } from "react";
-import { logger } from "@/lib/client-logger";
 import { api } from "../../convex/_generated/api";
 
 interface SavedLocationsOverlayProps {
@@ -50,6 +50,12 @@ export function SavedLocationsOverlay({ map }: SavedLocationsOverlayProps) {
           ),
         )
         .addTo(map);
+
+      // Set higher z-index to appear above other markers (bicycle parking, current location, etc.)
+      const markerElement = marker.getElement();
+      if (markerElement) {
+        markerElement.style.zIndex = "100";
+      }
 
       markersRef.current.push(marker);
     }
