@@ -1,14 +1,5 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { useMobile } from "@/hooks/use-mobile";
-import { useSearchState } from "@/hooks/use-search-state";
-import { deleteLocationFromConvexAction } from "@/lib/actions/delete-location-action";
-import { refreshLocationAction } from "@/lib/actions/refresh-location-action";
-import { saveLocationToConvexAction } from "@/lib/actions/save-location-action";
-import type { SearchResult } from "@/lib/services/search-state-service";
-import { cleanAndTruncateDescription } from "@/lib/text-utils";
 import { Exa } from "@lobehub/icons";
 import {
   ChevronLeft,
@@ -22,6 +13,15 @@ import {
   X,
 } from "lucide-react";
 import { useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { useMobile } from "@/hooks/use-mobile";
+import { useSearchState } from "@/hooks/use-search-state";
+import { deleteLocationFromConvexAction } from "@/lib/actions/delete-location-action";
+import { refreshLocationAction } from "@/lib/actions/refresh-location-action";
+import { saveLocationToConvexAction } from "@/lib/actions/save-location-action";
+import type { SearchResult } from "@/lib/services/search-state-service";
+import { cleanAndTruncateDescription } from "@/lib/text-utils";
 
 interface SearchPanelProps {
   onResultSelect: (result: SearchResult) => void;
@@ -314,7 +314,7 @@ export function SearchPanel({ onResultSelect }: SearchPanelProps) {
                               className="flex items-center gap-1"
                             >
                               {result.source === "exa" ? (
-                                  <Exa.Combine size={12} />
+                                <Exa.Combine size={12} />
                               ) : (
                                 <>
                                   <Database className="h-3 w-3" />
