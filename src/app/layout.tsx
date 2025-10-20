@@ -29,6 +29,12 @@ export const metadata: Metadata = {
     "ride-sg",
   ],
   authors: [{ name: "Ride-SG Team" }],
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+  },
   openGraph: {
     title: "🚴 Ride-SG - Singapore Map Explorer",
     description:
