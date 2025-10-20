@@ -31,7 +31,7 @@ export interface SearchState {
  * Manages shared state between Exa service, Database service, and Map rendering.
  * Uses Effect Ref for reactive state management across services.
  */
-export interface SearchStateService {
+export interface ISearchStateService {
   // Ref accessors
   readonly state: Ref.Ref<SearchState>;
 
@@ -52,7 +52,7 @@ export interface SearchStateService {
  * SearchStateService as Effect.Service
  * Provides auto-generated accessors and cleaner DI
  */
-export class SearchStateService extends Effect.Service<SearchStateService>()(
+export class SearchStateService extends Effect.Service<ISearchStateService>()(
   "SearchStateService",
   {
     effect: Effect.gen(function* () {
@@ -166,4 +166,4 @@ export const getSearchStateEffect = () =>
  * This will be removed once all services are migrated
  */
 export const SearchStateServiceTag =
-  Context.GenericTag<SearchStateService>("SearchStateService");
+  Context.GenericTag<ISearchStateService>("SearchStateService");

@@ -255,23 +255,12 @@ export function BicycleParkingPanel({
       )}
 
       {/* Footer - Always shown when there are results */}
-      {!isLoading && parkingResults.length > 0 && (
+      {!isLoading && parkingResults.length > 0 && isMinimized && (
         <div className="p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-          <button
-            type="button"
-            onClick={() => setIsMinimized(!isMinimized)}
-            className="w-full flex items-center justify-between text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
-          >
-            <span>
-              Found {parkingResults.length} bicycle parking location
-              {parkingResults.length !== 1 ? "s" : ""}
-            </span>
-            {isMinimized ? (
-              <ChevronDown className="h-4 w-4" />
-            ) : (
-              <ChevronUp className="h-4 w-4" />
-            )}
-          </button>
+          <div className="text-sm text-gray-600 dark:text-gray-400">
+            Found {parkingResults.length} location
+            {parkingResults.length !== 1 ? "s" : ""}
+          </div>
         </div>
       )}
     </div>

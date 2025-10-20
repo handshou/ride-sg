@@ -1,7 +1,7 @@
-import { BicycleParkingService } from "@/lib/services/bicycle-parking-service";
-import { ConfigService } from "@/lib/services/config-service";
 import { Effect, Layer } from "effect";
 import { NextResponse } from "next/server";
+import { BicycleParkingService } from "@/lib/services/bicycle-parking-service";
+import { ConfigService } from "@/lib/services/config-service";
 
 /**
  * GET /api/bicycle-parking
