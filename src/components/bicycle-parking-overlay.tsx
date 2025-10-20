@@ -10,6 +10,7 @@ interface BicycleParkingOverlayProps {
   map: mapboxgl.Map;
   parkingLocations: BicycleParkingResult[];
   onParkingSelect?: (parking: BicycleParkingResult) => void;
+  selectedParking?: BicycleParkingResult | null;
 }
 
 /**
@@ -36,6 +37,7 @@ export function BicycleParkingOverlay({
   map,
   parkingLocations,
   onParkingSelect,
+  selectedParking,
 }: BicycleParkingOverlayProps) {
   // Use ref to always have access to latest parking locations
   const parkingLocationsRef = useRef(parkingLocations);
@@ -43,10 +45,43 @@ export function BicycleParkingOverlay({
   // Map readiness service for proper map state checking
   const mapReadinessService = useRef(new MapReadinessServiceImpl()).current;
 
+  // Popup ref for programmatic control
+  const popupRef = useRef<mapboxgl.Popup | null>(null);
+
   // Update ref whenever parkingLocations changes
   useEffect(() => {
     parkingLocationsRef.current = parkingLocations;
   }, [parkingLocations]);
+
+  // Show popup when selectedParking changes (from panel click)
+  useEffect(() => {
+    if (selectedParking && popupRef.current && map) {
+      const popup = popupRef.current;
+      const shelterBadge = selectedParking.hasShelter
+        ? '<span style="background: #059669; color: white; padding: 2px 6px; border-radius: 4px;">🏠 Sheltered</span>'
+        : '<span style="background: #9ca3af; color: white; padding: 2px 6px; border-radius: 4px;">No shelter</span>';
+
+      popup
+        .setLngLat([selectedParking.longitude, selectedParking.latitude])
+        .setHTML(
+          `<div style="padding: 8px; min-width: 200px;">
+          <div style="font-weight: 600; margin-bottom: 4px; color: #1f2937;">
+            ${selectedParking.description}
+          </div>
+          <div style="font-size: 12px; color: #6b7280; margin-bottom: 4px;">
+            ${selectedParking.rackType}
+          </div>
+          <div style="font-size: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+            <span style="background: #10b981; color: white; padding: 2px 6px; border-radius: 4px;">
+              🚲 ${selectedParking.rackCount} racks
+            </span>
+            ${shelterBadge}
+          </div>
+        </div>`,
+        )
+        .addTo(map);
+    }
+  }, [selectedParking, map]);
 
   useEffect(() => {
     const SOURCE_ID = "bicycle-parking";
@@ -313,16 +348,8 @@ export function BicycleParkingOverlay({
                 30,
                 "#059669", // Dark emerald for large clusters (30+)
               ],
-              // Size based on cluster size
-              "circle-radius": [
-                "step",
-                ["get", "point_count"],
-                20, // Small clusters: 20px
-                10,
-                30, // Medium clusters: 30px
-                30,
-                40, // Large clusters: 40px
-              ],
+              // Uniform size for all clusters
+              "circle-radius": 20, // Uniform 20px for all clusters
               "circle-stroke-width": 3,
               "circle-stroke-color": "#ffffff",
               "circle-opacity": 0.9,
@@ -354,8 +381,18 @@ export function BicycleParkingOverlay({
             layout: {
               // Use bicycle icon image
               "icon-image": bicycleIconId,
-              // Constant size for all zoom levels (small and consistent)
-              "icon-size": 0.4, // Small, consistent size
+              // Zoom-responsive icon sizing
+              "icon-size": [
+                "interpolate",
+                ["exponential", 2],
+                ["zoom"],
+                14,
+                0.5, // Start visible at zoom 14
+                16,
+                0.7,
+                18,
+                1.0, // Full size at zoom 18
+              ],
               "icon-allow-overlap": true,
               "icon-ignore-placement": true,
               "icon-rotation-alignment": "map",
@@ -394,6 +431,7 @@ export function BicycleParkingOverlay({
         closeOnClick: false,
         className: "bicycle-parking-popup",
       });
+      popupRef.current = popup; // Store for programmatic access
 
       // Mouse enter: show popup
       map.on("mouseenter", LAYER_ID, (e) => {

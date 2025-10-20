@@ -1,8 +1,8 @@
 "use client";
 
-import mapboxgl from "mapbox-gl";
 import { toastNotifications } from "@/hooks/use-toast";
 import { logger } from "@/lib/client-logger";
+import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { useEffect, useRef, useState } from "react";
 
@@ -60,24 +60,6 @@ export function MapboxGLMap({
         zoom: initialZoom,
         attributionControl: false,
       });
-
-      // Add navigation controls
-      map.current.addControl(new mapboxgl.NavigationControl(), "top-right");
-
-      // Add fullscreen control
-      map.current.addControl(new mapboxgl.FullscreenControl(), "top-right");
-
-      // Add geolocate control
-      map.current.addControl(
-        new mapboxgl.GeolocateControl({
-          positionOptions: {
-            enableHighAccuracy: true,
-          },
-          trackUserLocation: true,
-          showUserHeading: true,
-        }),
-        "top-right",
-      );
 
       // Handle map load
       map.current.on("load", () => {

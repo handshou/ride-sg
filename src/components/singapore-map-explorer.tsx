@@ -332,6 +332,7 @@ export function SingaporeMapExplorer({
               map={mapInstanceRef.current}
               parkingLocations={bicycleParkingResults}
               onParkingSelect={handleParkingSelect}
+              selectedParking={selectedParking}
             />
           </>
         )}
