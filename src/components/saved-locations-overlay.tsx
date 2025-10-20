@@ -1,11 +1,11 @@
 "use client";
 
+import { logger } from "@/lib/client-logger";
+import { convexPublicDeploymentConfig } from "@/lib/services/config-service";
 import { ConvexHttpClient } from "convex/browser";
 import { Effect } from "effect";
 import mapboxgl from "mapbox-gl";
 import { useEffect, useRef } from "react";
-import { logger } from "@/lib/client-logger";
-import { convexPublicDeploymentConfig } from "@/lib/services/config-service";
 import { api } from "../../convex/_generated/api";
 
 interface SavedLocationsOverlayProps {

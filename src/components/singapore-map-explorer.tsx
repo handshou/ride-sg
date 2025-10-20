@@ -1,8 +1,5 @@
 "use client";
 
-import { ConvexHttpClient } from "convex/browser";
-import { Effect } from "effect";
-import { useCallback, useEffect, useRef, useState } from "react";
 import { BicycleParkingOverlay } from "@/components/bicycle-parking-overlay";
 import { BicycleParkingPanel } from "@/components/bicycle-parking-panel";
 import { ErrorToastHandler } from "@/components/error-toast-handler";
@@ -22,6 +19,9 @@ import type { BicycleParkingResult } from "@/lib/schema/bicycle-parking.schema";
 import { convexPublicDeploymentConfig } from "@/lib/services/config-service";
 import type { GeocodeResult } from "@/lib/services/mapbox-service";
 import type { SearchResult } from "@/lib/services/search-state-service";
+import { ConvexHttpClient } from "convex/browser";
+import { Effect } from "effect";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../../convex/_generated/api";
 
 interface SingaporeMapExplorerProps {
