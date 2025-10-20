@@ -61,8 +61,9 @@ export function SingaporeMapExplorer({
 
   // Saved locations for random navigation
   const [savedLocations, setSavedLocations] = useState<
-    Array<{ latitude: number; longitude: number }>
+    Array<{ latitude: number; longitude: number; title: string }>
   >([]);
+  const [currentLocationIndex, setCurrentLocationIndex] = useState(0);
 
   // Fetch saved locations on mount and when they're updated
   useEffect(() => {
@@ -85,19 +86,17 @@ export function SingaporeMapExplorer({
         );
 
         logger.info(
-          `✅ Loaded ${locations.length} saved locations for random selection`,
+          `✅ Loaded ${locations.length} saved locations for sequential navigation`,
         );
+
+        // Shuffle the locations array using Fisher-Yates algorithm
+        const shuffled = [...locations].sort(() => Math.random() - 0.5);
 
         // Log the actual locations for debugging
         if (locations.length > 0) {
-          logger.debug(
-            "Saved locations:",
-            locations.map((loc) => ({
-              title: loc.title,
-              lat: loc.latitude,
-              lng: loc.longitude,
-              isRandomizable: loc.isRandomizable,
-            })),
+          logger.info(
+            "🔀 Shuffled order:",
+            shuffled.map((loc, idx) => `${idx + 1}. ${loc.title}`).join(", "),
           );
         } else {
           logger.warn(
@@ -105,12 +104,15 @@ export function SingaporeMapExplorer({
           );
         }
 
-        setSavedLocations(
-          locations.map((loc) => ({
-            latitude: loc.latitude,
-            longitude: loc.longitude,
-          })),
-        );
+        // Map to simple format and shuffle
+        const mappedLocations = shuffled.map((loc) => ({
+          latitude: loc.latitude,
+          longitude: loc.longitude,
+          title: loc.title,
+        }));
+
+        setSavedLocations(mappedLocations);
+        setCurrentLocationIndex(0); // Reset to start of shuffled list
       } catch (error) {
         logger.error("Failed to fetch saved locations", error);
       }
@@ -370,6 +372,8 @@ export function SingaporeMapExplorer({
         <RandomCoordinatesButton
           onCoordinatesGenerated={handleCoordinatesGenerated}
           savedLocations={savedLocations}
+          currentIndex={currentLocationIndex}
+          onIndexChange={setCurrentLocationIndex}
         />
         <LocateMeButton onLocationFound={handleLocationFound} />
         {/* <ThemeToggle /> */}

@@ -64,7 +64,7 @@ export function SavedLocationsOverlay({ map }: SavedLocationsOverlayProps) {
                 `<div style="padding: 8px;">
                 <strong>⭐ ${location.title}</strong><br/>
                 <small>${location.description}</small><br/>
-                <small style="color: #3b82f6;">Saved for Random Navigation</small>
+                <small style="color: #3b82f6;">Saved for Sequential Navigation</small>
               </div>`,
               ),
             )

@@ -1,6 +1,5 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { Exa } from "@lobehub/icons";
 import {
   Bike,
@@ -14,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 
 export function HowToButton() {
   const [isOpen, setIsOpen] = useState(false);
@@ -71,8 +71,9 @@ export function HowToButton() {
               <div className="flex items-start gap-3">
                 <Dices className="h-5 w-5 flex-shrink-0 text-gray-600 dark:text-gray-400" />
                 <div>
-                  <strong>Random:</strong> Visit a saved location, or explore a
-                  random spot in Singapore if none saved
+                  <strong>Navigate:</strong> Cycles through your saved locations
+                  in shuffled order. Falls back to random Singapore spots if
+                  none saved.
                 </div>
               </div>
 

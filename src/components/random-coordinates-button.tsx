@@ -12,12 +12,20 @@ interface RandomCoordinatesButtonProps {
     latitude: number;
     longitude: number;
   }) => void;
-  savedLocations?: Array<{ latitude: number; longitude: number }>;
+  savedLocations?: Array<{
+    latitude: number;
+    longitude: number;
+    title: string;
+  }>;
+  currentIndex?: number;
+  onIndexChange?: (index: number) => void;
 }
 
 export function RandomCoordinatesButton({
   onCoordinatesGenerated,
   savedLocations,
+  currentIndex = 0,
+  onIndexChange,
 }: RandomCoordinatesButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -25,15 +33,26 @@ export function RandomCoordinatesButton({
     setIsGenerating(true);
 
     try {
-      // If we have saved locations, pick one randomly
+      // If we have saved locations, navigate sequentially through the shuffled list
       if (savedLocations && savedLocations.length > 0) {
-        console.log(`🎲 Picking from ${savedLocations.length} saved locations`);
-        const randomIndex = Math.floor(Math.random() * savedLocations.length);
-        const randomLocation = savedLocations[randomIndex];
+        const location = savedLocations[currentIndex];
+        const nextIndex = (currentIndex + 1) % savedLocations.length;
 
-        console.log("🎲 Selected saved location:", randomLocation);
-        onCoordinatesGenerated(randomLocation);
-        toast.success("Navigating to saved location");
+        console.log(
+          `➡️ Sequential navigation: ${currentIndex + 1}/${savedLocations.length} - "${location.title}"`,
+        );
+        console.log(
+          `   Next will be: ${nextIndex + 1}. "${savedLocations[nextIndex]?.title}"`,
+        );
+
+        onCoordinatesGenerated(location);
+        if (onIndexChange) {
+          onIndexChange(nextIndex);
+        }
+
+        toast.success(
+          `Location ${currentIndex + 1}/${savedLocations.length}: ${location.title}`,
+        );
         setIsGenerating(false);
         return;
       }

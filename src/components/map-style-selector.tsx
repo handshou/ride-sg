@@ -1,13 +1,5 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { getMapStyleForStyle, type MapStyle } from "@/lib/map-styles";
 import {
   Layers,
   Map as MapIcon,
@@ -18,6 +10,14 @@ import {
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { getMapStyleForStyle, type MapStyle } from "@/lib/map-styles";
 
 interface MapStyleSelectorProps {
   onStyleChange: (style: string) => void;
