@@ -121,6 +121,10 @@
 }
 
 /* Mapbox Popup Styling */
+.mapboxgl-popup {
+  z-index: 1000 !important; /* Ensure popups appear above all markers */
+}
+
 .mapboxgl-popup-content {
   @apply bg-white dark:bg-gray-900 text-gray-900 dark:text-white;
   @apply border border-gray-200 dark:border-gray-700;

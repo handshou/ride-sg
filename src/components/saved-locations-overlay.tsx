@@ -51,10 +51,10 @@ export function SavedLocationsOverlay({ map }: SavedLocationsOverlayProps) {
         )
         .addTo(map);
 
-      // Set higher z-index to appear above other markers (bicycle parking, current location, etc.)
+      // Set z-index to appear above other markers but below UI panels (z-index 10-20)
       const markerElement = marker.getElement();
       if (markerElement) {
-        markerElement.style.zIndex = "100";
+        markerElement.style.zIndex = "5";
       }
 
       markersRef.current.push(marker);

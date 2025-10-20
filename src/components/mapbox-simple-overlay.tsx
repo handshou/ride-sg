@@ -1,8 +1,8 @@
 "use client";
 
+import { logger } from "@/lib/client-logger";
 import mapboxgl from "mapbox-gl";
 import { useEffect, useRef } from "react";
-import { logger } from "@/lib/client-logger";
 
 interface MapboxSimpleOverlayProps {
   map: mapboxgl.Map | null;
@@ -61,7 +61,7 @@ export function MapboxSimpleOverlay({
       // Create a custom marker element
       const markerElement = document.createElement("div");
       markerElement.className = "location-marker";
-      markerElement.style.zIndex = "50"; // Lower than saved location pins
+      markerElement.style.zIndex = "3"; // Below saved location pins but above bicycle icons
       markerElement.innerHTML = `
         <div style="
           width: 20px;
