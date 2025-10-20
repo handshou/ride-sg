@@ -1,9 +1,10 @@
 "use client";
 
-import { Bike, CircleDot, Home } from "lucide-react";
-import { useEffect, useRef } from "react";
 import { Badge } from "@/components/ui/badge";
 import type { BicycleParkingResult } from "@/lib/schema/bicycle-parking.schema";
+import { Bike, CircleDot, Heart, Home } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 
 interface BicycleParkingPanelProps {
   parkingResults: BicycleParkingResult[];
@@ -19,6 +20,72 @@ export function BicycleParkingPanel({
   selectedParking,
 }: BicycleParkingPanelProps) {
   const itemRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+  const [savedBicycleParkingIds, setSavedBicycleParkingIds] = useState<
+    Set<string>
+  >(new Set());
+
+  // Load saved bicycle parking IDs on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("savedBicycleParkingIds");
+      if (saved) {
+        setSavedBicycleParkingIds(new Set(JSON.parse(saved)));
+      }
+    }
+  }, []);
+
+  const handleSaveBicycleParking = (
+    result: BicycleParkingResult,
+    e: React.MouseEvent,
+  ) => {
+    e.stopPropagation(); // Prevent triggering the parent button click
+
+    const newSavedIds = new Set(savedBicycleParkingIds);
+
+    if (newSavedIds.has(result.id)) {
+      // Remove from saved
+      newSavedIds.delete(result.id);
+
+      // Remove from localStorage locations array
+      const savedLocations: BicycleParkingResult[] = JSON.parse(
+        localStorage.getItem("savedBicycleParkingLocations") || "[]",
+      );
+      const updatedLocations = savedLocations.filter(
+        (loc) => loc.id !== result.id,
+      );
+      localStorage.setItem(
+        "savedBicycleParkingLocations",
+        JSON.stringify(updatedLocations),
+      );
+
+      toast.info("Removed from saved bicycle parking");
+    } else {
+      // Add to saved
+      newSavedIds.add(result.id);
+
+      // Save full result to localStorage
+      const savedLocations: BicycleParkingResult[] = JSON.parse(
+        localStorage.getItem("savedBicycleParkingLocations") || "[]",
+      );
+      savedLocations.push(result);
+      localStorage.setItem(
+        "savedBicycleParkingLocations",
+        JSON.stringify(savedLocations),
+      );
+
+      toast.success("Saved bicycle parking location");
+    }
+
+    // Update IDs in localStorage
+    localStorage.setItem(
+      "savedBicycleParkingIds",
+      JSON.stringify([...newSavedIds]),
+    );
+    setSavedBicycleParkingIds(newSavedIds);
+
+    // Trigger a custom event to notify the overlay to re-render
+    window.dispatchEvent(new Event("savedBicycleParkingChanged"));
+  };
 
   // Scroll to selected item when it changes
   useEffect(() => {
@@ -131,6 +198,30 @@ export function BicycleParkingPanel({
                         {result.rackType}
                       </p>
                     </div>
+
+                    {/* Save button */}
+                    <button
+                      type="button"
+                      onClick={(e) => handleSaveBicycleParking(result, e)}
+                      className={`p-2 rounded-md transition-all flex-shrink-0 ${
+                        savedBicycleParkingIds.has(result.id)
+                          ? "text-red-500 dark:text-red-400"
+                          : "text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400"
+                      }`}
+                      title={
+                        savedBicycleParkingIds.has(result.id)
+                          ? "Saved"
+                          : "Save bicycle parking location"
+                      }
+                    >
+                      <Heart
+                        className={`h-4 w-4 ${
+                          savedBicycleParkingIds.has(result.id)
+                            ? "fill-current"
+                            : ""
+                        }`}
+                      />
+                    </button>
                   </div>
                 </button>
               );

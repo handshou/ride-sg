@@ -86,6 +86,7 @@ export async function saveLocationToConvexAction(
         longitude: result.location.longitude,
         source: result.source,
         timestamp: Date.now(), // Update timestamp
+        isRandomizable: true, // Mark as randomizable for random navigation feature
       }),
       10000,
     );

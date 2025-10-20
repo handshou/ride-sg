@@ -19,6 +19,7 @@ export default defineSchema({
       v.literal("database"),
     ),
     timestamp: v.number(),
+    isRandomizable: v.optional(v.boolean()), // Flag for random selection
   })
     .index("by_timestamp", ["timestamp"])
     .index("by_source", ["source"]),

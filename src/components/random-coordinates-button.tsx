@@ -1,21 +1,23 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
+import { generateRandomCoordinatesEffect } from "@/lib/services/random-coordinates-service";
 import { Effect } from "effect";
 import { Dices } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { generateRandomCoordinatesEffect } from "@/lib/services/random-coordinates-service";
 
 interface RandomCoordinatesButtonProps {
   onCoordinatesGenerated: (coords: {
     latitude: number;
     longitude: number;
   }) => void;
+  savedLocations?: Array<{ latitude: number; longitude: number }>;
 }
 
 export function RandomCoordinatesButton({
   onCoordinatesGenerated,
+  savedLocations,
 }: RandomCoordinatesButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -23,7 +25,18 @@ export function RandomCoordinatesButton({
     setIsGenerating(true);
 
     try {
-      // Use the service-level Effect with proper error handling
+      // If we have saved locations, pick one randomly
+      if (savedLocations && savedLocations.length > 0) {
+        const randomIndex = Math.floor(Math.random() * savedLocations.length);
+        const randomLocation = savedLocations[randomIndex];
+
+        onCoordinatesGenerated(randomLocation);
+        toast.success("Navigating to saved location");
+        setIsGenerating(false);
+        return;
+      }
+
+      // Fall back to random Singapore coordinates
       const result = await Effect.runPromise(
         generateRandomCoordinatesEffect().pipe(
           Effect.catchAll((error) =>
@@ -44,9 +57,7 @@ export function RandomCoordinatesButton({
 
       // Success case
       onCoordinatesGenerated(result);
-      toast.success(
-        `New coordinates generated: ${result.latitude.toFixed(4)}, ${result.longitude.toFixed(4)}`,
-      );
+      toast.success("New random coordinates generated");
     } catch (_error) {
       // Error is already handled and logged in the Effect.catchAll above
       // No additional logging needed here

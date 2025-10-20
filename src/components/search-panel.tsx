@@ -1,18 +1,5 @@
 "use client";
 
-import { Exa } from "@lobehub/icons";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Database,
-  Loader2,
-  MapPin,
-  RefreshCw,
-  Save,
-  Search,
-  X,
-} from "lucide-react";
-import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useMobile } from "@/hooks/use-mobile";
@@ -22,6 +9,19 @@ import { refreshLocationAction } from "@/lib/actions/refresh-location-action";
 import { saveLocationToConvexAction } from "@/lib/actions/save-location-action";
 import type { SearchResult } from "@/lib/services/search-state-service";
 import { cleanAndTruncateDescription } from "@/lib/text-utils";
+import { Exa } from "@lobehub/icons";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Database,
+  Heart,
+  Loader2,
+  MapPin,
+  RefreshCw,
+  Search,
+  X,
+} from "lucide-react";
+import { useState } from "react";
 
 interface SearchPanelProps {
   onResultSelect: (result: SearchResult) => void;
@@ -36,6 +36,7 @@ export function SearchPanel({ onResultSelect }: SearchPanelProps) {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+  const [hoveredSaveId, setHoveredSaveId] = useState<string | null>(null);
   const [currentResultIndex, setCurrentResultIndex] = useState(0);
 
   const handleSearch = async () => {
@@ -345,21 +346,34 @@ export function SearchPanel({ onResultSelect }: SearchPanelProps) {
                         <button
                           type="button"
                           onClick={(e) => handleSaveToConvex(result, e)}
+                          onMouseEnter={() => setHoveredSaveId(result.id)}
+                          onMouseLeave={() => setHoveredSaveId(null)}
                           disabled={isSaving}
-                          className={`p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                          className={`p-2 rounded-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed group relative ${
                             isSaved
-                              ? "text-green-600 hover:text-green-500 dark:text-green-400 dark:hover:text-green-300"
-                              : "text-gray-500 hover:text-gray-400 dark:text-gray-400 dark:hover:text-gray-300"
+                              ? "text-red-500 dark:text-red-400"
+                              : "text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400"
                           }`}
                           title={
                             isSaved
-                              ? "Saved to Convex ✓"
-                              : "Save to Convex (overrides existing)"
+                              ? "Saved to randomized list ❤"
+                              : "Add to randomized list"
                           }
                         >
-                          <Save
-                            className={`h-4 w-4 ${isSaving ? "animate-pulse" : ""}`}
+                          <Heart
+                            className={`h-4 w-4 transition-all ${
+                              isSaving
+                                ? "animate-pulse"
+                                : isSaved
+                                  ? "fill-current scale-110"
+                                  : "scale-100"
+                            }`}
                           />
+                          {hoveredSaveId === result.id && !isSaved && (
+                            <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 dark:bg-gray-700 text-white text-xs px-2 py-1 rounded whitespace-nowrap z-50">
+                              Add to randomized list
+                            </span>
+                          )}
                         </button>
                       )}
 

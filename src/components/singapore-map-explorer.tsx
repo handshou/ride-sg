@@ -1,21 +1,27 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
 import { BicycleParkingOverlay } from "@/components/bicycle-parking-overlay";
 import { BicycleParkingPanel } from "@/components/bicycle-parking-panel";
 import { ErrorToastHandler } from "@/components/error-toast-handler";
+import { HowToButton } from "@/components/how-to-button";
 import { LocateMeButton } from "@/components/locate-me-button";
 import { MapStyleSelector } from "@/components/map-style-selector";
 import { MapboxGLMap } from "@/components/mapbox-gl-map";
 import { MapboxSimpleOverlay } from "@/components/mapbox-simple-overlay";
 import { RandomCoordinatesButton } from "@/components/random-coordinates-button";
+import { SavedBicycleParkingOverlay } from "@/components/saved-bicycle-parking-overlay";
 import { SearchPanel } from "@/components/search-panel";
 import { useMobile } from "@/hooks/use-mobile";
 import { logger } from "@/lib/client-logger";
 import { MAPBOX_STYLES } from "@/lib/map-styles";
 import type { BicycleParkingResult } from "@/lib/schema/bicycle-parking.schema";
+import { convexPublicDeploymentConfig } from "@/lib/services/config-service";
 import type { GeocodeResult } from "@/lib/services/mapbox-service";
 import type { SearchResult } from "@/lib/services/search-state-service";
+import { ConvexHttpClient } from "convex/browser";
+import { Effect } from "effect";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { api } from "../../convex/_generated/api";
 
 interface SingaporeMapExplorerProps {
   initialRandomCoords: { latitude: number; longitude: number };
@@ -53,6 +59,48 @@ export function SingaporeMapExplorer({
 
   // Always use satellite-streets as default map style
   const [mapStyle, setMapStyle] = useState(MAPBOX_STYLES.satelliteStreets);
+
+  // Saved locations for random navigation
+  const [savedLocations, setSavedLocations] = useState<
+    Array<{ latitude: number; longitude: number }>
+  >([]);
+
+  // Fetch saved locations on mount
+  useEffect(() => {
+    const fetchSavedLocations = async () => {
+      try {
+        // Use Effect config service to get Convex URL
+        const deployment = await Effect.runPromise(
+          convexPublicDeploymentConfig,
+        );
+        if (!deployment) {
+          logger.warn("NEXT_PUBLIC_CONVEX_URL not configured");
+          return;
+        }
+
+        const client = new ConvexHttpClient(deployment);
+        const locations = await client.query(
+          api.locations.getRandomizableLocations,
+          {},
+        );
+
+        setSavedLocations(
+          locations.map((loc) => ({
+            latitude: loc.latitude,
+            longitude: loc.longitude,
+          })),
+        );
+
+        logger.info(
+          `Loaded ${locations.length} saved locations for random selection`,
+        );
+      } catch (error) {
+        logger.error("Failed to fetch saved locations", error);
+      }
+    };
+
+    fetchSavedLocations();
+  }, []);
 
   // Fetch bicycle parking for a location
   const fetchBicycleParking = useCallback(async (lat: number, long: number) => {
@@ -289,9 +337,11 @@ export function SingaporeMapExplorer({
 
       {/* Header with map style selector and navigation controls */}
       <div className="absolute top-4 left-4 z-10 flex gap-2">
+        <HowToButton />
         <MapStyleSelector onStyleChange={handleStyleChange} />
         <RandomCoordinatesButton
           onCoordinatesGenerated={handleCoordinatesGenerated}
+          savedLocations={savedLocations}
         />
         <LocateMeButton onLocationFound={handleLocationFound} />
         {/* <ThemeToggle /> */}
@@ -334,6 +384,7 @@ export function SingaporeMapExplorer({
               onParkingSelect={handleParkingSelect}
               selectedParking={selectedParking}
             />
+            <SavedBicycleParkingOverlay map={mapInstanceRef.current} />
           </>
         )}
       </div>

@@ -74,6 +74,19 @@ export const getAllLocations = query({
 });
 
 /**
+ * Query: Get randomizable locations (for random navigation feature)
+ */
+export const getRandomizableLocations = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db
+      .query("locations")
+      .filter((q) => q.eq(q.field("isRandomizable"), true))
+      .collect();
+  },
+});
+
+/**
  * Mutation: Save a new location
  */
 export const saveLocation = mutation({
@@ -88,6 +101,7 @@ export const saveLocation = mutation({
       v.literal("database"),
     ),
     timestamp: v.number(),
+    isRandomizable: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const locationId = await ctx.db.insert("locations", {
@@ -97,6 +111,7 @@ export const saveLocation = mutation({
       longitude: args.longitude,
       source: args.source,
       timestamp: args.timestamp,
+      isRandomizable: args.isRandomizable,
     });
 
     return locationId;
