@@ -28,6 +28,7 @@ export interface AppConfig {
     mapboxIsochrone: string;
     mapboxStaticImage: string;
     nominatim: string;
+    neaRainfall: string;
   };
 }
 
@@ -93,6 +94,7 @@ export class ConfigService extends Effect.Service<ConfigService>()(
           mapboxIsochrone: "https://api.mapbox.com/isochrone/v1/mapbox",
           mapboxStaticImage: "https://api.mapbox.com/styles/v1",
           nominatim: "https://nominatim.openstreetmap.org",
+          neaRainfall: "https://api-open.data.gov.sg/v2/real-time/api/rainfall",
         },
       };
 

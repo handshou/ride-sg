@@ -38,4 +38,18 @@ export default defineSchema({
   })
     .index("by_query_location", ["queryLatitude", "queryLongitude"])
     .index("by_timestamp", ["timestamp"]),
+
+  // Rainfall table - stores real-time rainfall data from NEA API
+  rainfall: defineTable({
+    stationId: v.string(),
+    stationName: v.string(),
+    latitude: v.number(),
+    longitude: v.number(),
+    value: v.number(), // mm of rainfall
+    timestamp: v.string(), // ISO 8601 from API
+    fetchedAt: v.number(), // Unix timestamp when we fetched
+  })
+    .index("by_timestamp", ["timestamp"])
+    .index("by_station", ["stationId"])
+    .index("by_fetched", ["fetchedAt"]),
 });

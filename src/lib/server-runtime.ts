@@ -8,6 +8,7 @@ import {
   getStaticMapEffect,
   MapboxService,
 } from "./services/mapbox-service";
+import { RainfallService } from "./services/rainfall-service";
 import {
   showErrorToast,
   showWarningToast,
@@ -28,9 +29,10 @@ import {
 export const ServerLayer = Layer.mergeAll(
   ConfigService.Default,
   MapboxService.Default,
+  RainfallService.Default,
   ToastServiceLive,
   MapReadinessServiceLive,
-);
+).pipe(Layer.provide(ConfigService.Default));
 
 /**
  * Run an Effect program in a Next.js server component context

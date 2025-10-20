@@ -10,6 +10,9 @@ import { LocateMeButton } from "@/components/locate-me-button";
 import { MapStyleSelector } from "@/components/map-style-selector";
 import { MapboxGLMap } from "@/components/mapbox-gl-map";
 import { MapboxSimpleOverlay } from "@/components/mapbox-simple-overlay";
+import { RainfallHeatMapOverlay } from "@/components/rainfall-heat-map-overlay";
+import { RainfallPanel } from "@/components/rainfall-panel";
+import { RainfallToggleButton } from "@/components/rainfall-toggle-button";
 import { RandomCoordinatesButton } from "@/components/random-coordinates-button";
 import { SavedBicycleParkingOverlay } from "@/components/saved-bicycle-parking-overlay";
 import { SavedLocationsOverlay } from "@/components/saved-locations-overlay";
@@ -61,6 +64,9 @@ export function SingaporeMapExplorer({
 
   // Always use satellite-streets as default map style
   const [mapStyle, setMapStyle] = useState(MAPBOX_STYLES.satelliteStreets);
+
+  // Rainfall visualization state
+  const [showRainfall, setShowRainfall] = useState(false);
 
   // Saved locations for random navigation - using Convex reactive query
   // Returns undefined during SSR or when ConvexProvider is not available
@@ -398,6 +404,10 @@ export function SingaporeMapExplorer({
           onIndexChange={setCurrentLocationIndex}
         />
         <LocateMeButton onLocationFound={handleLocationFound} />
+        <RainfallToggleButton
+          isActive={showRainfall}
+          onClick={() => setShowRainfall(!showRainfall)}
+        />
         {/* <ThemeToggle /> */}
       </div>
 
@@ -414,6 +424,21 @@ export function SingaporeMapExplorer({
           isLoading={isFetchingParking}
           onParkingSelect={handleParkingSelect}
           selectedParking={selectedParking}
+        />
+      )}
+
+      {/* Rainfall Panel - Hide on Mobile, Show when rainfall is active */}
+      {!isMobile && showRainfall && (
+        <RainfallPanel
+          onStationClick={(lat, lng) => {
+            if (mapInstanceRef.current) {
+              mapInstanceRef.current.flyTo({
+                center: [lng, lat],
+                zoom: 16,
+                duration: 1500,
+              });
+            }
+          }}
         />
       )}
 
@@ -443,6 +468,9 @@ export function SingaporeMapExplorer({
             />
             <SavedBicycleParkingOverlay map={mapInstanceRef.current} />
             <SavedLocationsOverlay map={mapInstanceRef.current} />
+            {showRainfall && (
+              <RainfallHeatMapOverlay map={mapInstanceRef.current} />
+            )}
           </>
         )}
       </div>
