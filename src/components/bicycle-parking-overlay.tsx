@@ -105,6 +105,24 @@ export function BicycleParkingOverlay({
         );
       }
 
+      // Check if map is animating, if so wait for it to finish
+      if (map.isMoving()) {
+        if (isDev) {
+          console.log(
+            "[BicycleParkingOverlay] Map is animating, waiting for moveend event",
+          );
+        }
+        map.once("moveend", () => {
+          if (isDev) {
+            console.log(
+              "[BicycleParkingOverlay] Map animation finished, setting up layers",
+            );
+          }
+          setupLayers();
+        });
+        return;
+      }
+
       // Use MapReadinessService to check if map is ready
       Effect.runPromise(mapReadinessService.createReadinessCheck(map))
         .then((isReady) => {

@@ -1,8 +1,8 @@
 "use client";
 
+import mapboxgl from "mapbox-gl";
 import { toastNotifications } from "@/hooks/use-toast";
 import { logger } from "@/lib/client-logger";
-import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { useEffect, useRef, useState } from "react";
 
