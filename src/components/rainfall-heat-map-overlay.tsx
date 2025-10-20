@@ -7,7 +7,7 @@ import {
   SINGAPORE_BOUNDARY,
 } from "@/lib/utils/idw-interpolation";
 import { useQuery } from "convex/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { api } from "../../convex/_generated/api";
 
 interface RainfallHeatMapOverlayProps {
@@ -39,7 +39,6 @@ export function RainfallHeatMapOverlay({
   const layerAddedRef = useRef(false);
   const sourceIdRef = useRef("rainfall-data");
   const layerIdRef = useRef("rainfall-heat");
-  const [styleChangeCounter, setStyleChangeCounter] = useState(0);
 
   useEffect(() => {
     if (!map || !rainfallData) return;

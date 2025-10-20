@@ -1,10 +1,10 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
 import { useQuery } from "convex/react";
 import { ChevronDown, ChevronUp, Droplets } from "lucide-react";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { api } from "../../convex/_generated/api";
 
 interface RainfallPanelProps {
@@ -66,19 +66,12 @@ export function RainfallPanel({
   return (
     <div className="absolute bottom-10 left-4 z-20 w-80 rounded-lg bg-white/90 shadow-lg backdrop-blur-md dark:bg-gray-800/90">
       {/* Header - Always visible */}
-      <div
-        role="button"
-        tabIndex={0}
-        className={`flex cursor-pointer items-center justify-between p-4 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50 ${
+      <button
+        type="button"
+        className={`flex w-full cursor-pointer items-center justify-between p-4 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50 ${
           isExpanded ? "rounded-t-lg" : "rounded-lg"
         }`}
         onClick={() => setIsExpanded(!isExpanded)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            setIsExpanded(!isExpanded);
-          }
-        }}
       >
         <div className="flex items-center gap-2">
           <Droplets className="h-5 w-5 text-blue-500" />
@@ -104,7 +97,7 @@ export function RainfallPanel({
             <ChevronUp className="h-4 w-4" />
           )}
         </Button>
-      </div>
+      </button>
 
       {/* Expandable Content */}
       {isExpanded && (
@@ -130,47 +123,57 @@ export function RainfallPanel({
               </div>
             ) : (
               <div className="space-y-1 p-2">
-                {sortedData.map((station) => (
-                  <div
-                    key={station.stationId}
-                    role={onStationClick ? "button" : undefined}
-                    tabIndex={onStationClick ? 0 : undefined}
-                    className={`flex items-center justify-between rounded-md p-2 transition-colors ${
-                      onStationClick
-                        ? "cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
-                        : ""
-                    }`}
-                    onClick={() =>
-                      onStationClick?.(station.latitude, station.longitude)
-                    }
-                    onKeyDown={(e) => {
-                      if (
-                        onStationClick &&
-                        (e.key === "Enter" || e.key === " ")
-                      ) {
-                        e.preventDefault();
-                        onStationClick(station.latitude, station.longitude);
+                {sortedData.map((station) =>
+                  onStationClick ? (
+                    <button
+                      key={station.stationId}
+                      type="button"
+                      className="flex w-full items-center justify-between rounded-md p-2 text-left transition-colors cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+                      onClick={() =>
+                        onStationClick(station.latitude, station.longitude)
                       }
-                    }}
-                  >
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-800 dark:text-white">
-                        {station.stationName}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {getRainfallLabel(station.value)}
-                      </p>
-                    </div>
-                    <div
-                      className={`text-right font-semibold ${getRainfallColor(station.value)}`}
                     >
-                      <span className="text-lg">
-                        {station.value.toFixed(1)}
-                      </span>
-                      <span className="ml-1 text-xs">mm</span>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-800 dark:text-white">
+                          {station.stationName}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {getRainfallLabel(station.value)}
+                        </p>
+                      </div>
+                      <div
+                        className={`text-right font-semibold ${getRainfallColor(station.value)}`}
+                      >
+                        <span className="text-lg">
+                          {station.value.toFixed(1)}
+                        </span>
+                        <span className="ml-1 text-xs">mm</span>
+                      </div>
+                    </button>
+                  ) : (
+                    <div
+                      key={station.stationId}
+                      className="flex items-center justify-between rounded-md p-2"
+                    >
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-800 dark:text-white">
+                          {station.stationName}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {getRainfallLabel(station.value)}
+                        </p>
+                      </div>
+                      <div
+                        className={`text-right font-semibold ${getRainfallColor(station.value)}`}
+                      >
+                        <span className="text-lg">
+                          {station.value.toFixed(1)}
+                        </span>
+                        <span className="ml-1 text-xs">mm</span>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ),
+                )}
               </div>
             )}
           </div>
