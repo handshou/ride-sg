@@ -1,13 +1,13 @@
 "use client";
 
+import { useQuery } from "convex/react";
+import { useEffect, useRef } from "react";
 import { logger } from "@/lib/client-logger";
 import {
   generateBoundedGrid,
   type Point,
   SINGAPORE_BOUNDARY,
 } from "@/lib/utils/idw-interpolation";
-import { useQuery } from "convex/react";
-import { useEffect, useRef } from "react";
 import { api } from "../../convex/_generated/api";
 
 interface RainfallHeatMapOverlayProps {

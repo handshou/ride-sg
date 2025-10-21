@@ -1,9 +1,8 @@
 "use client";
 
-import { useQuery } from "convex/react";
-import { useCallback, useEffect, useRef, useState } from "react";
 import { BicycleParkingOverlay } from "@/components/bicycle-parking-overlay";
 import { BicycleParkingPanel } from "@/components/bicycle-parking-panel";
+import { Buildings3DToggleButton } from "@/components/buildings-3d-toggle-button";
 import { ErrorToastHandler } from "@/components/error-toast-handler";
 import { HowToButton } from "@/components/how-to-button";
 import { LocateMeButton } from "@/components/locate-me-button";
@@ -24,6 +23,8 @@ import { MAPBOX_STYLES } from "@/lib/map-styles";
 import type { BicycleParkingResult } from "@/lib/schema/bicycle-parking.schema";
 import type { GeocodeResult } from "@/lib/services/mapbox-service";
 import type { SearchResult } from "@/lib/services/search-state-service";
+import { useQuery } from "convex/react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../../convex/_generated/api";
 
 interface SingaporeMapExplorerProps {
@@ -69,6 +70,9 @@ export function SingaporeMapExplorer({
   // Rainfall visualization state - auto-enabled on load
   const [showRainfall, setShowRainfall] = useState(true);
   const [useMockRainfall, setUseMockRainfall] = useState(false);
+
+  // 3D Buildings visualization state
+  const [show3DBuildings, setShow3DBuildings] = useState(false);
 
   // Saved locations for random navigation - using Convex reactive query
   // Returns undefined during SSR or when ConvexProvider is not available
@@ -147,6 +151,68 @@ export function SingaporeMapExplorer({
       fetchBicycleParking(mapLocation.latitude, mapLocation.longitude);
     }
   }, [mapLocation, fetchBicycleParking]);
+
+  // Handle 3D buildings toggle
+  useEffect(() => {
+    if (!mapInstanceRef.current || !isMapReady) return;
+
+    const map = mapInstanceRef.current;
+
+    const toggle3DBuildings = () => {
+      // Wait for style to be loaded
+      if (!map.isStyleLoaded()) {
+        map.once("style.load", toggle3DBuildings);
+        return;
+      }
+
+      // Check if 3D buildings layer already exists
+      const layer = map.getLayer("3d-buildings");
+
+      if (show3DBuildings && !layer) {
+        // Add 3D buildings layer
+        map.addLayer(
+          {
+            id: "3d-buildings",
+            source: "composite",
+            "source-layer": "building",
+            filter: ["==", "extrude", "true"],
+            type: "fill-extrusion",
+            minzoom: 15,
+            paint: {
+              "fill-extrusion-color": "#aaa",
+              "fill-extrusion-height": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                15,
+                0,
+                15.05,
+                ["get", "height"],
+              ],
+              "fill-extrusion-base": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                15,
+                0,
+                15.05,
+                ["get", "min_height"],
+              ],
+              "fill-extrusion-opacity": 0.6,
+            },
+          },
+          "waterway-label", // Insert before this layer for better ordering
+        );
+        logger.info("3D buildings layer added");
+      } else if (!show3DBuildings && layer) {
+        // Remove 3D buildings layer
+        map.removeLayer("3d-buildings");
+        logger.info("3D buildings layer removed");
+      }
+    };
+
+    toggle3DBuildings();
+  }, [show3DBuildings, isMapReady]);
 
   const handleMapReady = useCallback(
     (map: mapboxgl.Map) => {
@@ -401,6 +467,10 @@ export function SingaporeMapExplorer({
       <div className="absolute top-4 left-4 z-10 flex gap-2">
         <HowToButton />
         <MapStyleSelector onStyleChange={handleStyleChange} />
+        <Buildings3DToggleButton
+          isActive={show3DBuildings}
+          onClick={() => setShow3DBuildings(!show3DBuildings)}
+        />
         <RandomCoordinatesButton
           onCoordinatesGenerated={handleCoordinatesGenerated}
           savedLocations={savedLocations}
