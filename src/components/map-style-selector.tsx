@@ -1,8 +1,5 @@
 "use client";
 
-import { Layers, Moon, Mountain, Satellite, Sun } from "lucide-react";
-import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -10,17 +7,46 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { logger } from "@/lib/client-logger";
 import { getMapStyleForStyle, type MapStyle } from "@/lib/map-styles";
+import {
+  getThemeForMapStyleEffect,
+  type MapStyleMode,
+  ThemeSyncServiceLive,
+} from "@/lib/services/theme-sync-service";
+import { Effect } from "effect";
+import { Layers, Moon, Mountain, Satellite, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
+import { useEffect, useState } from "react";
 
 interface MapStyleSelectorProps {
   onStyleChange: (style: string) => void;
 }
 
+/**
+ * Map MapStyle to MapStyleMode for theme sync service
+ * satelliteStreets is treated as satellite for theme purposes
+ */
+function mapStyleToMapStyleMode(style: MapStyle): MapStyleMode {
+  switch (style) {
+    case "light":
+      return "light";
+    case "dark":
+      return "dark";
+    case "satellite":
+    case "satelliteStreets":
+      return "satellite";
+    case "outdoors":
+      return "outdoors";
+    default:
+      return "dark";
+  }
+}
+
 export function MapStyleSelector({ onStyleChange }: MapStyleSelectorProps) {
   const { setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  const [_currentStyle, setCurrentStyle] =
-    useState<MapStyle>("satelliteStreets"); // Match default map style
+  const [_currentStyle, setCurrentStyle] = useState<MapStyle>("dark"); // Match default map style
 
   useEffect(() => {
     setMounted(true);
@@ -39,19 +65,29 @@ export function MapStyleSelector({ onStyleChange }: MapStyleSelectorProps) {
     );
   }
 
-  const handleStyleChange = (style: MapStyle) => {
+  const handleStyleChange = async (style: MapStyle) => {
     setCurrentStyle(style);
     const mapStyle = getMapStyleForStyle(style);
     onStyleChange(mapStyle);
 
-    // Theme relationship: match map style to UI theme
-    // Dark map → Dark UI theme
-    // Light map → Light UI theme
-    // Satellite/Outdoors → Light UI theme (lighter backgrounds)
-    if (style === "dark") {
-      setTheme("dark");
-    } else {
-      setTheme("light");
+    // Use Theme Sync Service to determine the correct theme
+    try {
+      const mapStyleMode = mapStyleToMapStyleMode(style);
+      const theme = await Effect.runPromise(
+        getThemeForMapStyleEffect(mapStyleMode).pipe(
+          Effect.provide(ThemeSyncServiceLive),
+        ),
+      );
+      setTheme(theme);
+      logger.info(`Map style changed to ${style}, theme synced to ${theme}`);
+    } catch (error) {
+      logger.error("Failed to sync theme with map style:", error);
+      // Fallback to manual theme selection
+      if (style === "dark") {
+        setTheme("dark");
+      } else {
+        setTheme("light");
+      }
     }
   };
 

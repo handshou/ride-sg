@@ -161,6 +161,7 @@ export function SingaporeMapExplorer({
   }, [mapLocation, fetchBicycleParking]);
 
   // Handle 3D buildings toggle
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mapStyle needed to re-add layer after style change
   useEffect(() => {
     if (!mapInstanceRef.current || !isMapReady) return;
 
@@ -177,41 +178,61 @@ export function SingaporeMapExplorer({
       const layer = map.getLayer("3d-buildings");
 
       if (show3DBuildings && !layer) {
+        // Determine the best layer to insert before for proper ordering
+        const beforeLayers = [
+          "waterway-label",
+          "road-label",
+          "place-label",
+          "poi-label",
+        ];
+        let insertedBefore: string | undefined;
+
+        for (const beforeLayer of beforeLayers) {
+          if (map.getLayer(beforeLayer)) {
+            insertedBefore = beforeLayer;
+            break;
+          }
+        }
+
         // Add 3D buildings layer
-        map.addLayer(
-          {
-            id: "3d-buildings",
-            source: "composite",
-            "source-layer": "building",
-            filter: ["==", "extrude", "true"],
-            type: "fill-extrusion",
-            minzoom: 15,
-            paint: {
-              "fill-extrusion-color": "#aaa",
-              "fill-extrusion-height": [
-                "interpolate",
-                ["linear"],
-                ["zoom"],
-                15,
-                0,
-                15.05,
-                ["get", "height"],
-              ],
-              "fill-extrusion-base": [
-                "interpolate",
-                ["linear"],
-                ["zoom"],
-                15,
-                0,
-                15.05,
-                ["get", "min_height"],
-              ],
-              "fill-extrusion-opacity": 0.6,
-            },
+        const layerConfig: mapboxgl.AnyLayer = {
+          id: "3d-buildings",
+          source: "composite",
+          "source-layer": "building",
+          filter: ["==", "extrude", "true"],
+          type: "fill-extrusion",
+          minzoom: 15,
+          paint: {
+            "fill-extrusion-color": "#aaa",
+            "fill-extrusion-height": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              15,
+              0,
+              15.05,
+              ["get", "height"],
+            ],
+            "fill-extrusion-base": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              15,
+              0,
+              15.05,
+              ["get", "min_height"],
+            ],
+            "fill-extrusion-opacity": 0.6,
           },
-          "waterway-label", // Insert before this layer for better ordering
-        );
-        logger.info("3D buildings layer added");
+        };
+
+        if (insertedBefore) {
+          map.addLayer(layerConfig, insertedBefore);
+          logger.info(`3D buildings layer added (before ${insertedBefore})`);
+        } else {
+          map.addLayer(layerConfig);
+          logger.info("3D buildings layer added (top layer)");
+        }
       } else if (!show3DBuildings && layer) {
         // Remove 3D buildings layer
         map.removeLayer("3d-buildings");
@@ -220,7 +241,24 @@ export function SingaporeMapExplorer({
     };
 
     toggle3DBuildings();
-  }, [show3DBuildings, isMapReady]);
+
+    // Listen for style changes and re-add 3D buildings if enabled
+    const handleStyleData = () => {
+      if (show3DBuildings) {
+        logger.info("🗺️ Map style changed, re-adding 3D buildings layer");
+        // Use a small delay to ensure style is fully loaded
+        setTimeout(() => {
+          toggle3DBuildings();
+        }, 100);
+      }
+    };
+
+    map.on("styledata", handleStyleData);
+
+    return () => {
+      map.off("styledata", handleStyleData);
+    };
+  }, [show3DBuildings, isMapReady, mapStyle]);
 
   const handleMapReady = useCallback(
     (map: mapboxgl.Map) => {
