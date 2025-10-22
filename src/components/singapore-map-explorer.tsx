@@ -289,7 +289,9 @@ export function SingaporeMapExplorer({
         // Delay to ensure style is fully loaded (500ms for reliability across devices)
         setTimeout(() => {
           if (!map.isStyleLoaded()) {
-            logger.warn("Style not fully loaded after 500ms, skipping 3D buildings");
+            logger.warn(
+              "Style not fully loaded after 500ms, skipping 3D buildings",
+            );
             return;
           }
           toggle3DBuildings(map);
