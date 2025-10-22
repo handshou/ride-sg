@@ -1,26 +1,44 @@
 # Ride-SG
 
-A modern Singapore map explorer with intelligent landmark search and real-time bicycle parking data.
+A modern Singapore map explorer with intelligent landmark search, real-time bicycle parking, and rainfall visualization.
+
+**Built at [Cursor Hackathon SG 2025](https://luma.com/cursor-hack-sg)** - A 24-hour hackathon with 500+ builders, sponsored by Cursor, OpenAI, DeepMind, Anthropic, Groq, ElevenLabs, Supabase, Convex, Exa, and more.
 
 ## 🚀 Technologies
 
-- **[Next.js 15](https://nextjs.org)** - React framework with App Router
+### Core Framework & Backend
+- **[Next.js 15](https://nextjs.org)** - React framework with App Router and Turbopack
+- **[React 19](https://react.dev)** - Modern UI library with latest features
 - **[Effect-TS](https://effect.website/)** - Functional programming library for TypeScript
-- **[Mapbox GL JS](https://docs.mapbox.com/mapbox-gl-js/)** - Interactive map rendering
 - **[Convex](https://convex.dev)** - Real-time backend database with caching
-- **[Exa AI](https://exa.ai)** - Semantic search API for landmark discovery
-- **[LTA DataMall](https://datamall.lta.gov.sg/)** - Singapore bicycle parking data
-- **[Tailwind CSS](https://tailwindcss.com)** - Utility-first styling
 - **[TypeScript](https://www.typescriptlang.org)** - Type-safe development
+
+### APIs & Data Sources
+- **[Mapbox GL JS](https://docs.mapbox.com/mapbox-gl-js/)** - Interactive map rendering with 3D support
+- **[Exa AI](https://exa.ai)** - Semantic search API for landmark discovery
+- **[LTA DataMall](https://datamall.lta.gov.sg/)** - Singapore bicycle parking & rainfall data
+
+### UI & Styling
+- **[Tailwind CSS v4](https://tailwindcss.com)** - Utility-first styling
+- **[Radix UI](https://www.radix-ui.com/)** - Accessible UI components
+- **[Lucide React](https://lucide.dev)** - Beautiful icon library
+- **[next-themes](https://github.com/pacocoursey/next-themes)** - Theme management
+- **[Sonner](https://sonner.emilkowal.ski/)** - Toast notifications
+
+### Development Tools
 - **[Biome](https://biomejs.dev)** - Fast linter and formatter
-- **[Vitest](https://vitest.dev)** & **[Playwright](https://playwright.dev)** - Testing
+- **[Vitest](https://vitest.dev)** - Unit testing framework
+- **[Playwright](https://playwright.dev)** - E2E testing across browsers
+- **[Husky](https://typicode.github.io/husky/)** - Git hooks for quality checks
 
 ## ✨ Features
 
 1. **Smart Landmark Search** - AI-powered search with Exa API, automatically cached in Convex for fast retrieval
-2. **Interactive Map Explorer** - Satellite/street views with smooth flyTo animations and location markers
-3. **Real-time Bicycle Parking** - Live data from LTA DataMall showing nearby bicycle parking with shelter indicators
-4. **Location Discovery** - GPS location finder, random coordinates generator, and manual search
+2. **Interactive Map Explorer** - Multiple map styles (satellite, streets, dark, light) with smooth flyTo animations and 3D buildings toggle
+3. **Real-time Bicycle Parking** - Live data from LTA DataMall showing nearby bicycle parking with shelter indicators, save favorites locally
+4. **Real-time Rainfall Overlay** - 2-hour rainfall nowcast with heat map visualization showing rain intensity across Singapore (live + mock modes)
+5. **Location Discovery** - GPS location finder, random coordinates generator, saved locations cycling, and manual search
+6. **Theme Support** - Dark/light mode with persistent theme preference across the app
 
 ## 🛠️ Getting Started
 
@@ -75,13 +93,17 @@ A modern Singapore map explorer with intelligent landmark search and real-time b
 pnpm dev          # Start development server
 pnpm build        # Build for production
 pnpm start        # Start production server
-pnpm lint         # Run Biome linter
+pnpm lint         # Run Biome linter (check only)
 pnpm format       # Format code with Biome
+pnpm fix          # Auto-fix linting issues with Biome
+pnpm type-check   # Run TypeScript type checking
 pnpm test         # Run unit tests (Vitest)
 pnpm test:watch   # Run tests in watch mode
 pnpm test:e2e     # Run end-to-end tests (Playwright)
-pnpm check-all    # Run all checks (lint + type-check + test + build)
+pnpm check-all    # Run all checks (fix + type-check + test + build)
 ```
+
+**Pre-push Hook**: Husky automatically runs `check-all` before every push. Skip with `git push --no-verify` if needed.
 
 ## 🏗️ Architecture
 
@@ -96,17 +118,9 @@ The project uses Effect-TS for functional programming patterns:
 
 ### Key Services
 
-- `ExaSearchService` - Semantic search with Exa Answer API
-- `ConvexService` - Database operations with caching
-- `MapboxService` - Geocoding and map data
-- `BicycleParkingService` - LTA DataMall integration
-- `GeolocationService` - Browser geolocation API
-- `ToastService` - User notifications
+**13 Effect-TS Services:** ExaSearchService, DatabaseSearchService, ConvexService, MapboxService, BicycleParkingService, RainfallService, SearchStateService, GeolocationService, RandomCoordinatesService, ToastService, ThemeSyncService, MapReadinessService, ConfigService
 
-### Convex Schema
-
-- `locations` - Cached landmark search results
-- `bicycleParking` - Cached bicycle parking data
+**Convex Schema:** 3 tables (locations, bicycleParking, rainfall) with caching and indexing
 
 ## 📦 Project Structure
 
@@ -126,37 +140,77 @@ tests/               # Playwright e2e tests
 
 ## 🧪 Testing
 
-- **Unit Tests**: Vitest for testing Effect-TS services
-- **E2E Tests**: Playwright for browser testing across Chromium, Firefox, WebKit
-- **Performance**: 14 unit tests (~400ms), 36 e2e tests (~40s)
+- **Unit Tests**: Vitest for testing Effect-TS services (43 tests in ~1s)
+- **E2E Tests**: Playwright for browser testing across Chromium, Firefox, WebKit (36 tests in ~40s)
+- **Quality Checks**: Pre-push hook runs full test suite automatically
 
 ## 📚 Documentation
 
-See additional documentation in the repository:
+Additional documentation in the `docs/` directory:
 
-- `AGENTS.md` - AI agent capabilities and guidelines
+### Setup & Deployment
+- `CONVEX_SETUP.md` - Convex backend configuration
 - `DEPLOYMENT.md` - Vercel deployment instructions
-- `SECURITY_FIX.md` - Server-side API key security
+- `DEV_VS_PROD.md` - Development vs production environment setup
+
+### Features & Architecture
 - `SEARCH_INTEGRATION.md` - Search architecture overview
+- `SCHEMA_INTEGRATION.md` - Convex schema design patterns
+- `BICYCLE_PARKING_FEATURE.md` - Bicycle parking implementation
+- `THEME_SYNC_SERVICE.md` - Theme synchronization service
+
+### Technical Fixes & Improvements
+- `SECURITY_FIX.md` - Server-side API key security
+- `3D_BUILDINGS_FIX.md` - Mapbox 3D buildings implementation
+- `MAPBOX_LAYER_PERSISTENCE.md` - Map layer state management
+- `PARALLEL_SEARCH_FIX.md` - Concurrent search optimization
+- `EXA_QUERY_IMPROVEMENTS.md` - Exa API query enhancements
+- `TIMEOUT_FIX.md` - Request timeout handling
+- `BADGE_FIX.md` - UI badge component fixes
+
+### Development Guides
+- `AGENTS.md` - AI agent capabilities and guidelines
+- `QUALITY_FEATURES.md` - Code quality standards
+- `PRODUCTION_TROUBLESHOOTING.md` - Production debugging guide
 
 ## 🚀 Future Enhancements
 
 ### Weather & Environment
 
-- **Real-time Rain Overlay** - 2-hour rain nowcast from [Meteorological Service Singapore](https://www.weather.gov.sg/weather-forecast-2hrnowcast-2/)
 - **Air Quality & UV Index** - Smog levels and UV radiation data from [National Environment Agency](https://www.nea.gov.sg/corporate-functions/weather#weather-forecast2hr)
+- **Weather Forecasts** - 4-day weather forecasts and temperature trends
+- **Lightning Alerts** - Real-time lightning strike warnings from NEA
 
 ### Traffic & Transportation
 
 - **LTA Dynamic Data** - Real-time bus arrivals, taxi availability, and traffic speed from [LTA DataMall](https://datamall.lta.gov.sg/content/datamall/en/dynamic-data.html)
 - **Traffic Closures** - Live road closure alerts from [LTA OneMotoring](https://onemotoring.lta.gov.sg/content/onemotoring/home/driving/traffic_information/traffic_updates_and_road_closures.html?type=crw&qcrw=D)
+- **ERP Rates** - Electronic Road Pricing rates and timing information
+- **Carpark Availability** - Real-time carpark occupancy data
 
 ### Enhanced Features
 
 - **Route Planning** - Multi-modal route suggestions combining walking, cycling, and public transport
-- **Weather-Aware Recommendations** - Smart suggestions based on current weather and air quality
+- **Weather-Aware Recommendations** - Smart suggestions based on current weather, air quality, and rainfall
 - **Community Reports** - Crowdsourced updates for parking availability and facility conditions
-- **Historical Analytics** - Parking usage patterns and weather trends over time
+- **Historical Analytics** - Parking usage patterns, weather trends, and traffic patterns over time
+- **Offline Mode** - Cached map tiles and saved locations for offline use
+
+## 🏆 Built at Cursor Hackathon SG 2025
+
+This project was built during the [Cursor Hackathon Singapore 2025](https://luma.com/cursor-hack-sg), Cursor's first official 24-hour hackathon in Singapore with 500+ builders.
+
+### Event Highlights
+
+- 24 hours of intense building with Cursor
+- $100,000+ in cash and credits for winners
+- $200,000+ in total perks for all participants
+- Sponsored by Cursor, OpenAI, DeepMind, Anthropic, Groq, ElevenLabs, Supabase, Convex, Exa, and more
+
+Special thanks to the sponsors whose APIs and services power this application:
+- **Convex** - Real-time backend with caching
+- **Exa** - Semantic search API
+- **Mapbox** - Interactive map rendering
 
 ## 📄 License
 

@@ -34,7 +34,7 @@ export function HowToButton() {
         // biome-ignore lint/a11y/noStaticElementInteractions: Modal backdrop is a common pattern
         <div
           role="presentation"
-          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-3 sm:p-4"
+          className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-3 sm:p-4"
           onClick={() => setIsOpen(false)}
           onKeyDown={(e) => {
             if (e.key === "Escape") setIsOpen(false);
@@ -130,12 +130,32 @@ export function HowToButton() {
                 </div>
               </div>
 
-              {/* Footer - Privacy notice */}
-              <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-200 dark:border-gray-700">
+              {/* Footer - Privacy & Credits */}
+              <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
                 <p className="text-xs text-gray-600 dark:text-gray-400 italic">
                   <strong>Privacy:</strong> We do not store any data except when
                   you click save (❤️) on a location search result. Saved bicycle
                   parking is stored locally in your browser.
+                </p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">
+                  Built at{" "}
+                  <a
+                    href="https://luma.com/cursor-hack-sg"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                  >
+                    Cursor Hackathon SG 2025
+                  </a>
+                  {" · "}
+                  <a
+                    href="https://github.com/handshou/ride-sg"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                  >
+                    GitHub
+                  </a>
                 </p>
               </div>
             </div>
