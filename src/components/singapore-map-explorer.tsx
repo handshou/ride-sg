@@ -216,18 +216,25 @@ export function SingaporeMapExplorer({
 
   const handleMapReady = useCallback(
     (map: mapboxgl.Map) => {
+      console.log("🗺️ handleMapReady called, isMobile:", isMobile);
       mapInstanceRef.current = map;
       setIsMapReady(true);
 
-      // Fly to initial location with a dramatic zoom-in animation
-      logger.debug("Map ready, flying in from zoom 2 to 10 with pitch");
+      // Mobile-responsive zoom: start slightly more zoomed out on mobile
+      const targetZoom = isMobile ? 9 : 10; // 1 level more zoomed out on mobile
+      console.log(
+        `🎯 Target zoom: ${targetZoom}, isMobile: ${isMobile}, device: ${isMobile ? "mobile" : "desktop"}`,
+      );
+      logger.debug(
+        `Map ready, flying in from zoom 2 to ${targetZoom} with pitch (${isMobile ? "mobile" : "desktop"})`,
+      );
       map.stop(); // Stop any ongoing animations
 
       // Wait for next frame to ensure stop() has completed
       requestAnimationFrame(() => {
         map.flyTo({
           center: [initialRandomCoords.longitude, initialRandomCoords.latitude],
-          zoom: 10, // Zoom in to show Singapore island
+          zoom: targetZoom, // Zoom 8 on mobile, 10 on desktop
           pitch: 60, // Tilt the camera at 60 degrees for 3D view
           bearing: 0, // North-facing orientation
           duration: 2500, // Longer duration for dramatic effect
@@ -237,71 +244,74 @@ export function SingaporeMapExplorer({
         });
       });
     },
-    [initialRandomCoords],
+    [initialRandomCoords, isMobile],
   );
 
   // Handle search result selection - flyTo the selected location (moved before handleCoordinatesGenerated)
-  const handleSearchResultSelect = useCallback((result: SearchResult) => {
-    logger.info("Search result selected", {
-      title: result.title,
-      location: result.location,
-    });
-
-    // Fly to the search result with cinematic animation
-    if (mapInstanceRef.current) {
-      const map = mapInstanceRef.current;
-      const currentCenter = map.getCenter();
-
-      logger.debug("Current map center", {
-        lng: currentCenter.lng,
-        lat: currentCenter.lat,
-      });
-      logger.debug("Flying to", {
-        longitude: result.location.longitude,
-        latitude: result.location.latitude,
+  const handleSearchResultSelect = useCallback(
+    (result: SearchResult) => {
+      logger.info("Search result selected", {
+        title: result.title,
+        location: result.location,
       });
 
-      // Function to execute flyTo
-      const executeFlyTo = () => {
-        map.stop(); // Stop any ongoing animations before starting new one
+      // Fly to the search result with cinematic animation
+      if (mapInstanceRef.current) {
+        const map = mapInstanceRef.current;
+        const currentCenter = map.getCenter();
 
-        // Wait for next frame to ensure stop() has completed
-        requestAnimationFrame(() => {
-          map.flyTo({
-            center: [result.location.longitude, result.location.latitude],
-            zoom: 17, // Zoom in very close for POIs
-            duration: 2500, // 2.5 second cinematic animation
-            essential: true,
-            curve: 1.6, // High arc for sweeping motion
-            easing: (t) => {
-              // Custom easing: slow start, fast middle, slow end
-              return t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
-            },
-            pitch: 50, // Tilt for dramatic 3D view
-            bearing: 30, // Slight rotation for visual interest
+        logger.debug("Current map center", {
+          lng: currentCenter.lng,
+          lat: currentCenter.lat,
+        });
+        logger.debug("Flying to", {
+          longitude: result.location.longitude,
+          latitude: result.location.latitude,
+        });
+
+        // Function to execute flyTo
+        const executeFlyTo = () => {
+          map.stop(); // Stop any ongoing animations before starting new one
+
+          // Wait for next frame to ensure stop() has completed
+          requestAnimationFrame(() => {
+            map.flyTo({
+              center: [result.location.longitude, result.location.latitude],
+              zoom: isMobile ? 16 : 17, // Mobile: 16, Desktop: 17 (very close for POIs)
+              duration: 2500, // 2.5 second cinematic animation
+              essential: true,
+              curve: 1.6, // High arc for sweeping motion
+              easing: (t) => {
+                // Custom easing: slow start, fast middle, slow end
+                return t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
+              },
+              pitch: 50, // Tilt for dramatic 3D view
+              bearing: 30, // Slight rotation for visual interest
+            });
+            logger.success("flyTo called successfully");
+
+            // Update marker location AFTER flyTo starts (to avoid re-render before animation)
+            setMapLocation(result.location);
+            setIsUserLocation(false);
           });
-          logger.success("flyTo called successfully");
+        };
 
-          // Update marker location AFTER flyTo starts (to avoid re-render before animation)
-          setMapLocation(result.location);
-          setIsUserLocation(false);
-        });
-      };
-
-      // If map style is still loading, wait for it to finish
-      if (!map.isStyleLoaded()) {
-        logger.debug("Map style loading, waiting for styledata event");
-        map.once("styledata", () => {
-          logger.success("Map style loaded, executing flyTo");
+        // If map style is still loading, wait for it to finish
+        if (!map.isStyleLoaded()) {
+          logger.debug("Map style loading, waiting for styledata event");
+          map.once("styledata", () => {
+            logger.success("Map style loaded, executing flyTo");
+            executeFlyTo();
+          });
+        } else {
           executeFlyTo();
-        });
+        }
       } else {
-        executeFlyTo();
+        logger.warn("Map instance not ready yet");
       }
-    } else {
-      logger.warn("Map instance not ready yet");
-    }
-  }, []);
+    },
+    [isMobile],
+  );
 
   const handleCoordinatesGenerated = useCallback(
     (newCoords: {
@@ -349,7 +359,7 @@ export function SingaporeMapExplorer({
           requestAnimationFrame(() => {
             map.flyTo({
               center: [newCoords.longitude, newCoords.latitude],
-              zoom: 10, // Match final zoom level after initial animation
+              zoom: isMobile ? 9 : 10, // Mobile-responsive: 9 on mobile, 10 on desktop
               duration: 1500,
               essential: true,
               curve: 1.2,
@@ -370,7 +380,7 @@ export function SingaporeMapExplorer({
         }
       }
     },
-    [mapboxPublicToken, handleSearchResultSelect, addSearchResult],
+    [mapboxPublicToken, handleSearchResultSelect, addSearchResult, isMobile],
   );
 
   const handleLocationFound = useCallback(
@@ -390,7 +400,7 @@ export function SingaporeMapExplorer({
           requestAnimationFrame(() => {
             map.flyTo({
               center: [coords.longitude, coords.latitude],
-              zoom: 16,
+              zoom: isMobile ? 15 : 16, // Mobile: 15, Desktop: 16
               duration: 1800,
               essential: true,
               curve: 1.3,
@@ -411,7 +421,7 @@ export function SingaporeMapExplorer({
         }
       }
     },
-    [mapboxPublicToken],
+    [mapboxPublicToken, isMobile],
   );
 
   // Handle map style changes
@@ -420,41 +430,44 @@ export function SingaporeMapExplorer({
   }, []);
 
   // Handle bicycle parking selection - flyTo the parking location
-  const handleParkingSelect = useCallback((parking: BicycleParkingResult) => {
-    logger.info("Bicycle parking selected", {
-      description: parking.description,
-      location: { latitude: parking.latitude, longitude: parking.longitude },
-    });
+  const handleParkingSelect = useCallback(
+    (parking: BicycleParkingResult) => {
+      logger.info("Bicycle parking selected", {
+        description: parking.description,
+        location: { latitude: parking.latitude, longitude: parking.longitude },
+      });
 
-    setSelectedParking(parking);
+      setSelectedParking(parking);
 
-    // Fly to the parking location
-    if (mapInstanceRef.current) {
-      const map = mapInstanceRef.current;
+      // Fly to the parking location
+      if (mapInstanceRef.current) {
+        const map = mapInstanceRef.current;
 
-      const executeFlyTo = () => {
-        map.stop(); // Stop any ongoing animations before starting new one
+        const executeFlyTo = () => {
+          map.stop(); // Stop any ongoing animations before starting new one
 
-        // Wait for next frame to ensure stop() has completed
-        requestAnimationFrame(() => {
-          map.flyTo({
-            center: [parking.longitude, parking.latitude],
-            zoom: 18, // Zoom in very close
-            duration: 2000,
-            essential: true,
-            curve: 1.4,
-            easing: (t) => t * (2 - t),
+          // Wait for next frame to ensure stop() has completed
+          requestAnimationFrame(() => {
+            map.flyTo({
+              center: [parking.longitude, parking.latitude],
+              zoom: isMobile ? 17 : 18, // Mobile: 17, Desktop: 18 (very close)
+              duration: 2000,
+              essential: true,
+              curve: 1.4,
+              easing: (t) => t * (2 - t),
+            });
           });
-        });
-      };
+        };
 
-      if (!map.isStyleLoaded()) {
-        map.once("styledata", executeFlyTo);
-      } else {
-        executeFlyTo();
+        if (!map.isStyleLoaded()) {
+          map.once("styledata", executeFlyTo);
+        } else {
+          executeFlyTo();
+        }
       }
-    }
-  }, []);
+    },
+    [isMobile],
+  );
 
   return (
     <div className="font-sans min-h-screen">
@@ -515,7 +528,7 @@ export function SingaporeMapExplorer({
             if (mapInstanceRef.current) {
               mapInstanceRef.current.flyTo({
                 center: [lng, lat],
-                zoom: 16,
+                zoom: isMobile ? 15 : 16, // Mobile: 15, Desktop: 16
                 duration: 1500,
               });
             }

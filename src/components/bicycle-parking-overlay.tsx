@@ -1,11 +1,11 @@
 "use client";
 
-import { Effect } from "effect";
-import mapboxgl from "mapbox-gl";
-import { useEffect, useRef } from "react";
 import { logger } from "@/lib/client-logger";
 import type { BicycleParkingResult } from "@/lib/schema/bicycle-parking.schema";
 import { MapReadinessServiceImpl } from "@/lib/services/map-readiness-service";
+import { Effect } from "effect";
+import mapboxgl from "mapbox-gl";
+import { useEffect, useRef } from "react";
 
 interface BicycleParkingOverlayProps {
   map: mapboxgl.Map;
@@ -335,9 +335,19 @@ export function BicycleParkingOverlay({
                 30,
                 "#059669", // Dark emerald for large clusters (30+)
               ],
-              // Uniform size for all clusters
-              "circle-radius": 20, // Uniform 20px for all clusters
-              "circle-stroke-width": 3,
+              // Zoom-responsive size (smaller at lower zoom for mobile)
+              "circle-radius": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                10,
+                12, // Smaller at zoom 10 (typical mobile view)
+                14,
+                16, // Medium at zoom 14
+                18,
+                20, // Full size at zoom 18 (zoomed in)
+              ],
+              "circle-stroke-width": 2, // Reduced from 3
               "circle-stroke-color": "#ffffff",
               "circle-opacity": 0.9,
             },
@@ -352,7 +362,18 @@ export function BicycleParkingOverlay({
             layout: {
               "text-field": ["get", "point_count_abbreviated"],
               "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
-              "text-size": 14,
+              // Zoom-responsive text size (smaller at lower zoom for mobile)
+              "text-size": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                10,
+                10, // Smaller at zoom 10 (mobile)
+                14,
+                12, // Medium at zoom 14
+                18,
+                14, // Full size at zoom 18 (zoomed in)
+              ],
             },
             paint: {
               "text-color": "#ffffff",
@@ -368,17 +389,17 @@ export function BicycleParkingOverlay({
             layout: {
               // Use bicycle icon image
               "icon-image": bicycleIconId,
-              // Zoom-responsive icon sizing
+              // Zoom-responsive icon sizing (smaller overall for better mobile experience)
               "icon-size": [
                 "interpolate",
                 ["exponential", 2],
                 ["zoom"],
                 14,
-                0.5, // Start visible at zoom 14
+                0.35, // Smaller at zoom 14 (mobile-friendly)
                 16,
-                0.7,
+                0.5, // Medium at zoom 16
                 18,
-                1.0, // Full size at zoom 18
+                0.7, // Reduced max size (was 1.0)
               ],
               "icon-allow-overlap": true,
               "icon-ignore-placement": true,
