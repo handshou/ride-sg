@@ -1,5 +1,14 @@
 "use client";
 
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { useMobile } from "@/hooks/use-mobile";
+import { useSearchState } from "@/hooks/use-search-state";
+import { deleteLocationFromConvexAction } from "@/lib/actions/delete-location-action";
+import { saveLocationToConvexAction } from "@/lib/actions/save-location-action";
+import { logger } from "@/lib/client-logger";
+import type { SearchResult } from "@/lib/services/search-state-service";
+import { cleanAndTruncateDescription } from "@/lib/text-utils";
 import { Exa } from "@lobehub/icons";
 import {
   ChevronDown,
@@ -15,15 +24,6 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { useMobile } from "@/hooks/use-mobile";
-import { useSearchState } from "@/hooks/use-search-state";
-import { deleteLocationFromConvexAction } from "@/lib/actions/delete-location-action";
-import { saveLocationToConvexAction } from "@/lib/actions/save-location-action";
-import { logger } from "@/lib/client-logger";
-import type { SearchResult } from "@/lib/services/search-state-service";
-import { cleanAndTruncateDescription } from "@/lib/text-utils";
 
 interface SearchPanelProps {
   onResultSelect: (result: SearchResult) => void;
@@ -114,20 +114,25 @@ export function SearchPanel({
     setSavingId(result.id);
 
     try {
-      const { success, error: saveError } =
-        await saveLocationToConvexAction(result);
+      const {
+        success,
+        error: saveError,
+        id: newConvexId,
+      } = await saveLocationToConvexAction(result);
 
       if (saveError) {
         logger.error("Save failed:", saveError);
         // Show user-friendly toast error
         toast.error(`Failed to save: ${saveError}`);
       } else if (success) {
-        logger.success(`Saved to Convex: ${result.title}`);
+        logger.success(`Saved to Convex: ${result.title} (ID: ${newConvexId})`);
         // Mark as saved (turns green)
         setSavedIds((prev) => new Set(prev).add(result.id));
         // Show success toast
         toast.success(`Saved ${result.title}`);
-        // Don't trigger a new search - Convex reactive queries will update automatically
+        // Refresh search results to get the database version with proper Convex ID
+        // This ensures the delete button will work correctly
+        await search(query);
       }
     } catch (error) {
       logger.error("Save error:", error);

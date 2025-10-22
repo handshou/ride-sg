@@ -88,7 +88,7 @@ const saveLocationEffect = (result: SearchResult) =>
 
     // Save the new result (with timeout)
     yield* Effect.log(`Saving new result: "${result.title}"`);
-    yield* Effect.tryPromise({
+    const newConvexId = yield* Effect.tryPromise({
       try: () =>
         withTimeout(
           client.mutation(api.locations.saveLocation, {
@@ -108,12 +108,14 @@ const saveLocationEffect = (result: SearchResult) =>
       }),
     });
 
-    yield* Effect.log(`Successfully saved to Convex: ${result.title}`);
+    yield* Effect.log(
+      `Successfully saved to Convex: ${result.title} (ID: ${newConvexId})`,
+    );
 
     // Note: No need to dispatch custom events anymore!
     // Convex reactive queries will automatically update all components in real-time
 
-    return { success: true };
+    return { success: true, id: newConvexId as string };
   }).pipe(
     Effect.catchAll((error) =>
       Effect.gen(function* () {
@@ -157,6 +159,6 @@ const saveLocationEffect = (result: SearchResult) =>
  */
 export async function saveLocationToConvexAction(
   result: SearchResult,
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; id?: string }> {
   return await Effect.runPromise(saveLocationEffect(result));
 }

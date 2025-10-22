@@ -4,39 +4,26 @@ import { useEffect, useState } from "react";
 
 /**
  * Detect if device is mobile (can be called before mount)
+ * Only considers width, not touch capability (to avoid false positives on touchscreen laptops)
  */
 function detectMobile(): boolean {
   if (typeof window === "undefined") return false;
-  return (
-    window.innerWidth < 768 ||
-    ("ontouchstart" in window && window.innerWidth < 1024)
-  );
+  // Use only window width for detection (768px is common mobile breakpoint)
+  return window.innerWidth < 768;
 }
 
 /**
  * Hook to detect if the device is mobile
- * Uses window width and touch capability
+ * Uses window width only (< 768px = mobile)
  * Initializes with immediate detection to avoid hydration issues
  */
 export function useMobile() {
   // Initialize with actual mobile detection instead of false
-  const [isMobile, setIsMobile] = useState(() => {
-    const initial = detectMobile();
-    console.log("📱 useMobile initial detection:", initial, {
-      width: typeof window !== "undefined" ? window.innerWidth : "N/A",
-      hasTouch:
-        typeof window !== "undefined" ? "ontouchstart" in window : "N/A",
-    });
-    return initial;
-  });
+  const [isMobile, setIsMobile] = useState(() => detectMobile());
 
   useEffect(() => {
     const checkMobile = () => {
       const mobile = detectMobile();
-      console.log("📱 useMobile effect check:", mobile, {
-        width: window.innerWidth,
-        hasTouch: "ontouchstart" in window,
-      });
       setIsMobile(mobile);
     };
 
@@ -48,6 +35,5 @@ export function useMobile() {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  console.log("📱 useMobile render, returning:", isMobile);
   return isMobile;
 }

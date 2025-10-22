@@ -78,7 +78,13 @@ export function SingaporeMapExplorer({
   // Returns undefined during SSR or when ConvexProvider is not available
   const convexLocations = useQuery(api.locations.getRandomizableLocations, {});
   const [savedLocations, setSavedLocations] = useState<
-    Array<{ latitude: number; longitude: number; title: string }>
+    Array<{
+      latitude: number;
+      longitude: number;
+      title: string;
+      description?: string;
+      convexId?: string;
+    }>
   >([]);
   const [currentLocationIndex, setCurrentLocationIndex] = useState(0);
 
@@ -107,11 +113,13 @@ export function SingaporeMapExplorer({
       shuffled.map((loc, idx) => `${idx + 1}. ${loc.title}`).join(", "),
     );
 
-    // Map to simple format
+    // Map to simple format, keeping Convex ID and description
     const mappedLocations = shuffled.map((loc) => ({
       latitude: loc.latitude,
       longitude: loc.longitude,
       title: loc.title,
+      description: loc.description,
+      convexId: loc._id, // Keep the Convex ID for proper delete functionality
     }));
 
     setSavedLocations(mappedLocations);
@@ -216,17 +224,13 @@ export function SingaporeMapExplorer({
 
   const handleMapReady = useCallback(
     (map: mapboxgl.Map) => {
-      console.log("🗺️ handleMapReady called, isMobile:", isMobile);
       mapInstanceRef.current = map;
       setIsMapReady(true);
 
-      // Mobile-responsive zoom: start slightly more zoomed out on mobile
-      const targetZoom = isMobile ? 9 : 10; // 1 level more zoomed out on mobile
-      console.log(
-        `🎯 Target zoom: ${targetZoom}, isMobile: ${isMobile}, device: ${isMobile ? "mobile" : "desktop"}`,
-      );
+      // Mobile-responsive zoom: start more zoomed in on desktop for better detail
+      const targetZoom = isMobile ? 9 : 12; // Desktop: 12 (closer), Mobile: 9
       logger.debug(
-        `Map ready, flying in from zoom 2 to ${targetZoom} with pitch (${isMobile ? "mobile" : "desktop"})`,
+        `Map ready, flying to zoom ${targetZoom} (${isMobile ? "mobile" : "desktop"})`,
       );
       map.stop(); // Stop any ongoing animations
 
@@ -234,7 +238,7 @@ export function SingaporeMapExplorer({
       requestAnimationFrame(() => {
         map.flyTo({
           center: [initialRandomCoords.longitude, initialRandomCoords.latitude],
-          zoom: targetZoom, // Zoom 8 on mobile, 10 on desktop
+          zoom: targetZoom, // Mobile: 9, Desktop: 12
           pitch: 60, // Tilt the camera at 60 degrees for 3D view
           bearing: 0, // North-facing orientation
           duration: 2500, // Longer duration for dramatic effect
@@ -327,14 +331,16 @@ export function SingaporeMapExplorer({
       // If we have location info, create a SearchResult and add it to search panel
       if (newCoords.title) {
         const searchResult: SearchResult = {
-          id: `saved-${Date.now()}`,
+          // Use Convex ID if available (from saved locations), otherwise generate temp ID
+          id: (newCoords as any).convexId || `random-${Date.now()}`,
           title: newCoords.title,
-          description: newCoords.description || "Saved location",
+          description: newCoords.description || "Random location in Singapore",
           location: {
             latitude: newCoords.latitude,
             longitude: newCoords.longitude,
           },
-          source: "database",
+          // Mark as database if it has a Convex ID, otherwise mapbox
+          source: (newCoords as any).convexId ? "database" : "mapbox",
           timestamp: Date.now(),
         };
 
@@ -359,7 +365,7 @@ export function SingaporeMapExplorer({
           requestAnimationFrame(() => {
             map.flyTo({
               center: [newCoords.longitude, newCoords.latitude],
-              zoom: isMobile ? 9 : 10, // Mobile-responsive: 9 on mobile, 10 on desktop
+              zoom: isMobile ? 9 : 12, // Mobile: 9, Desktop: 12 (match initial zoom)
               duration: 1500,
               essential: true,
               curve: 1.2,
