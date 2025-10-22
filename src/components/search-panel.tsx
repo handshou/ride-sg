@@ -48,9 +48,11 @@ export function SearchPanel({
   const [savingId, setSavingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
-  const [hoveredSaveId, setHoveredSaveId] = useState<string | null>(null);
   const [currentResultIndex, setCurrentResultIndex] = useState(0);
   const [isResultsMinimized, setIsResultsMinimized] = useState(true);
+  const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<
+    Set<string>
+  >(new Set());
 
   // Memoized callback to add result and update UI
   const handleAddResult = useCallback(
@@ -102,9 +104,16 @@ export function SearchPanel({
     }
   };
 
+  // Filter out optimistically deleted results
+  const filteredResults = results.filter(
+    (r) => !optimisticallyDeletedIds.has(r.id),
+  );
+
   // Get results to display (1 for mobile, all for desktop)
   const displayResults =
-    isMobile && results.length > 0 ? [results[currentResultIndex]] : results;
+    isMobile && filteredResults.length > 0
+      ? [filteredResults[currentResultIndex]]
+      : filteredResults;
 
   const handleSaveToConvex = async (
     result: SearchResult,
@@ -149,22 +158,55 @@ export function SearchPanel({
     e.stopPropagation(); // Prevent selecting the result
     setDeletingId(result.id);
 
-    try {
-      const { success, error: deleteError } =
-        await deleteLocationFromConvexAction(result.id);
+    // Optimistically hide from UI immediately
+    setOptimisticallyDeletedIds((prev) => new Set(prev).add(result.id));
 
-      if (deleteError) {
-        logger.error("Delete failed:", deleteError);
-      } else if (success) {
-        logger.success(`Deleted from Convex: ${result.title}`);
-        // Trigger a new search to refresh the results list (will now search Exa)
-        await search(query);
+    // Use toast.promise for automatic loading/success/error states
+    const deletePromise = (async () => {
+      try {
+        const { success, error: deleteError } =
+          await deleteLocationFromConvexAction(result.id);
+
+        if (deleteError) {
+          logger.error("Delete failed:", deleteError);
+          // Revert optimistic deletion on error
+          setOptimisticallyDeletedIds((prev) => {
+            const newSet = new Set(prev);
+            newSet.delete(result.id);
+            return newSet;
+          });
+          throw new Error(deleteError);
+        } else if (success) {
+          logger.success(`Deleted from Convex: ${result.title}`);
+          // Refresh search to sync with Convex (will remove from actual results)
+          await search(query);
+          // Clear optimistic state after real data loads
+          setOptimisticallyDeletedIds((prev) => {
+            const newSet = new Set(prev);
+            newSet.delete(result.id);
+            return newSet;
+          });
+          return result.title;
+        }
+      } catch (error) {
+        logger.error("Delete error:", error);
+        // Revert optimistic deletion on error
+        setOptimisticallyDeletedIds((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(result.id);
+          return newSet;
+        });
+        throw error;
+      } finally {
+        setDeletingId(null);
       }
-    } catch (error) {
-      logger.error("Delete error:", error);
-    } finally {
-      setDeletingId(null);
-    }
+    })();
+
+    toast.promise(deletePromise, {
+      loading: `Deleting ${result.title}...`,
+      success: (title) => `Deleted ${title}`,
+      error: (err) => `Failed to delete: ${err.message || "Unknown error"}`,
+    });
   };
 
   return (
@@ -363,10 +405,8 @@ export function SearchPanel({
                           <button
                             type="button"
                             onClick={(e) => handleSaveToConvex(result, e)}
-                            onMouseEnter={() => setHoveredSaveId(result.id)}
-                            onMouseLeave={() => setHoveredSaveId(null)}
                             disabled={isSaving}
-                            className={`p-2 rounded-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed group relative ${
+                            className={`p-2 rounded-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed group ${
                               isSaved
                                 ? "text-red-500 dark:text-red-400"
                                 : "text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400"
@@ -386,11 +426,6 @@ export function SearchPanel({
                                     : "scale-100"
                               }`}
                             />
-                            {hoveredSaveId === result.id && !isSaved && (
-                              <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 dark:bg-gray-700 text-white text-xs px-2 py-1 rounded whitespace-nowrap z-50">
-                                Add to randomized list
-                              </span>
-                            )}
                           </button>
                         )}
 
@@ -420,7 +455,7 @@ export function SearchPanel({
 
       {/* Results Summary */}
       {results.length > 0 && (
-        <div className="p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+        <div className="p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 rounded-b-lg">
           <button
             type="button"
             onClick={() => setIsResultsMinimized(!isResultsMinimized)}
