@@ -12,6 +12,11 @@ import type { SearchResult } from "./search-state-service";
 import { SearchStateService } from "./search-state-service";
 
 /**
+ * Maximum number of search results to request and extract from Exa
+ */
+const MAX_EXA_SEARCH_RESULTS = 25;
+
+/**
  * Exa API Error
  */
 export class ExaError {
@@ -307,8 +312,8 @@ class ExaSearchServiceImpl {
           }
         }
 
-        // Limit to top 5
-        if (entries.length >= 5) break;
+        // Limit to maximum search results
+        if (entries.length >= MAX_EXA_SEARCH_RESULTS) break;
       }
 
       return entries;
@@ -317,8 +322,15 @@ class ExaSearchServiceImpl {
 
   /**
    * Search for Singapore landmarks using Exa Answer API
+   * @param query - Search query
+   * @param userLocation - Optional user location for location-based queries
+   * @param locationName - Optional human-readable location name from reverse geocoding
    */
-  search(query: string) {
+  search(
+    query: string,
+    userLocation?: { latitude: number; longitude: number },
+    locationName?: string,
+  ) {
     return Effect.gen(
       function* (this: ExaSearchServiceImpl) {
         const searchState = yield* SearchStateService;
@@ -375,8 +387,15 @@ class ExaSearchServiceImpl {
           `Searching Exa Answer API for Singapore landmarks: "${query}"`,
         );
 
+        // Add location context: use reverse-geocoded name if available, otherwise just "in Singapore"
+        const locationContext = locationName
+          ? `near ${locationName}`
+          : userLocation
+            ? `near ${userLocation.latitude}, ${userLocation.longitude} (coordinates) in Singapore`
+            : "in Singapore";
+
         // Concise query focused on essential location data
-        const enhancedQuery = `Find 5 locations for "${query}" in Singapore. For each, list:
+        const enhancedQuery = `Find up to ${MAX_EXA_SEARCH_RESULTS} locations for "${query}" ${locationContext}. For each, list:
 Name | Full Address | Brief description (max 8 words)
 
 Example format:
@@ -393,7 +412,7 @@ Example format:
               },
               body: JSON.stringify({
                 query: enhancedQuery,
-                num_sources: 8,
+                num_sources: MAX_EXA_SEARCH_RESULTS,
                 use_autoprompt: true,
               }),
             }),

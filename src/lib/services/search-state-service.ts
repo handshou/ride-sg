@@ -15,6 +15,7 @@ export interface SearchResult {
   timestamp: number;
   address?: string;
   url?: string;
+  distance?: number; // Distance in meters from reference point
 }
 
 export interface SearchState {

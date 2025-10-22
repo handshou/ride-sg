@@ -28,8 +28,17 @@ export function useSearchState() {
   /**
    * Perform a coordinated search using server action
    * This keeps API keys (EXA, Mapbox) secure on the server
+   * @param query - Search query string
+   * @param userLocation - Optional user location for Exa query context
+   * @param referenceLocation - Optional reference location for distance calculation
+   * @param locationName - Optional human-readable location name from reverse geocoding
    */
-  const search = async (query: string) => {
+  const search = async (
+    query: string,
+    userLocation?: { latitude: number; longitude: number },
+    referenceLocation?: { latitude: number; longitude: number },
+    locationName?: string,
+  ) => {
     try {
       // Set loading state
       setSearchState((prev) => ({
@@ -40,7 +49,12 @@ export function useSearchState() {
       }));
 
       // Call server action (keeps API keys server-side)
-      const { results, error } = await searchLandmarksAction(query);
+      const { results, error } = await searchLandmarksAction(
+        query,
+        userLocation,
+        referenceLocation,
+        locationName,
+      );
 
       if (error) {
         throw new Error(error);

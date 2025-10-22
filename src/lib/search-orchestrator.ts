@@ -121,15 +121,28 @@ function deduplicateResults(
  * 1. Search Convex database AND Exa API in parallel
  * 2. Merge results from both sources
  * 3. Deduplicate based on title similarity and coordinate proximity
- * 4. Return merged results (NO automatic saving to Convex)
+ * 4. Calculate distances if reference location provided
+ * 5. Sort results by distance (if applicable)
+ * 6. Return merged results (NO automatic saving to Convex)
  *
  * This strategy ensures:
  * - Comprehensive results from both cached and fresh data
  * - Fast parallel execution (no sequential waiting)
  * - No duplicate locations
+ * - Distance-based sorting for location-aware queries
  * - Manual control over which results to save
+ *
+ * @param query - Search query string
+ * @param userLocation - Optional user location for Exa query context
+ * @param referenceLocation - Optional reference location for distance calculation
+ * @param locationName - Optional human-readable location name from reverse geocoding
  */
-export const coordinatedSearchEffect = (query: string) =>
+export const coordinatedSearchEffect = (
+  query: string,
+  userLocation?: { latitude: number; longitude: number },
+  referenceLocation?: { latitude: number; longitude: number },
+  locationName?: string,
+) =>
   Effect.gen(function* () {
     const searchState = yield* SearchStateService;
     const exaService = yield* ExaSearchService;
@@ -150,7 +163,7 @@ export const coordinatedSearchEffect = (query: string) =>
             }),
           ),
         ),
-        exaService.search(query).pipe(
+        exaService.search(query, userLocation, locationName).pipe(
           Effect.catchAll((error) =>
             Effect.gen(function* () {
               yield* Effect.logError("Exa search failed", error);
@@ -167,7 +180,33 @@ export const coordinatedSearchEffect = (query: string) =>
     );
 
     // Deduplicate and merge results
-    const mergedResults = deduplicateResults(convexResults, exaResults);
+    let mergedResults = deduplicateResults(convexResults, exaResults);
+
+    // Calculate distances if reference location provided
+    if (referenceLocation) {
+      yield* Effect.log(
+        `Calculating distances from reference point: (${referenceLocation.latitude}, ${referenceLocation.longitude})`,
+      );
+
+      mergedResults = mergedResults.map((result) => ({
+        ...result,
+        distance: calculateDistance(
+          referenceLocation.latitude,
+          referenceLocation.longitude,
+          result.location.latitude,
+          result.location.longitude,
+        ),
+      }));
+
+      // Sort by distance (ascending)
+      mergedResults.sort(
+        (a, b) => (a.distance || Infinity) - (b.distance || Infinity),
+      );
+
+      yield* Effect.log(
+        `Results sorted by distance: ${mergedResults.map((r) => `${r.title} (${r.distance ? Math.round(r.distance) : "?"}m)`).join(", ")}`,
+      );
+    }
 
     yield* Effect.log(
       `Merged and deduplicated: ${mergedResults.length} unique results`,
@@ -219,8 +258,18 @@ export const watchSelectedResultEffect = () =>
 /**
  * Helper to run a search with all dependencies provided
  */
-export const runCoordinatedSearch = (query: string) =>
-  coordinatedSearchEffect(query).pipe(Effect.provide(SearchLayer));
+export const runCoordinatedSearch = (
+  query: string,
+  userLocation?: { latitude: number; longitude: number },
+  referenceLocation?: { latitude: number; longitude: number },
+  locationName?: string,
+) =>
+  coordinatedSearchEffect(
+    query,
+    userLocation,
+    referenceLocation,
+    locationName,
+  ).pipe(Effect.provide(SearchLayer));
 
 /**
  * Helper to get results with all dependencies provided

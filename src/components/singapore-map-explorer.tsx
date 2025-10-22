@@ -615,6 +615,13 @@ export function SingaporeMapExplorer({
       <SearchPanel
         onResultSelect={handleSearchResultSelect}
         onSearchStateReady={(addResult) => setAddSearchResult(() => addResult)}
+        onGetMapCenter={() => {
+          if (mapInstanceRef.current) {
+            const center = mapInstanceRef.current.getCenter();
+            return { lat: center.lat, lng: center.lng };
+          }
+          return undefined;
+        }}
       />
 
       {/* Bicycle Parking Panel - Hide on Mobile */}

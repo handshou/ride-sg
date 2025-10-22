@@ -1,6 +1,7 @@
 "use client";
 
 import { Exa } from "@lobehub/icons";
+import { Effect } from "effect";
 import {
   ChevronDown,
   ChevronLeft,
@@ -22,17 +23,20 @@ import { useSearchState } from "@/hooks/use-search-state";
 import { deleteLocationFromConvexAction } from "@/lib/actions/delete-location-action";
 import { saveLocationToConvexAction } from "@/lib/actions/save-location-action";
 import { logger } from "@/lib/client-logger";
+import { getCurrentPositionEffect } from "@/lib/services/geolocation-service";
 import type { SearchResult } from "@/lib/services/search-state-service";
 import { cleanAndTruncateDescription } from "@/lib/text-utils";
 
 interface SearchPanelProps {
   onResultSelect: (result: SearchResult) => void;
   onSearchStateReady?: (addResult: (result: SearchResult) => void) => void;
+  onGetMapCenter?: () => { lat: number; lng: number } | undefined;
 }
 
 export function SearchPanel({
   onResultSelect,
   onSearchStateReady,
+  onGetMapCenter,
 }: SearchPanelProps) {
   const isMobile = useMobile();
   const {
@@ -74,7 +78,68 @@ export function SearchPanel({
   const handleSearch = async () => {
     if (!query.trim()) return;
     setCurrentResultIndex(0); // Reset to first result on new search
-    await search(query);
+
+    // Detect location keywords
+    const hasNearMe = /near me/i.test(query);
+    const hasNearby = /nearby|around here/i.test(query);
+
+    let userLocation: { latitude: number; longitude: number } | undefined;
+    let referenceLocation: { latitude: number; longitude: number } | undefined;
+    let locationName: string | undefined;
+
+    // Get user location for "near me"
+    if (hasNearMe) {
+      try {
+        const result = await Effect.runPromise(getCurrentPositionEffect());
+        userLocation = result;
+        referenceLocation = result; // Use for distance calculation
+        logger.info("User location obtained", result);
+
+        // Reverse geocode to get location name for Exa
+        try {
+          const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+          if (mapboxToken) {
+            const reverseGeoResponse = await fetch(
+              `https://api.mapbox.com/geocoding/v5/mapbox.places/${result.longitude},${result.latitude}.json?access_token=${mapboxToken}&limit=1`,
+            );
+            const reverseGeoData = await reverseGeoResponse.json();
+            if (reverseGeoData.features && reverseGeoData.features.length > 0) {
+              locationName = reverseGeoData.features[0].place_name;
+              logger.info("Reverse geocoded location", locationName);
+            }
+          }
+        } catch (error) {
+          logger.warn("Failed to reverse geocode location", error);
+        }
+      } catch (_error) {
+        // Fallback: use map center if available
+        logger.warn("Failed to get user location, falling back to map center");
+        if (onGetMapCenter) {
+          const mapCenter = onGetMapCenter();
+          if (mapCenter) {
+            referenceLocation = {
+              latitude: mapCenter.lat,
+              longitude: mapCenter.lng,
+            };
+          }
+        }
+      }
+    }
+
+    // Get map center for "nearby" or "around here"
+    if (hasNearby && onGetMapCenter) {
+      const mapCenter = onGetMapCenter();
+      if (mapCenter) {
+        referenceLocation = {
+          latitude: mapCenter.lat,
+          longitude: mapCenter.lng,
+        };
+        logger.info("Using map center for location-based search", mapCenter);
+      }
+    }
+
+    // Perform search with location context
+    await search(query, userLocation, referenceLocation, locationName);
   };
 
   const handleResultClick = (result: SearchResult) => {
@@ -382,6 +447,14 @@ export function SearchPanel({
                                   </>
                                 )}
                               </Badge>
+                              {result.distance !== undefined && (
+                                <span className="text-xs text-gray-500 dark:text-gray-400">
+                                  📍{" "}
+                                  {result.distance < 1000
+                                    ? `${Math.round(result.distance)}m away`
+                                    : `${(result.distance / 1000).toFixed(1)}km away`}
+                                </span>
+                              )}
                               {result.address &&
                                 (() => {
                                   // Extract postal code (6 digits) from address

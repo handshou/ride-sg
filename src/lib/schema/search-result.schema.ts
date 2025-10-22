@@ -37,6 +37,7 @@ export const SearchResultSchema = Schema.Struct({
   timestamp: Schema.Number,
   address: Schema.optional(Schema.String),
   url: Schema.optional(Schema.String),
+  distance: Schema.optional(Schema.Number), // Distance in meters from reference point
 });
 
 /**

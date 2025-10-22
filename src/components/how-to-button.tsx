@@ -34,7 +34,7 @@ export function HowToButton() {
         // biome-ignore lint/a11y/noStaticElementInteractions: Modal backdrop is a common pattern
         <div
           role="presentation"
-          className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-3 sm:p-4"
+          className="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center p-3 sm:p-4"
           onClick={() => setIsOpen(false)}
           onKeyDown={(e) => {
             if (e.key === "Escape") setIsOpen(false);
