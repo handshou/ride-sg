@@ -23,7 +23,13 @@ import { MAPBOX_STYLES } from "@/lib/map-styles";
 import type { BicycleParkingResult } from "@/lib/schema/bicycle-parking.schema";
 import type { GeocodeResult } from "@/lib/services/mapbox-service";
 import type { SearchResult } from "@/lib/services/search-state-service";
+import {
+  getThemeForMapStyleEffect,
+  ThemeSyncServiceLive,
+} from "@/lib/services/theme-sync-service";
 import { useQuery } from "convex/react";
+import { Effect } from "effect";
+import { useTheme } from "next-themes";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../../convex/_generated/api";
 
@@ -41,6 +47,8 @@ export function SingaporeMapExplorer({
   mapboxPublicToken,
 }: SingaporeMapExplorerProps) {
   const isMobile = useMobile();
+  const { setTheme } = useTheme();
+
   const [randomCoords, setRandomCoords] = useState(initialRandomCoords);
   const [staticMapUrlState, setStaticMapUrlState] = useState(staticMapUrl);
   const mapInstanceRef = useRef<mapboxgl.Map | null>(null);
@@ -73,6 +81,7 @@ export function SingaporeMapExplorer({
 
   // 3D Buildings visualization state
   const [show3DBuildings, setShow3DBuildings] = useState(false);
+  const [currentStyleSupports3D, setCurrentStyleSupports3D] = useState(true);
 
   // Saved locations for random navigation - using Convex reactive query
   // Returns undefined during SSR or when ConvexProvider is not available
@@ -160,21 +169,15 @@ export function SingaporeMapExplorer({
     }
   }, [mapLocation, fetchBicycleParking]);
 
-  // Handle 3D buildings toggle
-  // biome-ignore lint/correctness/useExhaustiveDependencies: mapStyle needed to re-add layer after style change
-  useEffect(() => {
-    if (!mapInstanceRef.current || !isMapReady) return;
-
-    const map = mapInstanceRef.current;
-
-    const toggle3DBuildings = () => {
+  // Handle 3D buildings toggle using centralized Map Style Context
+  const toggle3DBuildings = useCallback(
+    (map: mapboxgl.Map) => {
       // Wait for style to be loaded
       if (!map.isStyleLoaded()) {
-        map.once("style.load", toggle3DBuildings);
+        map.once("style.load", () => toggle3DBuildings(map));
         return;
       }
 
-      // Check if 3D buildings layer already exists
       const layer = map.getLayer("3d-buildings");
 
       if (show3DBuildings && !layer) {
@@ -238,32 +241,80 @@ export function SingaporeMapExplorer({
         map.removeLayer("3d-buildings");
         logger.info("3D buildings layer removed");
       }
-    };
+    },
+    [show3DBuildings],
+  );
 
-    toggle3DBuildings();
+  // Handle 3D buildings toggle state changes
+  useEffect(() => {
+    if (!mapInstanceRef.current || !isMapReady) return;
+    toggle3DBuildings(mapInstanceRef.current);
+  }, [show3DBuildings, isMapReady, toggle3DBuildings]);
 
-    // Listen for style changes and re-add 3D buildings if enabled
-    const handleStyleData = () => {
-      if (show3DBuildings) {
-        logger.info("🗺️ Map style changed, re-adding 3D buildings layer");
-        // Use a small delay to ensure style is fully loaded
+  // Listen for style changes and re-add 3D buildings (with style compatibility check)
+  useEffect(() => {
+    if (!mapInstanceRef.current || !isMapReady) return;
+
+    const map = mapInstanceRef.current;
+
+    const handle3DBuildingsStyleChange = () => {
+      // Get current style and check if it supports 3D buildings
+      const currentStyleUrl = map.getStyle()?.sprite;
+      
+      // Detect which style is currently active
+      let currentStyle = "light";
+      if (currentStyleUrl?.includes("satellite-streets")) {
+        currentStyle = "satelliteStreets";
+      } else if (currentStyleUrl?.includes("satellite")) {
+        currentStyle = "satellite"; // Pure satellite (no buildings)
+      } else if (currentStyleUrl?.includes("dark")) {
+        currentStyle = "dark";
+      } else if (currentStyleUrl?.includes("outdoors")) {
+        currentStyle = "outdoors";
+      }
+
+      // Only pure satellite (v9) doesn't support 3D buildings
+      const supports3D = currentStyle !== "satellite";
+      setCurrentStyleSupports3D(supports3D);
+
+      if (!supports3D && show3DBuildings) {
+        logger.info(`3D buildings disabled (${currentStyle} style doesn't support them)`);
+        setShow3DBuildings(false);
+        return;
+      }
+
+      if (show3DBuildings && supports3D) {
+        // Small delay to ensure style is fully loaded
         setTimeout(() => {
-          toggle3DBuildings();
+          toggle3DBuildings(map);
         }, 100);
       }
     };
 
-    map.on("styledata", handleStyleData);
+    map.on("styledata", handle3DBuildingsStyleChange);
 
     return () => {
-      map.off("styledata", handleStyleData);
+      map.off("styledata", handle3DBuildingsStyleChange);
     };
-  }, [show3DBuildings, isMapReady, mapStyle]);
+  }, [mapInstanceRef, isMapReady, show3DBuildings, toggle3DBuildings]);
 
   const handleMapReady = useCallback(
-    (map: mapboxgl.Map) => {
+    async (map: mapboxgl.Map) => {
       mapInstanceRef.current = map;
       setIsMapReady(true);
+
+      // Sync UI theme with map style on initial load
+      try {
+        const theme = await Effect.runPromise(
+          getThemeForMapStyleEffect("dark").pipe(
+            Effect.provide(ThemeSyncServiceLive),
+          ),
+        );
+        setTheme(theme);
+        logger.success(`Initial theme synced to ${theme} (map style: dark)`);
+      } catch (error) {
+        logger.error("Failed to sync initial theme:", error);
+      }
 
       // Mobile-responsive zoom: start more zoomed in on desktop for better detail
       const targetZoom = isMobile ? 9 : 12; // Desktop: 12 (closer), Mobile: 9
@@ -286,7 +337,7 @@ export function SingaporeMapExplorer({
         });
       });
     },
-    [initialRandomCoords, isMobile],
+    [initialRandomCoords, isMobile, setTheme],
   );
 
   // Handle search result selection - flyTo the selected location (moved before handleCoordinatesGenerated)
@@ -471,6 +522,7 @@ export function SingaporeMapExplorer({
   // Handle map style changes
   const handleStyleChange = useCallback((newStyle: string) => {
     setMapStyle(newStyle);
+    logger.info(`Map style changed to: ${newStyle}`);
   }, []);
 
   // Handle bicycle parking selection - flyTo the parking location
@@ -526,6 +578,7 @@ export function SingaporeMapExplorer({
         <MapStyleSelector onStyleChange={handleStyleChange} />
         <Buildings3DToggleButton
           isActive={show3DBuildings}
+          disabled={!currentStyleSupports3D}
           onClick={() => setShow3DBuildings(!show3DBuildings)}
         />
         <RandomCoordinatesButton

@@ -1,11 +1,11 @@
 "use client";
 
-import { logger } from "@/lib/client-logger";
-import type { BicycleParkingResult } from "@/lib/schema/bicycle-parking.schema";
-import { MapReadinessServiceImpl } from "@/lib/services/map-readiness-service";
 import { Effect } from "effect";
 import mapboxgl from "mapbox-gl";
 import { useEffect, useRef } from "react";
+import { logger } from "@/lib/client-logger";
+import type { BicycleParkingResult } from "@/lib/schema/bicycle-parking.schema";
+import { MapReadinessServiceImpl } from "@/lib/services/map-readiness-service";
 
 interface BicycleParkingOverlayProps {
   map: mapboxgl.Map;

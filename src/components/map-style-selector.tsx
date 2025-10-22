@@ -1,5 +1,9 @@
 "use client";
 
+import { Effect } from "effect";
+import { Layers, Moon, Mountain, Satellite, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -14,10 +18,6 @@ import {
   type MapStyleMode,
   ThemeSyncServiceLive,
 } from "@/lib/services/theme-sync-service";
-import { Effect } from "effect";
-import { Layers, Moon, Mountain, Satellite, Sun } from "lucide-react";
-import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
 
 interface MapStyleSelectorProps {
   onStyleChange: (style: string) => void;
