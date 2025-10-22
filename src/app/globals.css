@@ -148,7 +148,7 @@ body {
 
 /* Mapbox Popup Styling */
 .mapboxgl-popup {
-  z-index: 1000 !important; /* Ensure popups appear above all markers */
+  z-index: 1000; /* Ensure popups appear above all markers */
 }
 
 .mapboxgl-popup-content {
@@ -173,7 +173,7 @@ body {
   font-size: 20px;
   padding: 0;
   margin: 0;
-  right: 5px !important; /* Move 3px left from default 8px */
+  right: 5px; /* Move 3px left from default 8px */
   top: 5px;
   width: 20px;
   height: 20px;
@@ -189,31 +189,31 @@ body {
 /* Adjust popup anchor for bottom */
 .mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip {
   @apply border-t-white dark:border-t-gray-900;
-  border-bottom-color: transparent !important;
-  border-left-color: transparent !important;
-  border-right-color: transparent !important;
+  border-bottom-color: transparent;
+  border-left-color: transparent;
+  border-right-color: transparent;
 }
 
 /* Adjust popup anchor for top */
 .mapboxgl-popup-anchor-top .mapboxgl-popup-tip {
   @apply border-b-white dark:border-b-gray-900;
-  border-top-color: transparent !important;
-  border-left-color: transparent !important;
-  border-right-color: transparent !important;
+  border-top-color: transparent;
+  border-left-color: transparent;
+  border-right-color: transparent;
 }
 
 /* Adjust popup anchor for left */
 .mapboxgl-popup-anchor-left .mapboxgl-popup-tip {
   @apply border-r-white dark:border-r-gray-900;
-  border-left-color: transparent !important;
-  border-top-color: transparent !important;
-  border-bottom-color: transparent !important;
+  border-left-color: transparent;
+  border-top-color: transparent;
+  border-bottom-color: transparent;
 }
 
 /* Adjust popup anchor for right */
 .mapboxgl-popup-anchor-right .mapboxgl-popup-tip {
   @apply border-l-white dark:border-l-gray-900;
-  border-right-color: transparent !important;
-  border-top-color: transparent !important;
-  border-bottom-color: transparent !important;
+  border-right-color: transparent;
+  border-top-color: transparent;
+  border-bottom-color: transparent;
 }

@@ -160,6 +160,7 @@ function getMockRainfallData() {
   return [
     // Heavy rain in north
     {
+      // biome-ignore lint/suspicious/noExplicitAny: Mock IDs need to match Convex Id<"rainfall"> type
       _id: "mock_1" as any,
       _creationTime: fetchedAt,
       stationId: "S50",
@@ -171,6 +172,7 @@ function getMockRainfallData() {
       fetchedAt: fetchedAt,
     },
     {
+      // biome-ignore lint/suspicious/noExplicitAny: Mock IDs need to match Convex Id<"rainfall"> type
       _id: "mock_2" as any,
       _creationTime: fetchedAt,
       stationId: "S06",
@@ -183,6 +185,7 @@ function getMockRainfallData() {
     },
     // Moderate rain in central
     {
+      // biome-ignore lint/suspicious/noExplicitAny: Mock IDs need to match Convex Id<"rainfall"> type
       _id: "mock_3" as any,
       _creationTime: fetchedAt,
       stationId: "S44",
@@ -194,6 +197,7 @@ function getMockRainfallData() {
       fetchedAt: fetchedAt,
     },
     {
+      // biome-ignore lint/suspicious/noExplicitAny: Mock IDs need to match Convex Id<"rainfall"> type
       _id: "mock_4" as any,
       _creationTime: fetchedAt,
       stationId: "S107",
@@ -206,6 +210,7 @@ function getMockRainfallData() {
     },
     // Light rain in south
     {
+      // biome-ignore lint/suspicious/noExplicitAny: Mock IDs need to match Convex Id<"rainfall"> type
       _id: "mock_5" as any,
       _creationTime: fetchedAt,
       stationId: "S24",
@@ -217,6 +222,7 @@ function getMockRainfallData() {
       fetchedAt: fetchedAt,
     },
     {
+      // biome-ignore lint/suspicious/noExplicitAny: Mock IDs need to match Convex Id<"rainfall"> type
       _id: "mock_6" as any,
       _creationTime: fetchedAt,
       stationId: "S104",
@@ -229,6 +235,7 @@ function getMockRainfallData() {
     },
     // No rain in some areas
     {
+      // biome-ignore lint/suspicious/noExplicitAny: Mock IDs need to match Convex Id<"rainfall"> type
       _id: "mock_7" as any,
       _creationTime: fetchedAt,
       stationId: "S109",
@@ -240,6 +247,7 @@ function getMockRainfallData() {
       fetchedAt: fetchedAt,
     },
     {
+      // biome-ignore lint/suspicious/noExplicitAny: Mock IDs need to match Convex Id<"rainfall"> type
       _id: "mock_8" as any,
       _creationTime: fetchedAt,
       stationId: "S60",
@@ -252,6 +260,7 @@ function getMockRainfallData() {
     },
     // More varied readings
     {
+      // biome-ignore lint/suspicious/noExplicitAny: Mock IDs need to match Convex Id<"rainfall"> type
       _id: "mock_9" as any,
       _creationTime: fetchedAt,
       stationId: "S121",
@@ -263,6 +272,7 @@ function getMockRainfallData() {
       fetchedAt: fetchedAt,
     },
     {
+      // biome-ignore lint/suspicious/noExplicitAny: Mock IDs need to match Convex Id<"rainfall"> type
       _id: "mock_10" as any,
       _creationTime: fetchedAt,
       stationId: "S111",
@@ -274,6 +284,7 @@ function getMockRainfallData() {
       fetchedAt: fetchedAt,
     },
     {
+      // biome-ignore lint/suspicious/noExplicitAny: Mock IDs need to match Convex Id<"rainfall"> type
       _id: "mock_11" as any,
       _creationTime: fetchedAt,
       stationId: "S115",
@@ -285,6 +296,7 @@ function getMockRainfallData() {
       fetchedAt: fetchedAt,
     },
     {
+      // biome-ignore lint/suspicious/noExplicitAny: Mock IDs need to match Convex Id<"rainfall"> type
       _id: "mock_12" as any,
       _creationTime: fetchedAt,
       stationId: "S43",

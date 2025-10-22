@@ -1,5 +1,9 @@
 "use client";
 
+import { useQuery } from "convex/react";
+import { Effect } from "effect";
+import { useTheme } from "next-themes";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { BicycleParkingOverlay } from "@/components/bicycle-parking-overlay";
 import { BicycleParkingPanel } from "@/components/bicycle-parking-panel";
 import { Buildings3DToggleButton } from "@/components/buildings-3d-toggle-button";
@@ -27,10 +31,6 @@ import {
   getThemeForMapStyleEffect,
   ThemeSyncServiceLive,
 } from "@/lib/services/theme-sync-service";
-import { useQuery } from "convex/react";
-import { Effect } from "effect";
-import { useTheme } from "next-themes";
-import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../../convex/_generated/api";
 
 interface SingaporeMapExplorerProps {
@@ -249,7 +249,7 @@ export function SingaporeMapExplorer({
   useEffect(() => {
     if (!mapInstanceRef.current || !isMapReady) return;
     toggle3DBuildings(mapInstanceRef.current);
-  }, [show3DBuildings, isMapReady, toggle3DBuildings]);
+  }, [isMapReady, toggle3DBuildings]);
 
   // Listen for style changes and re-add 3D buildings (with style compatibility check)
   useEffect(() => {
@@ -304,7 +304,7 @@ export function SingaporeMapExplorer({
     return () => {
       map.off("styledata", handle3DBuildingsStyleChange);
     };
-  }, [mapInstanceRef, isMapReady, show3DBuildings, toggle3DBuildings]);
+  }, [isMapReady, show3DBuildings, toggle3DBuildings]);
 
   const handleMapReady = useCallback(
     async (map: mapboxgl.Map) => {
@@ -429,6 +429,7 @@ export function SingaporeMapExplorer({
       if (newCoords.title) {
         const searchResult: SearchResult = {
           // Use Convex ID if available (from saved locations), otherwise generate temp ID
+          // biome-ignore lint/suspicious/noExplicitAny: Optional convexId property from saved locations
           id: (newCoords as any).convexId || `random-${Date.now()}`,
           title: newCoords.title,
           description: newCoords.description || "Random location in Singapore",
@@ -437,6 +438,7 @@ export function SingaporeMapExplorer({
             longitude: newCoords.longitude,
           },
           // Mark as database if it has a Convex ID, otherwise mapbox
+          // biome-ignore lint/suspicious/noExplicitAny: Optional convexId property from saved locations
           source: (newCoords as any).convexId ? "database" : "mapbox",
           timestamp: Date.now(),
         };

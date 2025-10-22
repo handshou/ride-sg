@@ -63,6 +63,7 @@ export function SavedBicycleParkingOverlay({
 
       // Add global function to remove saved bicycle parking
       if (typeof window !== "undefined") {
+        // biome-ignore lint/suspicious/noExplicitAny: Global window function for popup interaction
         (window as any).removeSavedBicycleParking = (locationKey: string) => {
           const savedLocations: BicycleParkingResult[] = JSON.parse(
             localStorage.getItem("savedBicycleParkingLocations") || "[]",
