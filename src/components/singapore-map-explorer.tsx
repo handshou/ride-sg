@@ -64,8 +64,8 @@ export function SingaporeMapExplorer({
     ((result: SearchResult) => void) | null
   >(null);
 
-  // Always use satellite-streets as default map style
-  const [mapStyle, setMapStyle] = useState(MAPBOX_STYLES.satelliteStreets);
+  // Use dark theme as default map style
+  const [mapStyle, setMapStyle] = useState(MAPBOX_STYLES.dark);
 
   // Rainfall visualization state - auto-enabled on load
   const [showRainfall, setShowRainfall] = useState(true);
