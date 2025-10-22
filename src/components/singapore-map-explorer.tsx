@@ -286,10 +286,14 @@ export function SingaporeMapExplorer({
       }
 
       if (show3DBuildings && supports3D) {
-        // Small delay to ensure style is fully loaded
+        // Delay to ensure style is fully loaded (500ms for reliability across devices)
         setTimeout(() => {
+          if (!map.isStyleLoaded()) {
+            logger.warn("Style not fully loaded after 500ms, skipping 3D buildings");
+            return;
+          }
           toggle3DBuildings(map);
-        }, 100);
+        }, 500);
       }
     };
 
