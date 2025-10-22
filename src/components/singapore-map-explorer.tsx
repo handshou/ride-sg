@@ -260,7 +260,7 @@ export function SingaporeMapExplorer({
     const handle3DBuildingsStyleChange = () => {
       // Get current style and check if it supports 3D buildings
       const currentStyleUrl = map.getStyle()?.sprite;
-      
+
       // Detect which style is currently active
       let currentStyle = "light";
       if (currentStyleUrl?.includes("satellite-streets")) {
@@ -278,7 +278,9 @@ export function SingaporeMapExplorer({
       setCurrentStyleSupports3D(supports3D);
 
       if (!supports3D && show3DBuildings) {
-        logger.info(`3D buildings disabled (${currentStyle} style doesn't support them)`);
+        logger.info(
+          `3D buildings disabled (${currentStyle} style doesn't support them)`,
+        );
         setShow3DBuildings(false);
         return;
       }
