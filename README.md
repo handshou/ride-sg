@@ -2,6 +2,10 @@
 
 A modern Singapore map explorer with intelligent landmark search, real-time bicycle parking, and rainfall visualization.
 
+**🏆 Hackathon Submission (Cutoff: Oct 19, 2025 9:00 AM SGT)**
+- **[Live Demo](https://ride-lwfrxwc1s-handshous-projects.vercel.app?_vercel_share=pdX2roJsPJaV2fITyuAlUH4aARHA4p7I)** - Production deployment at cutoff time
+- **[Source Code](https://github.com/handshou/ride-sg/tree/71dfee2497333f609629f932e1db6666493ed590)** - GitHub repository snapshot at cutoff time
+
 **Built at [Cursor Hackathon SG 2025](https://luma.com/cursor-hack-sg)** - A 24-hour hackathon with 500+ builders, sponsored by Cursor, OpenAI, DeepMind, Anthropic, Groq, ElevenLabs, Supabase, Convex, Exa, and more.
 
 ## 🚀 Technologies
