@@ -166,6 +166,7 @@ export class MapboxService extends Effect.Service<MapboxService>()(
   {
     effect: Effect.gen(function* () {
       const config = yield* ConfigService;
+      yield* Effect.logDebug("📍 MapboxService initialized");
       return new MapboxServiceImpl(config);
     }),
     dependencies: [ConfigService.Default],

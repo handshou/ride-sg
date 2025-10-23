@@ -179,7 +179,7 @@ export class ThemeSyncService extends Context.Tag("ThemeSyncService")<
 export const ThemeSyncServiceLive = Layer.succeed(
   ThemeSyncService,
   new ThemeSyncServiceImpl(),
-);
+).pipe(Layer.tap(() => Effect.logDebug("🎨 ThemeSyncService initialized")));
 
 /**
  * Convenience functions for use in React components

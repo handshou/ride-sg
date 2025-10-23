@@ -82,4 +82,4 @@ export const MapReadinessServiceTag = Context.GenericTag<MapReadinessService>(
 export const MapReadinessServiceLive = Layer.succeed(
   MapReadinessServiceTag,
   new MapReadinessServiceImpl(),
-);
+).pipe(Layer.tap(() => Effect.logDebug("🗺️ MapReadinessService initialized")));

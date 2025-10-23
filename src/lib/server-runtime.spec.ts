@@ -1,16 +1,26 @@
-import { Effect } from "effect";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import {
   getCurrentLocation,
   getRandomSingaporeCoords,
   getSingaporeLocation,
   getStaticMap,
+  runServerEffectAsync,
 } from "./server-runtime";
 
 describe("Server Runtime - Live Functionality", () => {
+  // Initialize the server runtime before running tests
+  beforeAll(async () => {
+    // Set NEXT_RUNTIME to nodejs for testing
+    process.env.NEXT_RUNTIME = "nodejs";
+
+    // Import and call register from instrumentation (synchronous)
+    const { register } = await import("../../instrumentation");
+    register();
+  });
+
   describe("getSingaporeLocation", () => {
     it("should return Singapore location data", async () => {
-      const result = await Effect.runPromise(getSingaporeLocation());
+      const result = await runServerEffectAsync(getSingaporeLocation());
 
       expect(result).toBeInstanceOf(Array);
       expect(result.length).toBeGreaterThan(0);
@@ -23,7 +33,7 @@ describe("Server Runtime - Live Functionality", () => {
 
   describe("getCurrentLocation", () => {
     it("should return current location data", async () => {
-      const result = await Effect.runPromise(getCurrentLocation());
+      const result = await runServerEffectAsync(getCurrentLocation());
 
       expect(result).toBeInstanceOf(Array);
       expect(result.length).toBeGreaterThan(0);
@@ -34,7 +44,7 @@ describe("Server Runtime - Live Functionality", () => {
 
   describe("getRandomSingaporeCoords", () => {
     it("should return random coordinates within Singapore bounds", async () => {
-      const result = await Effect.runPromise(getRandomSingaporeCoords());
+      const result = await runServerEffectAsync(getRandomSingaporeCoords());
 
       expect(result).toHaveProperty("latitude");
       expect(result).toHaveProperty("longitude");
@@ -48,7 +58,7 @@ describe("Server Runtime - Live Functionality", () => {
       // Test multiple times to ensure randomness
       const results = [];
       for (let i = 0; i < 5; i++) {
-        const result = await Effect.runPromise(getRandomSingaporeCoords());
+        const result = await runServerEffectAsync(getRandomSingaporeCoords());
         results.push(result);
       }
 
@@ -74,7 +84,7 @@ describe("Server Runtime - Live Functionality", () => {
   describe("getStaticMap", () => {
     it("should return a valid map URL", async () => {
       const coords = { longitude: 103.8, latitude: 1.3 };
-      const result = await Effect.runPromise(
+      const result = await runServerEffectAsync(
         getStaticMap(coords, 12, { width: 400, height: 300 }),
       );
 

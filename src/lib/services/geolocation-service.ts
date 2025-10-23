@@ -87,7 +87,7 @@ export const GeolocationServiceTag =
 export const GeolocationServiceLive = Layer.succeed(
   GeolocationServiceTag,
   new GeolocationServiceImpl(),
-);
+).pipe(Layer.tap(() => Effect.logDebug("📍 GeolocationService initialized")));
 
 // Helper function for client-side usage
 export const getCurrentPositionEffect = (): Effect.Effect<

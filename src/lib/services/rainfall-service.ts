@@ -127,6 +127,7 @@ export class RainfallService extends Effect.Service<RainfallService>()(
   {
     effect: Effect.gen(function* () {
       const config = yield* ConfigService;
+      yield* Effect.logDebug("🌧️ RainfallService initialized");
       return new RainfallServiceImpl(config);
     }),
     dependencies: [ConfigService.Default],

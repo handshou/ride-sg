@@ -40,6 +40,9 @@ export class ConfigService extends Effect.Service<ConfigService>()(
   "ConfigService",
   {
     effect: Effect.gen(function* () {
+      yield* Effect.logDebug(
+        "⚙️ ConfigService loading environment variables...",
+      );
       // Load all configs in parallel
       const config: AppConfig = {
         mapbox: {

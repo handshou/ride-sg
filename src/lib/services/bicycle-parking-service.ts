@@ -259,6 +259,7 @@ export class BicycleParkingService extends Effect.Service<BicycleParkingService>
   {
     effect: Effect.gen(function* () {
       const config = yield* ConfigService;
+      yield* Effect.logDebug("🚲 BicycleParkingService initialized");
       return new BicycleParkingServiceImpl(config);
     }),
     dependencies: [ConfigService.Default],

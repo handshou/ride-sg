@@ -1,13 +1,13 @@
 "use server";
 
-import { Effect } from "effect";
 import { runCoordinatedSearch } from "../search-orchestrator";
+import { runServerEffectAsync } from "../server-runtime";
 import type { SearchResult } from "../services/search-state-service";
 
 /**
  * Server Action: Perform a coordinated search
  *
- * This runs on the server side, keeping API keys secure.
+ * This runs on the server side using the managed runtime, keeping API keys secure.
  * The search orchestrator will:
  * 1. Search Convex first
  * 2. If empty, search Exa API (server-side, secure)
@@ -15,6 +15,9 @@ import type { SearchResult } from "../services/search-state-service";
  * 4. Calculate distances if reference location provided
  * 5. Sort results by distance (if applicable)
  * 6. Return results to client
+ *
+ * Uses the managed server runtime initialized in instrumentation.ts.
+ * All services are automatically provided by the runtime.
  *
  * @param query - Search query string
  * @param userLocation - Optional user location for Exa query context
@@ -28,8 +31,8 @@ export async function searchLandmarksAction(
   locationName?: string,
 ): Promise<{ results: SearchResult[]; error?: string }> {
   try {
-    // Run the coordinated search effect
-    const results = await Effect.runPromise(
+    // Run the coordinated search effect using managed runtime
+    const results = await runServerEffectAsync(
       runCoordinatedSearch(
         query,
         userLocation,

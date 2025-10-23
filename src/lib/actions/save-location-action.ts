@@ -3,6 +3,7 @@
 import { ConvexHttpClient } from "convex/browser";
 import { Effect } from "effect";
 import { api } from "../../../convex/_generated/api";
+import { runServerEffectAsync } from "../server-runtime";
 import type { SearchResult } from "../services/search-state-service";
 
 /**
@@ -156,9 +157,11 @@ const saveLocationEffect = (result: SearchResult) =>
  *
  * This allows users to manually choose which result to save to Convex,
  * overriding any existing results for the same location name.
+ *
+ * Uses the managed server runtime initialized in instrumentation.ts.
  */
 export async function saveLocationToConvexAction(
   result: SearchResult,
 ): Promise<{ success: boolean; error?: string; id?: string }> {
-  return await Effect.runPromise(saveLocationEffect(result));
+  return await runServerEffectAsync(saveLocationEffect(result));
 }

@@ -61,7 +61,7 @@ export const ToastServiceTag = Context.GenericTag<ToastService>("ToastService");
 export const ToastServiceLive = Layer.succeed(
   ToastServiceTag,
   new ToastServiceImpl(),
-);
+).pipe(Layer.tap(() => Effect.logDebug("📢 ToastService initialized")));
 
 /**
  * Effect to show success toast
