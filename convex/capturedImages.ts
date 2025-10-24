@@ -92,6 +92,8 @@ export const saveCapturedImage = mutation({
     orientation: v.union(v.literal("portrait"), v.literal("landscape")),
     latitude: v.optional(v.number()),
     longitude: v.optional(v.number()),
+    deviceHeading: v.optional(v.number()),
+    cameraFov: v.optional(v.number()),
     capturedAt: v.number(),
   },
   handler: async (ctx, args) => {
@@ -110,6 +112,8 @@ export const saveCapturedImage = mutation({
       orientation: args.orientation,
       latitude: args.latitude,
       longitude: args.longitude,
+      deviceHeading: args.deviceHeading,
+      cameraFov: args.cameraFov,
       analysisStatus: "pending",
       capturedAt: args.capturedAt,
     });
@@ -125,6 +129,17 @@ export const updateImageAnalysis = mutation({
   args: {
     imageId: v.id("capturedImages"),
     analysis: v.string(),
+    analyzedObjects: v.optional(
+      v.array(
+        v.object({
+          name: v.string(),
+          confidence: v.optional(v.number()),
+          bearing: v.optional(v.number()),
+          distance: v.optional(v.number()),
+          description: v.optional(v.string()),
+        }),
+      ),
+    ),
     status: v.union(
       v.literal("completed"),
       v.literal("failed"),
@@ -134,6 +149,7 @@ export const updateImageAnalysis = mutation({
   handler: async (ctx, args) => {
     await ctx.db.patch(args.imageId, {
       analysis: args.analysis,
+      analyzedObjects: args.analyzedObjects,
       analysisStatus: args.status,
     });
     return args.imageId;

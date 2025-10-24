@@ -10,6 +10,7 @@ import { Buildings3DToggleButton } from "@/components/buildings-3d-toggle-button
 import { CameraCaptureButton } from "@/components/camera-capture-button";
 import { ErrorToastHandler } from "@/components/error-toast-handler";
 import { HowToButton } from "@/components/how-to-button";
+import { ImageAnalysisOverlay } from "@/components/image-analysis-overlay";
 import { LocateMeButton } from "@/components/locate-me-button";
 import { MapStyleSelector } from "@/components/map-style-selector";
 import { MapboxGLMap } from "@/components/mapbox-gl-map";
@@ -584,7 +585,11 @@ export function SingaporeMapExplorer({
       />
 
       {/* Header with map style selector and navigation controls */}
-      <div className="absolute top-4 left-4 z-10 flex gap-2">
+      <div
+        className={`absolute top-4 left-4 z-10 flex gap-2 ${
+          isMobile ? "right-4 flex-wrap max-w-full" : ""
+        }`}
+      >
         <HowToButton />
         <MapStyleSelector onStyleChange={handleStyleChange} />
         <Buildings3DToggleButton
@@ -678,6 +683,10 @@ export function SingaporeMapExplorer({
             />
             <SavedBicycleParkingOverlay map={mapInstanceRef.current} />
             <SavedLocationsOverlay map={mapInstanceRef.current} />
+            <ImageAnalysisOverlay
+              map={mapInstanceRef.current}
+              currentLocation={mapLocation}
+            />
             {showRainfall && (
               <RainfallHeatMapOverlay
                 map={mapInstanceRef.current}

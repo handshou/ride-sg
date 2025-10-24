@@ -62,7 +62,20 @@ export default defineSchema({
     orientation: v.union(v.literal("portrait"), v.literal("landscape")),
     latitude: v.optional(v.number()), // Location where photo was taken
     longitude: v.optional(v.number()),
+    deviceHeading: v.optional(v.number()), // Device compass heading when captured (0-360)
+    cameraFov: v.optional(v.number()), // Camera field of view in degrees
     analysis: v.optional(v.string()), // AI-generated description/analysis
+    analyzedObjects: v.optional(
+      v.array(
+        v.object({
+          name: v.string(), // Object/landmark name
+          confidence: v.optional(v.number()), // Detection confidence (0-1)
+          bearing: v.optional(v.number()), // Estimated bearing from camera position
+          distance: v.optional(v.number()), // Estimated distance in meters
+          description: v.optional(v.string()), // Additional details
+        }),
+      ),
+    ),
     analysisStatus: v.union(
       v.literal("pending"),
       v.literal("processing"),

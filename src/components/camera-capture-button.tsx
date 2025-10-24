@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
-import { Effect } from "effect";
+import { Effect, Layer } from "effect";
 import {
   Camera,
   Image as ImageIcon,
@@ -19,6 +19,10 @@ import {
   type CameraOrientation,
   CameraServiceTag,
 } from "@/lib/services/camera-service";
+import {
+  DeviceOrientationServiceTag,
+  getDeviceOrientationService,
+} from "@/lib/services/device-orientation-service";
 import { ImageCaptureServiceTag } from "@/lib/services/image-capture-service";
 import { api } from "../../convex/_generated/api";
 
@@ -89,6 +93,26 @@ export function CameraCaptureButton({
 
     setIsCapturing(true);
     try {
+      // Get device heading if available
+      let deviceHeading: number | null = null;
+      try {
+        deviceHeading = await Effect.runPromise(
+          Effect.gen(function* () {
+            const orientationService = yield* DeviceOrientationServiceTag;
+            return yield* orientationService.getCurrentHeading;
+          }).pipe(
+            Effect.provide(
+              Layer.succeed(
+                DeviceOrientationServiceTag,
+                getDeviceOrientationService(),
+              ),
+            ),
+          ),
+        );
+      } catch (error) {
+        console.warn("Could not get device heading:", error);
+      }
+
       // Capture from stream
       const captured = await Effect.runPromise(
         Effect.gen(function* () {
@@ -113,7 +137,7 @@ export function CameraCaptureButton({
 
       const { storageId } = await uploadResponse.json();
 
-      // Save metadata to Convex
+      // Save metadata to Convex with device heading
       const imageId = await saveCapturedImage({
         storageId,
         width: captured.width,
@@ -121,6 +145,8 @@ export function CameraCaptureButton({
         orientation,
         latitude: currentLocation?.latitude,
         longitude: currentLocation?.longitude,
+        deviceHeading: deviceHeading ?? undefined,
+        cameraFov: 60, // Default field of view for mobile cameras
         capturedAt: captured.timestamp,
       });
 
@@ -175,6 +201,13 @@ export function CameraCaptureButton({
       });
     }
   };
+
+  // Sync video element with stream
+  useEffect(() => {
+    if (videoRef.current && stream) {
+      videoRef.current.srcObject = stream;
+    }
+  }, [stream]);
 
   // Cleanup on unmount
   useEffect(() => {

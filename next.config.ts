@@ -12,6 +12,12 @@ const nextConfig: NextConfig = {
         port: "",
         pathname: "/styles/v1/mapbox/**",
       },
+      {
+        protocol: "https",
+        hostname: "*.convex.cloud",
+        port: "",
+        pathname: "/**",
+      },
     ],
   },
 };

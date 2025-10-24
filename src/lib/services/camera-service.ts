@@ -62,11 +62,12 @@ export class CameraServiceImpl implements CameraService {
 
     // Portrait: 1080x1920 (9:16 aspect ratio)
     // Landscape: 1920x1080 (16:9 aspect ratio)
+    // Use ideal constraints for better mobile compatibility
     const constraints: MediaStreamConstraints = {
       video: {
         facingMode,
-        width: orientation === "portrait" ? 1080 : 1920,
-        height: orientation === "portrait" ? 1920 : 1080,
+        width: { ideal: orientation === "portrait" ? 1080 : 1920 },
+        height: { ideal: orientation === "portrait" ? 1920 : 1080 },
       },
       audio: false,
     };
@@ -74,33 +75,48 @@ export class CameraServiceImpl implements CameraService {
     try {
       return await navigator.mediaDevices.getUserMedia(constraints);
     } catch (error) {
-      if (error instanceof Error) {
+      // If the first attempt fails, try with simpler constraints
+      console.warn(
+        "Failed with ideal constraints, trying basic constraints",
+        error,
+      );
+      let finalError = error;
+      try {
+        const basicConstraints: MediaStreamConstraints = {
+          video: { facingMode },
+          audio: false,
+        };
+        return await navigator.mediaDevices.getUserMedia(basicConstraints);
+      } catch (fallbackError) {
+        finalError = fallbackError;
+      }
+      if (finalError instanceof Error) {
         // Handle specific DOMException errors
-        if (error.name === "NotAllowedError") {
+        if (finalError.name === "NotAllowedError") {
           throw new CameraError(
             "PERMISSION_DENIED",
             "Camera access was denied by user",
           );
         }
-        if (error.name === "NotFoundError") {
+        if (finalError.name === "NotFoundError") {
           throw new CameraError(
             "NOT_FOUND",
             "No camera device found on this device",
           );
         }
-        if (error.name === "NotReadableError") {
+        if (finalError.name === "NotReadableError") {
           throw new CameraError(
             "NOT_READABLE",
             "Camera is already in use by another application",
           );
         }
-        if (error.name === "OverconstrainedError") {
+        if (finalError.name === "OverconstrainedError") {
           throw new CameraError(
             "OVERCONSTRAINED",
             "Camera constraints could not be satisfied",
           );
         }
-        throw new CameraError("MEDIA_ERROR", error.message);
+        throw new CameraError("MEDIA_ERROR", finalError.message);
       }
       throw new CameraError("UNKNOWN_ERROR", "Failed to access camera");
     }
