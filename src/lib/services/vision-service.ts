@@ -1,4 +1,4 @@
-import { Effect } from "effect";
+import { Effect, Schema } from "effect";
 import { ConfigService } from "./config-service";
 
 /**
@@ -13,22 +13,27 @@ import { ConfigService } from "./config-service";
  * - Relevant safety or accessibility information for cyclists
  */
 
-export interface VisionAnalysisResult {
-  description: string;
-  landmarks?: string[];
-  objects?: string[];
-  sceneType?: string;
-  safetyNotes?: string;
-  locationClues?: string[]; // Visual clues for geolocation
-  timeOfDay?:
-    | "dawn"
-    | "morning"
-    | "afternoon"
-    | "evening"
-    | "night"
-    | "unknown";
-  weatherCondition?: string;
-}
+/**
+ * Schema for OpenAI Vision API response
+ */
+const VisionAnalysisResultSchema = Schema.Struct({
+  description: Schema.String,
+  landmarks: Schema.Array(Schema.String).pipe(Schema.optional),
+  locationClues: Schema.Array(Schema.String).pipe(Schema.optional),
+  objects: Schema.Array(Schema.String).pipe(Schema.optional),
+  sceneType: Schema.String.pipe(Schema.optional),
+  timeOfDay: Schema.String.pipe(Schema.optional),
+  weatherCondition: Schema.String.pipe(Schema.optional),
+  safetyNotes: Schema.String.pipe(Schema.optional),
+}).pipe(
+  Schema.annotations({
+    identifier: "VisionAnalysisResult",
+    description: "OpenAI Vision API analysis result",
+  }),
+);
+
+export interface VisionAnalysisResult
+  extends Schema.Schema.Type<typeof VisionAnalysisResultSchema> {}
 
 export class VisionServiceError {
   constructor(
@@ -200,45 +205,75 @@ Be specific and detailed. If you can identify exact locations or street names fr
               );
             }
 
-            // Try to parse as JSON, fallback to plain text
-            try {
-              const parsed = JSON.parse(content);
-              yield* Effect.log("Successfully parsed JSON response", {
-                hasDescription: !!parsed.description,
-                landmarksCount: parsed.landmarks?.length || 0,
-                objectsCount: parsed.objects?.length || 0,
-                locationCluesCount: parsed.locationClues?.length || 0,
-              });
-              return {
-                description: parsed.description || content,
-                landmarks: parsed.landmarks || [],
-                locationClues: parsed.locationClues || [],
-                objects: parsed.objects || [],
-                sceneType: parsed.sceneType || "unknown",
-                timeOfDay: parsed.timeOfDay || "unknown",
-                weatherCondition: parsed.weatherCondition || "unknown",
-                safetyNotes: parsed.safetyNotes || "",
-              } as VisionAnalysisResult;
-            } catch (parseError) {
-              // If not JSON, return as plain description
-              yield* Effect.logWarning(
-                "Failed to parse JSON, using plain text",
-                {
-                  parseError,
-                  contentPreview: content.substring(0, 100),
-                },
-              );
-              return {
-                description: content,
-                landmarks: [],
-                locationClues: [],
-                objects: [],
-                sceneType: "unknown",
-                timeOfDay: "unknown",
-                weatherCondition: "unknown",
-                safetyNotes: "",
-              } as VisionAnalysisResult;
+            // Strip markdown code blocks if present (```json ... ``` or ``` ... ```)
+            let cleanedContent = content.trim();
+            const jsonCodeBlockMatch =
+              cleanedContent.match(/^```(?:json)?\s*\n([\s\S]*?)\n```$/);
+            if (jsonCodeBlockMatch) {
+              cleanedContent = jsonCodeBlockMatch[1].trim();
+              yield* Effect.log("Stripped markdown code blocks from response");
             }
+
+            // Parse JSON with Effect Schema for validation
+            const parseResult = yield* Effect.tryPromise({
+              try: () => JSON.parse(cleanedContent),
+              catch: (error) => ({
+                _tag: "ParseError" as const,
+                message: `Failed to parse JSON: ${error}`,
+              }),
+            }).pipe(
+              Effect.catchAll((error) =>
+                Effect.gen(function* () {
+                  yield* Effect.logWarning("Failed to parse JSON", error);
+                  // Return minimal valid structure with content as description
+                  return { description: content };
+                }),
+              ),
+            );
+
+            // Validate and decode with Schema
+            const validatedResult = yield* Schema.decodeUnknown(
+              VisionAnalysisResultSchema,
+            )(parseResult).pipe(
+              Effect.catchAll((error) =>
+                Effect.gen(function* () {
+                  yield* Effect.logError("Schema validation failed", {
+                    error: String(error),
+                    parseResult,
+                  });
+                  // Fallback to plain description
+                  return {
+                    description: content,
+                    landmarks: [],
+                    locationClues: [],
+                    objects: [],
+                    sceneType: "unknown",
+                    timeOfDay: "unknown",
+                    weatherCondition: "unknown",
+                    safetyNotes: "",
+                  };
+                }),
+              ),
+            );
+
+            yield* Effect.log("Successfully validated response", {
+              hasDescription: !!validatedResult.description,
+              landmarksCount: validatedResult.landmarks?.length || 0,
+              objectsCount: validatedResult.objects?.length || 0,
+              locationCluesCount: validatedResult.locationClues?.length || 0,
+            });
+
+            // Return with defaults for optional fields
+            return {
+              description: validatedResult.description,
+              landmarks: validatedResult.landmarks || [],
+              locationClues: validatedResult.locationClues || [],
+              objects: validatedResult.objects || [],
+              sceneType: validatedResult.sceneType || "unknown",
+              timeOfDay: validatedResult.timeOfDay || "unknown",
+              weatherCondition: validatedResult.weatherCondition || "unknown",
+              safetyNotes: validatedResult.safetyNotes || "",
+            };
           }).pipe(
             Effect.catchAll((error) =>
               Effect.gen(function* () {
