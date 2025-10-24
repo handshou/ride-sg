@@ -317,6 +317,19 @@ export function ImageAnalysisOverlay({
                     : ""
                 }
               </div>
+              ${
+                image.analysisStatus === "completed"
+                  ? `
+              <button
+                id="analyze-btn-${image._id}"
+                class="mt-2 w-full px-3 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors ${isAnalyzing ? "opacity-50 cursor-not-allowed" : ""}"
+                ${isAnalyzing ? "disabled" : ""}
+              >
+                ${isAnalyzing ? "Analyzing..." : "🔄 Reanalyze"}
+              </button>
+            `
+                  : ""
+              }
             `
                 : image.analysisStatus === "not_analyzed" ||
                     image.analysisStatus === "pending"

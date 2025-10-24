@@ -582,6 +582,26 @@ export function CameraCaptureButton({
                               Analyzing...
                             </p>
                           )}
+                          {image.analysisStatus === "completed" && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAnalyzeImage(
+                                  image._id,
+                                  image.imageUrl,
+                                  image.cameraGpsLatitude ?? image.latitude,
+                                  image.cameraGpsLongitude ?? image.longitude,
+                                );
+                              }}
+                              disabled={analyzingImages.has(image._id)}
+                              className="mt-2 w-full px-2 py-1 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {analyzingImages.has(image._id)
+                                ? "Analyzing..."
+                                : "🔄 Reanalyze"}
+                            </button>
+                          )}
                           {image.analysisStatus === "failed" && (
                             <button
                               type="button"
