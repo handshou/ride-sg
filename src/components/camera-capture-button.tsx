@@ -400,6 +400,27 @@ export function CameraCaptureButton({
                               {image.analysis}
                             </p>
                           )}
+                          {image.analyzedObjects &&
+                            image.analyzedObjects.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {image.analyzedObjects
+                                  .slice(0, 3)
+                                  .map((obj, idx) => (
+                                    <span
+                                      key={`${image._id}-obj-${idx}`}
+                                      className="inline-block px-1 py-0.5 text-xs bg-blue-500/30 text-blue-200 rounded text-[10px]"
+                                      title={obj.description}
+                                    >
+                                      {obj.name}
+                                    </span>
+                                  ))}
+                                {image.analyzedObjects.length > 3 && (
+                                  <span className="text-xs text-gray-400">
+                                    +{image.analyzedObjects.length - 3}
+                                  </span>
+                                )}
+                              </div>
+                            )}
                           {image.analysisStatus === "pending" && (
                             <p className="text-yellow-400 text-xs mt-1">
                               Analysis pending...

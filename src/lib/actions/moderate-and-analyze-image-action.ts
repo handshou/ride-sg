@@ -163,12 +163,59 @@ const moderateAndAnalyzeImageEffect = (
       };
     }
 
+    // Convert the vision results to analyzedObjects format
+    const analyzedObjects: Array<{
+      name: string;
+      confidence?: number;
+      bearing?: number;
+      distance?: number;
+      description?: string;
+    }> = [];
+
+    // Add landmarks as analyzed objects
+    if (analysisResult.landmarks && analysisResult.landmarks.length > 0) {
+      for (const landmark of analysisResult.landmarks) {
+        analyzedObjects.push({
+          name: landmark,
+          confidence: 0.8, // Default confidence for landmarks
+          description: "Landmark identified in image",
+        });
+      }
+    }
+
+    // Add detected objects
+    if (analysisResult.objects && analysisResult.objects.length > 0) {
+      for (const object of analysisResult.objects) {
+        analyzedObjects.push({
+          name: object,
+          confidence: 0.7, // Default confidence for objects
+          description: "Object detected in scene",
+        });
+      }
+    }
+
+    // Add location clues as special objects
+    if (
+      analysisResult.locationClues &&
+      analysisResult.locationClues.length > 0
+    ) {
+      for (const clue of analysisResult.locationClues) {
+        analyzedObjects.push({
+          name: clue,
+          confidence: 0.6,
+          description: "Location indicator or signage",
+        });
+      }
+    }
+
     // Image is safe, update with analysis
     yield* Effect.tryPromise({
       try: () =>
         client.mutation(api.capturedImages.updateImageAnalysis, {
           imageId: imageId as Id<"capturedImages">,
           analysis: formattedAnalysis,
+          analyzedObjects:
+            analyzedObjects.length > 0 ? analyzedObjects : undefined,
           status: "completed",
         }),
       catch: (error) => ({
