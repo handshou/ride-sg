@@ -21,6 +21,10 @@
 *.webm
 *.zip
 
+# percy
+.percy/
+percy-snapshots/
+
 # next.js
 /.next/
 /out/

@@ -14,7 +14,11 @@
     "type-check": "tsc --noEmit",
     "test": "vitest run src/lib/*.spec.ts src/lib/services/*.spec.ts",
     "test:watch": "vitest src/lib/*.spec.ts src/lib/services/*.spec.ts",
-    "test:e2e": "playwright test",
+    "test:e2e": "playwright test tests/e2e",
+    "test:e2e:all": "PLAYWRIGHT_ALL_BROWSERS=1 playwright test tests/e2e",
+    "test:integration": "playwright test tests/integration",
+    "test:visual": "export PERCY_TOKEN=$(grep PERCY_TOKEN .env.local | cut -d '=' -f2) && percy exec -- playwright test tests/e2e",
+    "test:visual:local": "export PERCY_TOKEN=$(grep PERCY_TOKEN .env.local | cut -d '=' -f2) && percy exec -- playwright test tests/e2e --headed",
     "check-all": "pnpm run fix && pnpm run type-check && pnpm run test && pnpm run build",
     "pre-push": "pnpm run check-all",
     "prepare": "husky"
@@ -39,6 +43,8 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.0",
+    "@percy/cli": "^1.31.4",
+    "@percy/playwright": "^1.0.9",
     "@playwright/test": "^1.56.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",

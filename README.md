@@ -177,6 +177,42 @@ tests/               # Playwright e2e tests
 - **E2E Tests**: Playwright for browser testing across Chromium, Firefox, WebKit (36 tests in ~40s)
 - **Quality Checks**: Pre-push hook runs full test suite automatically
 
+## 🎨 Visual Regression Testing
+
+Percy integration for visual regression testing catches UI changes automatically:
+
+```bash
+# Run visual tests (requires PERCY_TOKEN)
+pnpm test:visual
+
+# Run visual tests with browser visible (local development)
+pnpm test:visual:local
+```
+
+### Setup
+
+1. Sign up at [percy.io](https://percy.io) (free for open source)
+2. Create a project and get your `PERCY_TOKEN`
+3. Add to your environment:
+   ```bash
+   export PERCY_TOKEN=your_token_here
+   # or add to .env file
+   ```
+4. Run tests - Percy will capture baselines on first run
+
+### What's Tested
+
+- **Map Loading**: Initial map render and controls
+- **Search Panel**: Search interface and results display  
+- **Convex Integration**: Database result badges and UI state
+
+### Usage
+
+- **Cost**: ~4 snapshots/run × ~40 runs/month = ~160 snapshots/month (3% of 5000 limit)
+- **Browser**: Chromium only (1280px desktop viewport)
+- **When to run**: Before releases or when UI changes are made
+- **Baselines**: Approve changes via Percy dashboard to update baselines
+
 ## 📚 Documentation
 
 Additional documentation in the `docs/` directory:
