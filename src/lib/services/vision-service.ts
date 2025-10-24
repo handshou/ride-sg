@@ -246,7 +246,7 @@ Be specific and detailed. If you can identify exact locations or street names fr
             }
 
             // Parse JSON with Effect Schema for validation
-            const parseResult = yield* Effect.tryPromise({
+            const parseResult = yield* Effect.try({
               try: () => JSON.parse(cleanedContent),
               catch: (error) => ({
                 _tag: "ParseError" as const,
