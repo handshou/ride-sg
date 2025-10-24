@@ -62,14 +62,16 @@ export const getImagesByLocation = query({
 });
 
 /**
- * Query: Get images pending analysis
+ * Query: Get images not yet analyzed
  */
-export const getPendingAnalysisImages = query({
+export const getNotAnalyzedImages = query({
   args: {},
   handler: async (ctx) => {
     return await ctx.db
       .query("capturedImages")
-      .withIndex("by_analysis_status", (q) => q.eq("analysisStatus", "pending"))
+      .withIndex("by_analysis_status", (q) =>
+        q.eq("analysisStatus", "not_analyzed"),
+      )
       .collect();
   },
 });
@@ -92,6 +94,8 @@ export const saveCapturedImage = mutation({
     orientation: v.union(v.literal("portrait"), v.literal("landscape")),
     latitude: v.optional(v.number()),
     longitude: v.optional(v.number()),
+    cameraGpsLatitude: v.optional(v.number()),
+    cameraGpsLongitude: v.optional(v.number()),
     deviceHeading: v.optional(v.number()),
     cameraFov: v.optional(v.number()),
     capturedAt: v.number(),
@@ -112,9 +116,11 @@ export const saveCapturedImage = mutation({
       orientation: args.orientation,
       latitude: args.latitude,
       longitude: args.longitude,
+      cameraGpsLatitude: args.cameraGpsLatitude,
+      cameraGpsLongitude: args.cameraGpsLongitude,
       deviceHeading: args.deviceHeading,
       cameraFov: args.cameraFov,
-      analysisStatus: "pending",
+      analysisStatus: "not_analyzed",
       capturedAt: args.capturedAt,
     });
 
@@ -141,17 +147,40 @@ export const updateImageAnalysis = mutation({
       ),
     ),
     status: v.union(
+      v.literal("not_analyzed"),
       v.literal("completed"),
       v.literal("failed"),
       v.literal("processing"),
     ),
+    latitude: v.optional(v.number()),
+    longitude: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.imageId, {
+    const updateData: {
+      analysis: string;
+      analyzedObjects?: Array<{
+        name: string;
+        confidence?: number;
+        bearing?: number;
+        distance?: number;
+        description?: string;
+      }>;
+      analysisStatus: "not_analyzed" | "completed" | "failed" | "processing";
+      latitude?: number;
+      longitude?: number;
+    } = {
       analysis: args.analysis,
       analyzedObjects: args.analyzedObjects,
       analysisStatus: args.status,
-    });
+    };
+
+    // Only update location if provided (from geocoding)
+    if (args.latitude !== undefined && args.longitude !== undefined) {
+      updateData.latitude = args.latitude;
+      updateData.longitude = args.longitude;
+    }
+
+    await ctx.db.patch(args.imageId, updateData);
     return args.imageId;
   },
 });

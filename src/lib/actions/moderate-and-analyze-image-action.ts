@@ -1,7 +1,7 @@
 "use server";
 
 import { ConvexHttpClient } from "convex/browser";
-import { Effect, Layer } from "effect";
+import { Config, Effect, Layer } from "effect";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { runServerEffectAsync } from "../server-runtime";
@@ -10,6 +10,7 @@ import {
   ContentModerationServiceTag,
 } from "../services/content-moderation-service";
 import { VisionService } from "../services/vision-service";
+import { geocodeFirstAvailable } from "../utils/geocoding-utils";
 
 /**
  * Effect program for moderating and analyzing an image
@@ -75,6 +76,44 @@ const moderateAndAnalyzeImageEffect = (
       landmarksCount: analysisResult.landmarks?.length || 0,
       objectsCount: analysisResult.objects?.length || 0,
     });
+
+    // Try to geocode landmarks or location clues to get precise location
+    let geocodedLocation: { latitude: number; longitude: number } | null = null;
+    const mapboxToken = yield* Config.string("MAPBOX_ACCESS_TOKEN").pipe(
+      Config.withDefault(""),
+    );
+
+    if (mapboxToken) {
+      // Build list of location names to try geocoding (landmarks first, then location clues)
+      const locationsToGeocode: string[] = [
+        ...(analysisResult.landmarks || []),
+        ...(analysisResult.locationClues || []),
+      ].filter((loc) => loc && loc.trim() !== "");
+
+      if (locationsToGeocode.length > 0) {
+        yield* Effect.log("Attempting to geocode landmarks/clues", {
+          count: locationsToGeocode.length,
+          locations: locationsToGeocode.slice(0, 3), // Log first 3
+        });
+
+        const geocoded = yield* geocodeFirstAvailable(
+          locationsToGeocode,
+          mapboxToken,
+        ).pipe(Effect.catchAll(() => Effect.succeed(null)));
+
+        if (geocoded) {
+          geocodedLocation = {
+            latitude: geocoded.latitude,
+            longitude: geocoded.longitude,
+          };
+          yield* Effect.log("Successfully geocoded location", {
+            placeName: geocoded.placeName,
+            latitude: geocoded.latitude,
+            longitude: geocoded.longitude,
+          });
+        }
+      }
+    }
 
     // Format the analysis result
     let formattedAnalysis = analysisResult.description;
@@ -221,6 +260,7 @@ const moderateAndAnalyzeImageEffect = (
       imageId,
       analysisLength: formattedAnalysis.length,
       analyzedObjectsCount: analyzedObjects.length,
+      hasGeocodedLocation: !!geocodedLocation,
     });
 
     yield* Effect.tryPromise({
@@ -231,6 +271,9 @@ const moderateAndAnalyzeImageEffect = (
           analyzedObjects:
             analyzedObjects.length > 0 ? analyzedObjects : undefined,
           status: "completed",
+          // Update image location with geocoded coordinates if available
+          latitude: geocodedLocation?.latitude,
+          longitude: geocodedLocation?.longitude,
         }),
       catch: (error) => ({
         _tag: "ConvexError" as const,
@@ -238,7 +281,10 @@ const moderateAndAnalyzeImageEffect = (
       }),
     }).pipe(
       Effect.tap(() =>
-        Effect.log("Successfully completed analysis", { imageId }),
+        Effect.log("Successfully completed analysis", {
+          imageId,
+          locationUpdated: !!geocodedLocation,
+        }),
       ),
     );
 
@@ -258,12 +304,39 @@ const moderateAndAnalyzeImageEffect = (
     ),
     Effect.catchAll((error) =>
       Effect.gen(function* () {
-        yield* Effect.logError("Moderate and analyze image failed:", error);
+        yield* Effect.logError("Moderate and analyze image failed", error);
 
         const errorMessage =
           typeof error === "object" && error !== null && "message" in error
             ? String(error.message)
             : String(error);
+
+        // Update image status to failed in Convex
+        const deployment = process.env.NEXT_PUBLIC_CONVEX_URL;
+        if (deployment) {
+          const client = new ConvexHttpClient(deployment);
+          yield* Effect.tryPromise({
+            try: () =>
+              client.mutation(api.capturedImages.updateImageAnalysis, {
+                imageId: imageId as Id<"capturedImages">,
+                analysis: `Error: ${errorMessage}`,
+                status: "failed",
+              }),
+            catch: (updateError) => ({
+              _tag: "ConvexError" as const,
+              message: `Failed to update error status: ${updateError}`,
+            }),
+          }).pipe(
+            Effect.catchAll((convexError) =>
+              Effect.gen(function* () {
+                yield* Effect.logError(
+                  "Failed to update error status in Convex",
+                  convexError,
+                );
+              }),
+            ),
+          );
+        }
 
         return {
           success: false,

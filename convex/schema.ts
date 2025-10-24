@@ -60,8 +60,10 @@ export default defineSchema({
     width: v.number(),
     height: v.number(),
     orientation: v.union(v.literal("portrait"), v.literal("landscape")),
-    latitude: v.optional(v.number()), // Location where photo was taken
-    longitude: v.optional(v.number()),
+    latitude: v.optional(v.number()), // Map location where image is placed
+    longitude: v.optional(v.number()), // Map location where image is placed
+    cameraGpsLatitude: v.optional(v.number()), // Device's actual GPS latitude
+    cameraGpsLongitude: v.optional(v.number()), // Device's actual GPS longitude
     deviceHeading: v.optional(v.number()), // Device compass heading when captured (0-360)
     cameraFov: v.optional(v.number()), // Camera field of view in degrees
     analysis: v.optional(v.string()), // AI-generated description/analysis
@@ -77,7 +79,7 @@ export default defineSchema({
       ),
     ),
     analysisStatus: v.union(
-      v.literal("pending"),
+      v.literal("not_analyzed"),
       v.literal("processing"),
       v.literal("completed"),
       v.literal("failed"),

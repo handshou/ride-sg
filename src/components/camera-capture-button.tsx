@@ -24,6 +24,7 @@ import {
   DeviceOrientationServiceTag,
   getDeviceOrientationService,
 } from "@/lib/services/device-orientation-service";
+import { getCurrentPositionEffect } from "@/lib/services/geolocation-service";
 import { ImageCaptureServiceTag } from "@/lib/services/image-capture-service";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -40,6 +41,9 @@ export function CameraCaptureButton({
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [orientation, setOrientation] = useState<CameraOrientation>("portrait");
   const [showGallery, setShowGallery] = useState(false);
+  const [analyzingImages, setAnalyzingImages] = useState<Set<string>>(
+    new Set(),
+  );
   const videoRef = useRef<HTMLVideoElement>(null);
 
   // Convex mutations
@@ -98,6 +102,18 @@ export function CameraCaptureButton({
 
     setIsCapturing(true);
     try {
+      // Get device GPS location if available
+      let cameraGps: { latitude: number; longitude: number } | null = null;
+      try {
+        cameraGps = await Effect.runPromise(
+          getCurrentPositionEffect().pipe(
+            Effect.catchAll(() => Effect.succeed(null)),
+          ),
+        );
+      } catch (error) {
+        console.warn("Could not get camera GPS location:", error);
+      }
+
       // Get device heading if available
       let deviceHeading: number | null = null;
       try {
@@ -142,46 +158,24 @@ export function CameraCaptureButton({
 
       const { storageId } = await uploadResponse.json();
 
-      // Save metadata to Convex with device heading
+      // Save metadata to Convex with both map location and camera GPS
       const imageId = await saveCapturedImage({
         storageId,
         width: captured.width,
         height: captured.height,
         orientation,
-        latitude: currentLocation?.latitude,
-        longitude: currentLocation?.longitude,
+        latitude: currentLocation?.latitude, // Map center location
+        longitude: currentLocation?.longitude, // Map center location
+        cameraGpsLatitude: cameraGps?.latitude, // Device GPS
+        cameraGpsLongitude: cameraGps?.longitude, // Device GPS
         deviceHeading: deviceHeading ?? undefined,
         cameraFov: 60, // Default field of view for mobile cameras
         capturedAt: captured.timestamp,
       });
 
-      toast.success("Image captured!");
-
-      // Get the image URL from Convex
-      const images = capturedImages || [];
-      const savedImage = images.find((img) => img._id === imageId);
-
-      if (savedImage) {
-        // Trigger AI analysis with moderation in the background
-        moderateAndAnalyzeImageAction(
-          imageId,
-          savedImage.imageUrl,
-          currentLocation?.latitude,
-          currentLocation?.longitude,
-        )
-          .then((result) => {
-            if (result.deleted) {
-              toast.warning("Image was removed due to inappropriate content");
-            } else if (result.success) {
-              toast.success("Image analyzed with location context!");
-            } else {
-              toast.error(`Analysis failed: ${result.error}`);
-            }
-          })
-          .catch((error) => {
-            toast.error(`Analysis error: ${error}`);
-          });
-      }
+      toast.success(
+        "Image captured! Click 'Analyze with AI' to analyze the image.",
+      );
     } catch (error) {
       toast.error(`Failed to capture image: ${error}`);
     } finally {
@@ -242,6 +236,44 @@ export function CameraCaptureButton({
       }
     },
     [deleteCapturedImage],
+  );
+
+  // Analyze image handler
+  const handleAnalyzeImage = useCallback(
+    async (
+      imageId: string,
+      imageUrl: string,
+      latitude?: number,
+      longitude?: number,
+    ) => {
+      setAnalyzingImages((prev) => new Set(prev).add(imageId));
+
+      try {
+        const result = await moderateAndAnalyzeImageAction(
+          imageId,
+          imageUrl,
+          latitude,
+          longitude,
+        );
+
+        if (result.deleted) {
+          toast.warning("Image was removed due to inappropriate content");
+        } else if (result.success) {
+          toast.success("Image analyzed successfully!");
+        } else {
+          toast.error(`Analysis failed: ${result.error}`);
+        }
+      } catch (error) {
+        toast.error(`Analysis error: ${error}`);
+      } finally {
+        setAnalyzingImages((prev) => {
+          const next = new Set(prev);
+          next.delete(imageId);
+          return next;
+        });
+      }
+    },
+    [],
   );
 
   return (
@@ -421,15 +453,48 @@ export function CameraCaptureButton({
                                 )}
                               </div>
                             )}
-                          {image.analysisStatus === "pending" && (
-                            <p className="text-yellow-400 text-xs mt-1">
-                              Analysis pending...
-                            </p>
+                          {image.analysisStatus === "not_analyzed" && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAnalyzeImage(
+                                  image._id,
+                                  image.imageUrl,
+                                  image.cameraGpsLatitude ?? image.latitude,
+                                  image.cameraGpsLongitude ?? image.longitude,
+                                );
+                              }}
+                              disabled={analyzingImages.has(image._id)}
+                              className="mt-2 w-full px-2 py-1 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {analyzingImages.has(image._id)
+                                ? "Analyzing..."
+                                : "🤖 Analyze with AI"}
+                            </button>
                           )}
                           {image.analysisStatus === "processing" && (
                             <p className="text-blue-400 text-xs mt-1">
                               Analyzing...
                             </p>
+                          )}
+                          {image.analysisStatus === "failed" && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAnalyzeImage(
+                                  image._id,
+                                  image.imageUrl,
+                                  image.cameraGpsLatitude ?? image.latitude,
+                                  image.cameraGpsLongitude ?? image.longitude,
+                                );
+                              }}
+                              disabled={analyzingImages.has(image._id)}
+                              className="mt-2 w-full px-2 py-1 text-xs font-medium text-white bg-orange-600 hover:bg-orange-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              🔄 Retry Analysis
+                            </button>
                           )}
                         </div>
                       </div>
