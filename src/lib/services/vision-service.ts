@@ -45,15 +45,13 @@ export class VisionService extends Effect.Service<VisionService>()(
   "VisionService",
   {
     effect: Effect.gen(function* () {
-      const _config = yield* ConfigService;
-      const openaiApiKey = yield* Config.string("OPENAI_API_KEY").pipe(
-        Config.withDefault(""),
-        Config.withDescription(
-          "OpenAI API key for Vision API - server-side only",
-        ),
-      );
+      const config = yield* ConfigService;
+      const openaiApiKey = config.openai.apiKey;
 
-      yield* Effect.logDebug("🔍 VisionService initialized");
+      yield* Effect.logDebug("🔍 VisionService initialized", {
+        hasApiKey: !!openaiApiKey,
+        apiKeyLength: openaiApiKey?.length || 0,
+      });
 
       return {
         /**
@@ -69,63 +67,70 @@ export class VisionService extends Effect.Service<VisionService>()(
             timestamp?: string;
           },
         ) =>
-          Effect.tryPromise({
-            try: async () => {
-              if (!openaiApiKey) {
-                throw new VisionServiceError(
-                  "NO_API_KEY",
-                  "OpenAI API key not configured. Set OPENAI_API_KEY environment variable.",
-                );
-              }
+          Effect.gen(function* () {
+            if (!openaiApiKey) {
+              yield* Effect.logError(
+                "NO_API_KEY: OPENAI_API_KEY environment variable is not set",
+              );
+              throw new VisionServiceError(
+                "NO_API_KEY",
+                "OpenAI API key not configured. Set OPENAI_API_KEY environment variable.",
+              );
+            }
 
-              // Build context message with available data
-              let contextMessage =
-                "Analyze this image captured in Singapore and help identify the location.";
+            yield* Effect.log("Starting image analysis", {
+              imageUrl: imageUrl.substring(0, 50) + "...",
+              hasContext: !!context,
+              hasLocation: !!(context?.latitude && context?.longitude),
+            });
 
-              if (context?.latitude && context?.longitude) {
-                contextMessage += ` GPS coordinates: ${context.latitude.toFixed(5)}, ${context.longitude.toFixed(5)}.`;
-              }
+            // Build context message with available data
+            let contextMessage =
+              "Analyze this image captured in Singapore and help identify the location.";
 
-              if (context?.temperature !== undefined) {
-                contextMessage += ` Current temperature: ${context.temperature.toFixed(1)}°C.`;
-              }
+            if (context?.latitude && context?.longitude) {
+              contextMessage += ` GPS coordinates: ${context.latitude.toFixed(5)}, ${context.longitude.toFixed(5)}.`;
+            }
 
-              if (context?.humidity !== undefined) {
-                contextMessage += ` Humidity: ${context.humidity.toFixed(0)}%.`;
-              }
+            if (context?.temperature !== undefined) {
+              contextMessage += ` Current temperature: ${context.temperature.toFixed(1)}°C.`;
+            }
 
-              if (context?.timestamp) {
-                const time = new Date(context.timestamp);
-                const hours = time.getHours();
-                const timeOfDay =
-                  hours < 6
-                    ? "early morning/night"
-                    : hours < 12
-                      ? "morning"
-                      : hours < 17
-                        ? "afternoon"
-                        : hours < 20
-                          ? "evening"
-                          : "night";
-                contextMessage += ` Time: ${time.toLocaleTimeString("en-SG")} (${timeOfDay}).`;
-              }
+            if (context?.humidity !== undefined) {
+              contextMessage += ` Humidity: ${context.humidity.toFixed(0)}%.`;
+            }
 
-              contextMessage += `\n\nFocus on:\n1. GEOLOCATION: Identify specific landmarks, street names, building names, signs, or distinctive features that could pinpoint this location\n2. ENVIRONMENT: Describe the surroundings, infrastructure, and environmental conditions\n3. TIME & WEATHER: Assess lighting conditions (dawn/day/dusk/night) and visible weather conditions\n4. SAFETY: Note any cycling-relevant safety information\n5. LOCATION CLUES: List all visible text, signage, or identifiable features`;
+            if (context?.timestamp) {
+              const time = new Date(context.timestamp);
+              const hours = time.getHours();
+              const timeOfDay =
+                hours < 6
+                  ? "early morning/night"
+                  : hours < 12
+                    ? "morning"
+                    : hours < 17
+                      ? "afternoon"
+                      : hours < 20
+                        ? "evening"
+                        : "night";
+              contextMessage += ` Time: ${time.toLocaleTimeString("en-SG")} (${timeOfDay}).`;
+            }
 
-              const response = await fetch(
-                "https://api.openai.com/v1/chat/completions",
-                {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${openaiApiKey}`,
-                  },
-                  body: JSON.stringify({
-                    model: "gpt-4o",
-                    messages: [
-                      {
-                        role: "system",
-                        content: `You are a geolocation expert AI analyzing images from Singapore to help identify precise locations. You have access to GPS coordinates and real-time environmental data to enhance your analysis.
+            contextMessage += `\n\nFocus on:\n1. GEOLOCATION: Identify specific landmarks, street names, building names, signs, or distinctive features that could pinpoint this location\n2. ENVIRONMENT: Describe the surroundings, infrastructure, and environmental conditions\n3. TIME & WEATHER: Assess lighting conditions (dawn/day/dusk/night) and visible weather conditions\n4. SAFETY: Note any cycling-relevant safety information\n5. LOCATION CLUES: List all visible text, signage, or identifiable features`;
+
+            const response = yield* Effect.tryPromise(() =>
+              fetch("https://api.openai.com/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${openaiApiKey}`,
+                },
+                body: JSON.stringify({
+                  model: "gpt-4o",
+                  messages: [
+                    {
+                      role: "system",
+                      content: `You are a geolocation expert AI analyzing images from Singapore to help identify precise locations. You have access to GPS coordinates and real-time environmental data to enhance your analysis.
 
 Your analysis should prioritize:
 - Identifying specific landmarks, buildings, street names from visible signage
@@ -146,85 +151,118 @@ Return your response as JSON with these keys:
 - safetyNotes (string): Cycling safety observations
 
 Be specific and detailed. If you can identify exact locations or street names from visible signs, mention them.`,
-                      },
-                      {
-                        role: "user",
-                        content: [
-                          {
-                            type: "text",
-                            text: contextMessage,
+                    },
+                    {
+                      role: "user",
+                      content: [
+                        {
+                          type: "text",
+                          text: contextMessage,
+                        },
+                        {
+                          type: "image_url",
+                          image_url: {
+                            url: imageUrl,
+                            detail: "high",
                           },
-                          {
-                            type: "image_url",
-                            image_url: {
-                              url: imageUrl,
-                              detail: "high",
-                            },
-                          },
-                        ],
-                      },
-                    ],
-                    max_tokens: 800,
-                    temperature: 0.7,
-                  }),
+                        },
+                      ],
+                    },
+                  ],
+                  max_tokens: 800,
+                  temperature: 0.7,
+                }),
+              }),
+            );
+
+            if (!response.ok) {
+              const errorData = yield* Effect.tryPromise(() => response.json());
+              yield* Effect.logError("OpenAI API Error", {
+                status: response.status,
+                statusText: response.statusText,
+                error: errorData,
+              });
+              throw new VisionServiceError(
+                "API_ERROR",
+                `OpenAI API error: ${errorData.error?.message || response.statusText}`,
+              );
+            }
+
+            yield* Effect.log("OpenAI API response received");
+            const data = yield* Effect.tryPromise(() => response.json());
+            const content = data.choices[0]?.message?.content;
+
+            if (!content) {
+              yield* Effect.logError("No analysis result from OpenAI");
+              throw new VisionServiceError(
+                "NO_CONTENT",
+                "No analysis result from OpenAI",
+              );
+            }
+
+            // Try to parse as JSON, fallback to plain text
+            try {
+              const parsed = JSON.parse(content);
+              yield* Effect.log("Successfully parsed JSON response", {
+                hasDescription: !!parsed.description,
+                landmarksCount: parsed.landmarks?.length || 0,
+                objectsCount: parsed.objects?.length || 0,
+                locationCluesCount: parsed.locationClues?.length || 0,
+              });
+              return {
+                description: parsed.description || content,
+                landmarks: parsed.landmarks || [],
+                locationClues: parsed.locationClues || [],
+                objects: parsed.objects || [],
+                sceneType: parsed.sceneType || "unknown",
+                timeOfDay: parsed.timeOfDay || "unknown",
+                weatherCondition: parsed.weatherCondition || "unknown",
+                safetyNotes: parsed.safetyNotes || "",
+              } as VisionAnalysisResult;
+            } catch (parseError) {
+              // If not JSON, return as plain description
+              yield* Effect.logWarning(
+                "Failed to parse JSON, using plain text",
+                {
+                  parseError,
+                  contentPreview: content.substring(0, 100),
                 },
               );
-
-              if (!response.ok) {
-                const errorData = await response.json();
-                throw new VisionServiceError(
-                  "API_ERROR",
-                  `OpenAI API error: ${errorData.error?.message || response.statusText}`,
+              return {
+                description: content,
+                landmarks: [],
+                locationClues: [],
+                objects: [],
+                sceneType: "unknown",
+                timeOfDay: "unknown",
+                weatherCondition: "unknown",
+                safetyNotes: "",
+              } as VisionAnalysisResult;
+            }
+          }).pipe(
+            Effect.catchAll((error) =>
+              Effect.gen(function* () {
+                yield* Effect.logError("Analysis failed", {
+                  error,
+                  errorType:
+                    error instanceof VisionServiceError
+                      ? "VisionServiceError"
+                      : typeof error,
+                  errorMessage:
+                    error instanceof Error ? error.message : String(error),
+                });
+                if (error instanceof VisionServiceError) {
+                  return yield* Effect.fail(error);
+                }
+                return yield* Effect.fail(
+                  new VisionServiceError(
+                    "ANALYSIS_FAILED",
+                    `Image analysis failed: ${error}`,
+                  ),
                 );
-              }
-
-              const data = await response.json();
-              const content = data.choices[0]?.message?.content;
-
-              if (!content) {
-                throw new VisionServiceError(
-                  "NO_CONTENT",
-                  "No analysis result from OpenAI",
-                );
-              }
-
-              // Try to parse as JSON, fallback to plain text
-              try {
-                const parsed = JSON.parse(content);
-                return {
-                  description: parsed.description || content,
-                  landmarks: parsed.landmarks || [],
-                  locationClues: parsed.locationClues || [],
-                  objects: parsed.objects || [],
-                  sceneType: parsed.sceneType || "unknown",
-                  timeOfDay: parsed.timeOfDay || "unknown",
-                  weatherCondition: parsed.weatherCondition || "unknown",
-                  safetyNotes: parsed.safetyNotes || "",
-                } as VisionAnalysisResult;
-              } catch {
-                // If not JSON, return as plain description
-                return {
-                  description: content,
-                  landmarks: [],
-                  locationClues: [],
-                  objects: [],
-                  sceneType: "unknown",
-                  timeOfDay: "unknown",
-                  weatherCondition: "unknown",
-                  safetyNotes: "",
-                } as VisionAnalysisResult;
-              }
-            },
-            catch: (error) => {
-              if (error instanceof VisionServiceError) {
-                return error;
-              }
-              return new VisionServiceError(
-                "ANALYSIS_FAILED",
-                `Image analysis failed: ${error}`,
-              );
-            },
-          }),
+              }),
+            ),
+          ),
       };
     }),
     dependencies: [ConfigService.Default],

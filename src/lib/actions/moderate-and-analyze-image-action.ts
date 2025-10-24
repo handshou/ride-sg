@@ -21,6 +21,7 @@ const moderateAndAnalyzeImageEffect = (
   longitude?: number,
 ) =>
   Effect.gen(function* () {
+    yield* Effect.log("Starting analysis for image", { imageId });
     const deployment = process.env.NEXT_PUBLIC_CONVEX_URL;
 
     if (!deployment) {
@@ -31,7 +32,7 @@ const moderateAndAnalyzeImageEffect = (
       };
     }
 
-    yield* Effect.log(`Analyzing and moderating image: ${imageId}`);
+    yield* Effect.log("Convex client initialized");
     const client = new ConvexHttpClient(deployment);
 
     // Update status to processing
@@ -57,16 +58,23 @@ const moderateAndAnalyzeImageEffect = (
         ? { latitude, longitude, timestamp: new Date().toISOString() }
         : undefined;
 
+    yield* Effect.log("Calling VisionService.analyzeImage");
     const analysisResult = yield* visionService
       .analyzeImage(imageUrl, visionContext)
       .pipe(
         Effect.catchAll((error) =>
           Effect.gen(function* () {
-            yield* Effect.logError("Vision analysis failed:", error);
+            yield* Effect.logError("Vision analysis failed", error);
             return yield* Effect.fail(error);
           }),
         ),
       );
+
+    yield* Effect.log("Vision analysis completed", {
+      hasDescription: !!analysisResult.description,
+      landmarksCount: analysisResult.landmarks?.length || 0,
+      objectsCount: analysisResult.objects?.length || 0,
+    });
 
     // Format the analysis result
     let formattedAnalysis = analysisResult.description;
@@ -209,6 +217,12 @@ const moderateAndAnalyzeImageEffect = (
     }
 
     // Image is safe, update with analysis
+    yield* Effect.log("Saving analysis to Convex", {
+      imageId,
+      analysisLength: formattedAnalysis.length,
+      analyzedObjectsCount: analyzedObjects.length,
+    });
+
     yield* Effect.tryPromise({
       try: () =>
         client.mutation(api.capturedImages.updateImageAnalysis, {
@@ -222,9 +236,13 @@ const moderateAndAnalyzeImageEffect = (
         _tag: "ConvexError" as const,
         message: `Failed to save analysis: ${error}`,
       }),
-    });
+    }).pipe(
+      Effect.tap(() =>
+        Effect.log("Successfully completed analysis", { imageId }),
+      ),
+    );
 
-    yield* Effect.log(`Successfully analyzed image: ${imageId}`);
+    yield* Effect.log("Analysis and moderation complete", { imageId });
 
     return {
       success: true,

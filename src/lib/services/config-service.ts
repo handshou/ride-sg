@@ -12,6 +12,9 @@ export interface AppConfig {
     token: string;
     publicToken: string;
   };
+  openai: {
+    apiKey: string;
+  };
   exa: {
     apiKey: string;
   };
@@ -58,6 +61,14 @@ export class ConfigService extends Effect.Service<ConfigService>()(
             Config.withDefault("pk.test"),
             Config.withDescription(
               "Mapbox public access token for client-side map rendering",
+            ),
+          ),
+        },
+        openai: {
+          apiKey: yield* Config.string("OPENAI_API_KEY").pipe(
+            Config.withDefault(""),
+            Config.withDescription(
+              "OpenAI API key for Vision API - server-side only, never expose to client",
             ),
           ),
         },
