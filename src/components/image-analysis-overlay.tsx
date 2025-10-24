@@ -21,7 +21,12 @@ interface CapturedImage {
   cameraGpsLongitude?: number;
   deviceHeading?: number;
   analysis?: string;
-  analysisStatus: "not_analyzed" | "processing" | "completed" | "failed";
+  analysisStatus:
+    | "not_analyzed"
+    | "pending" // Legacy status for backward compatibility
+    | "processing"
+    | "completed"
+    | "failed";
   analyzedObjects?: Array<{
     name: string;
     confidence?: number;
@@ -205,7 +210,8 @@ export function ImageAnalysisOverlay({
                 ${image.analysis}
               </div>
             `
-                : image.analysisStatus === "not_analyzed"
+                : image.analysisStatus === "not_analyzed" ||
+                    image.analysisStatus === "pending"
                   ? `
               <button
                 id="analyze-btn-${image._id}"

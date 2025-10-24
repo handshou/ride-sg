@@ -451,7 +451,8 @@ export function CameraCaptureButton({
                                 )}
                               </div>
                             )}
-                          {image.analysisStatus === "not_analyzed" && (
+                          {(image.analysisStatus === "not_analyzed" ||
+                            image.analysisStatus === "pending") && (
                             <button
                               type="button"
                               onClick={(e) => {

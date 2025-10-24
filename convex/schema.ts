@@ -80,6 +80,7 @@ export default defineSchema({
     ),
     analysisStatus: v.union(
       v.literal("not_analyzed"),
+      v.literal("pending"), // Legacy status for backward compatibility
       v.literal("processing"),
       v.literal("completed"),
       v.literal("failed"),
