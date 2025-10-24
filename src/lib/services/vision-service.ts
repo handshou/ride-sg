@@ -1,4 +1,4 @@
-import { Config, Effect } from "effect";
+import { Effect } from "effect";
 import { ConfigService } from "./config-service";
 
 /**
@@ -79,7 +79,7 @@ export class VisionService extends Effect.Service<VisionService>()(
             }
 
             yield* Effect.log("Starting image analysis", {
-              imageUrl: imageUrl.substring(0, 50) + "...",
+              imageUrl: `${imageUrl.substring(0, 50)}...`,
               hasContext: !!context,
               hasLocation: !!(context?.latitude && context?.longitude),
             });

@@ -2,7 +2,7 @@
 
 import { useQuery } from "convex/react";
 import mapboxgl from "mapbox-gl";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { moderateAndAnalyzeImageAction } from "@/lib/actions/moderate-and-analyze-image-action";
 import {
@@ -11,7 +11,6 @@ import {
   getDirectionalDescription,
 } from "@/lib/utils/direction-utils";
 import { api } from "../../convex/_generated/api";
-import type { Id } from "../../convex/_generated/dataModel";
 
 interface CapturedImage {
   _id: string;
@@ -54,7 +53,7 @@ export function ImageAnalysisOverlay({
   const capturedImages = useQuery(api.capturedImages.getAllImages);
 
   // Handler for analyze button
-  const handleAnalyzeImage = async (image: CapturedImage) => {
+  const handleAnalyzeImage = useCallback(async (image: CapturedImage) => {
     setAnalyzingImages((prev) => new Set(prev).add(image._id));
 
     try {
@@ -81,7 +80,7 @@ export function ImageAnalysisOverlay({
         return next;
       });
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (!map || !capturedImages) return;
@@ -275,13 +274,9 @@ export function ImageAnalysisOverlay({
 
       // Add event listener for analyze button after popup opens
       popup.on("open", () => {
-        const analyzeBtn = document.getElementById(
-          `analyze-btn-${image._id}`,
-        );
+        const analyzeBtn = document.getElementById(`analyze-btn-${image._id}`);
         if (analyzeBtn) {
-          analyzeBtn.addEventListener("click", () =>
-            handleAnalyzeImage(image),
-          );
+          analyzeBtn.addEventListener("click", () => handleAnalyzeImage(image));
         }
       });
 
@@ -324,7 +319,14 @@ export function ImageAnalysisOverlay({
       });
       popupsRef.current = [];
     };
-  }, [map, capturedImages, currentLocation, onImageSelect]);
+  }, [
+    map,
+    capturedImages,
+    currentLocation,
+    onImageSelect,
+    analyzingImages.has,
+    handleAnalyzeImage,
+  ]);
 
   return null;
 }

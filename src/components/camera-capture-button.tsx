@@ -159,7 +159,7 @@ export function CameraCaptureButton({
       const { storageId } = await uploadResponse.json();
 
       // Save metadata to Convex with both map location and camera GPS
-      const imageId = await saveCapturedImage({
+      const _imageId = await saveCapturedImage({
         storageId,
         width: captured.width,
         height: captured.height,
@@ -187,7 +187,6 @@ export function CameraCaptureButton({
     currentLocation,
     generateUploadUrl,
     saveCapturedImage,
-    capturedImages,
   ]);
 
   // Toggle orientation
