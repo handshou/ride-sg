@@ -569,6 +569,125 @@ Example format:
       ),
     );
   }
+
+  /**
+   * Identify landmarks from location clues using Exa
+   * Fallback when OpenAI Vision doesn't identify specific landmarks
+   */
+  identifyLandmarkFromClues(
+    locationClues: string[],
+    latitude: number,
+    longitude: number,
+  ): Effect.Effect<string[], ExaError> {
+    return Effect.gen(
+      function* (this: ExaSearchServiceImpl) {
+        const exaApiKey = this.config.exa.apiKey;
+
+        if (!exaApiKey) {
+          yield* Effect.logWarning(
+            "EXA_API_KEY not configured, cannot identify landmarks",
+          );
+          return [];
+        }
+
+        yield* Effect.log(
+          "Identifying landmarks from location clues with Exa",
+          {
+            cluesCount: locationClues.length,
+            latitude,
+            longitude,
+          },
+        );
+
+        // Build query from location clues + GPS
+        const cluesText = locationClues.join(", ");
+        const query = `What landmark building or location is at coordinates ${latitude}, ${longitude} in Singapore with these features: ${cluesText}? Give me the specific landmark name.`;
+
+        yield* Effect.log("Exa landmark query", { query });
+
+        // Call Exa Answer API
+        const response = yield* Effect.tryPromise({
+          try: () =>
+            fetch("https://api.exa.ai/answer", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "x-api-key": exaApiKey,
+              },
+              body: JSON.stringify({
+                query,
+                num_sources: 5,
+                use_autoprompt: true,
+              }),
+            }),
+          catch: (error) =>
+            new ExaError(`Exa landmark identification failed: ${error}`),
+        });
+
+        if (!response.ok) {
+          yield* Effect.logWarning(
+            `Exa landmark API returned ${response.status}`,
+          );
+          return [];
+        }
+
+        const rawData = yield* Effect.tryPromise({
+          try: () => response.json(),
+          catch: (error) =>
+            new ExaError(`Failed to parse Exa response: ${error}`),
+        });
+
+        // Decode and normalize response
+        const partialAnswerData = yield* Effect.try({
+          try: () =>
+            Schema.decodeUnknownSync(PartialExaAnswerResponseSchema)(rawData),
+          catch: () => ({ answer: "" }),
+        });
+
+        const answerData = normalizeExaAnswerResponse(partialAnswerData);
+
+        yield* Effect.log("Exa landmark response", {
+          answer: answerData.answer.substring(0, 200),
+        });
+
+        // Parse landmark names from the answer
+        // Look for quoted strings or capitalize words that look like landmark names
+        const landmarks: string[] = [];
+
+        // Extract quoted strings (most reliable)
+        const quotedMatches = answerData.answer.match(/"([^"]+)"/g);
+        if (quotedMatches) {
+          for (const match of quotedMatches) {
+            const cleaned = match.replace(/"/g, "").trim();
+            if (cleaned.length > 3) {
+              landmarks.push(cleaned);
+            }
+          }
+        }
+
+        // Extract sentences mentioning specific places (fallback)
+        if (landmarks.length === 0) {
+          const sentences = answerData.answer.split(/[.!?]/);
+          for (const sentence of sentences) {
+            // Look for patterns like "Marina Bay Sands" (title case sequences)
+            const titleCaseMatches = sentence.match(
+              /\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+\b/g,
+            );
+            if (titleCaseMatches) {
+              landmarks.push(...titleCaseMatches);
+            }
+          }
+        }
+
+        yield* Effect.log("Identified landmarks from Exa", {
+          count: landmarks.length,
+          landmarks: landmarks.slice(0, 3),
+        });
+
+        return landmarks.slice(0, 3); // Return top 3 most likely landmarks
+      }.bind(this),
+    );
+  }
 }
 
 /**

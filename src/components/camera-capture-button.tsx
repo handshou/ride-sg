@@ -33,6 +33,51 @@ interface CameraCaptureButtonProps {
   currentLocation?: { latitude: number; longitude: number };
 }
 
+// Helper function to parse analysis text into structured sections
+function parseAnalysis(analysis?: string) {
+  if (!analysis) return null;
+
+  const sections: {
+    description: string;
+    landmarks: string[];
+    locationClues: string[];
+    safetyNotes: string;
+  } = {
+    description: "",
+    landmarks: [],
+    locationClues: [],
+    safetyNotes: "",
+  };
+
+  // Split by double newlines to get sections
+  const parts = analysis.split("\n\n");
+  let description = "";
+
+  for (const part of parts) {
+    const trimmed = part.trim();
+    if (trimmed.startsWith("🏛️ Landmarks:")) {
+      const landmarksText = trimmed.replace("🏛️ Landmarks:", "").trim();
+      sections.landmarks = landmarksText
+        .split(",")
+        .map((l) => l.trim())
+        .filter((l) => l.length > 0);
+    } else if (trimmed.startsWith("📍 Location Clues:")) {
+      const cluesText = trimmed.replace("📍 Location Clues:", "").trim();
+      sections.locationClues = cluesText
+        .split(",")
+        .map((c) => c.trim())
+        .filter((c) => c.length > 0);
+    } else if (trimmed.startsWith("⚠️ Safety Notes:")) {
+      sections.safetyNotes = trimmed.replace("⚠️ Safety Notes:", "").trim();
+    } else if (trimmed.length > 0) {
+      description += (description ? " " : "") + trimmed;
+    }
+  }
+
+  sections.description = description;
+  return sections;
+}
+
 export function CameraCaptureButton({
   currentLocation,
 }: CameraCaptureButtonProps) {
@@ -425,30 +470,90 @@ export function CameraCaptureButton({
                           <p className="text-white text-xs">
                             {new Date(image.capturedAt).toLocaleString()}
                           </p>
-                          {image.analysis && (
-                            <p className="text-white text-xs mt-1 line-clamp-3">
-                              {image.analysis}
-                            </p>
-                          )}
+                          {(() => {
+                            const parsed = parseAnalysis(image.analysis);
+                            return parsed ? (
+                              <div className="mt-2 space-y-1">
+                                {parsed.description && (
+                                  <p className="text-white text-xs line-clamp-2">
+                                    {parsed.description}
+                                  </p>
+                                )}
+                                {parsed.landmarks.length > 0 && (
+                                  <div>
+                                    <p className="text-purple-300 text-[10px] font-semibold mb-0.5">
+                                      🏛️ Landmarks
+                                    </p>
+                                    <div className="flex flex-wrap gap-1">
+                                      {parsed.landmarks
+                                        .slice(0, 2)
+                                        .map((landmark, idx) => (
+                                          <span
+                                            key={`${image._id}-landmark-${idx}`}
+                                            className="inline-block px-1 py-0.5 text-[10px] bg-purple-500/30 text-purple-200 rounded"
+                                          >
+                                            {landmark}
+                                          </span>
+                                        ))}
+                                      {parsed.landmarks.length > 2 && (
+                                        <span className="text-[10px] text-purple-300">
+                                          +{parsed.landmarks.length - 2}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                                {parsed.locationClues.length > 0 && (
+                                  <div>
+                                    <p className="text-green-300 text-[10px] font-semibold mb-0.5">
+                                      📍 Location Clues
+                                    </p>
+                                    <div className="flex flex-wrap gap-1">
+                                      {parsed.locationClues
+                                        .slice(0, 2)
+                                        .map((clue, idx) => (
+                                          <span
+                                            key={`${image._id}-clue-${idx}`}
+                                            className="inline-block px-1 py-0.5 text-[10px] bg-green-500/30 text-green-200 rounded"
+                                          >
+                                            {clue}
+                                          </span>
+                                        ))}
+                                      {parsed.locationClues.length > 2 && (
+                                        <span className="text-[10px] text-green-300">
+                                          +{parsed.locationClues.length - 2}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            ) : null;
+                          })()}
                           {image.analyzedObjects &&
                             image.analyzedObjects.length > 0 && (
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {image.analyzedObjects
-                                  .slice(0, 3)
-                                  .map((obj, idx) => (
-                                    <span
-                                      key={`${image._id}-obj-${idx}`}
-                                      className="inline-block px-1 py-0.5 text-xs bg-blue-500/30 text-blue-200 rounded text-[10px]"
-                                      title={obj.description}
-                                    >
-                                      {obj.name}
+                              <div className="mt-2">
+                                <p className="text-blue-300 text-[10px] font-semibold mb-0.5">
+                                  Detected Objects
+                                </p>
+                                <div className="flex flex-wrap gap-1">
+                                  {image.analyzedObjects
+                                    .slice(0, 3)
+                                    .map((obj, idx) => (
+                                      <span
+                                        key={`${image._id}-obj-${idx}`}
+                                        className="inline-block px-1 py-0.5 text-[10px] bg-blue-500/30 text-blue-200 rounded"
+                                        title={obj.description}
+                                      >
+                                        {obj.name}
+                                      </span>
+                                    ))}
+                                  {image.analyzedObjects.length > 3 && (
+                                    <span className="text-[10px] text-blue-300">
+                                      +{image.analyzedObjects.length - 3}
                                     </span>
-                                  ))}
-                                {image.analyzedObjects.length > 3 && (
-                                  <span className="text-xs text-gray-400">
-                                    +{image.analyzedObjects.length - 3}
-                                  </span>
-                                )}
+                                  )}
+                                </div>
                               </div>
                             )}
                           {(image.analysisStatus === "not_analyzed" ||

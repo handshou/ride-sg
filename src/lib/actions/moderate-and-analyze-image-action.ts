@@ -9,6 +9,7 @@ import {
   ContentModerationServiceLive,
   ContentModerationServiceTag,
 } from "../services/content-moderation-service";
+import { ExaSearchService } from "../services/exa-search-service";
 import { VisionService } from "../services/vision-service";
 import { geocodeFirstAvailable } from "../utils/geocoding-utils";
 
@@ -76,6 +77,53 @@ const moderateAndAnalyzeImageEffect = (
       landmarksCount: analysisResult.landmarks?.length || 0,
       objectsCount: analysisResult.objects?.length || 0,
     });
+
+    // Exa fallback: If OpenAI didn't identify landmarks but found location clues, use Exa
+    if (
+      analysisResult.landmarks.length === 0 &&
+      analysisResult.locationClues.length > 0 &&
+      latitude &&
+      longitude
+    ) {
+      yield* Effect.log(
+        "No landmarks from OpenAI, trying Exa fallback with location clues",
+        {
+          cluesCount: analysisResult.locationClues.length,
+          latitude,
+          longitude,
+        },
+      );
+
+      const exaService = yield* ExaSearchService;
+      const exaLandmarks = yield* exaService
+        .identifyLandmarkFromClues(
+          analysisResult.locationClues,
+          latitude,
+          longitude,
+        )
+        .pipe(
+          Effect.catchAll((error) =>
+            Effect.gen(function* () {
+              yield* Effect.logWarning("Exa landmark identification failed", {
+                error,
+              });
+              return [];
+            }),
+          ),
+        );
+
+      if (exaLandmarks.length > 0) {
+        yield* Effect.log("Exa identified landmarks", {
+          landmarks: exaLandmarks,
+        });
+        analysisResult.landmarks = [
+          ...analysisResult.landmarks,
+          ...exaLandmarks,
+        ];
+      } else {
+        yield* Effect.log("Exa did not identify any landmarks");
+      }
+    }
 
     // Try to geocode landmarks or location clues to get precise location
     let geocodedLocation: { latitude: number; longitude: number } | null = null;

@@ -188,6 +188,56 @@ export function ImageAnalysisOverlay({
         document.head.appendChild(style);
       }
 
+      // Parse analysis into sections
+      const parseAnalysis = (analysis?: string) => {
+        if (!analysis) return null;
+
+        // Split by markdown-style sections
+        const sections: {
+          description: string;
+          landmarks: string[];
+          locationClues: string[];
+          safetyNotes: string;
+        } = {
+          description: "",
+          landmarks: [],
+          locationClues: [],
+          safetyNotes: "",
+        };
+
+        // Split by double newlines to get sections
+        const parts = analysis.split("\n\n");
+        let description = "";
+
+        for (const part of parts) {
+          const trimmed = part.trim();
+          if (trimmed.startsWith("🏛️ Landmarks:")) {
+            const landmarksText = trimmed.replace("🏛️ Landmarks:", "").trim();
+            sections.landmarks = landmarksText
+              .split(",")
+              .map((l) => l.trim())
+              .filter((l) => l.length > 0);
+          } else if (trimmed.startsWith("📍 Location Clues:")) {
+            const cluesText = trimmed.replace("📍 Location Clues:", "").trim();
+            sections.locationClues = cluesText
+              .split(",")
+              .map((c) => c.trim())
+              .filter((c) => c.length > 0);
+          } else if (trimmed.startsWith("⚠️ Safety Notes:")) {
+            sections.safetyNotes = trimmed
+              .replace("⚠️ Safety Notes:", "")
+              .trim();
+          } else if (trimmed.length > 0) {
+            description += (description ? " " : "") + trimmed;
+          }
+        }
+
+        sections.description = description;
+        return sections;
+      };
+
+      const parsedAnalysis = parseAnalysis(image.analysis);
+
       // Create popup content with analyze button
       const isAnalyzing = analyzingImages.has(image._id);
       const popupContent = `
@@ -204,10 +254,68 @@ export function ImageAnalysisOverlay({
                 : ""
             }
             ${
-              image.analysis
+              parsedAnalysis
                 ? `
-              <div class="text-xs text-gray-600 line-clamp-3">
-                ${image.analysis}
+              <div class="space-y-2">
+                ${
+                  parsedAnalysis.description
+                    ? `
+                  <div class="text-xs text-gray-700">
+                    ${parsedAnalysis.description}
+                  </div>
+                `
+                    : ""
+                }
+                ${
+                  parsedAnalysis.landmarks.length > 0
+                    ? `
+                  <div>
+                    <div class="text-xs font-semibold text-gray-800 mb-1">🏛️ Landmarks</div>
+                    <div class="flex flex-wrap gap-1">
+                      ${parsedAnalysis.landmarks
+                        .map(
+                          (landmark) => `
+                        <span class="inline-block px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded font-medium">
+                          ${landmark}
+                        </span>
+                      `,
+                        )
+                        .join("")}
+                    </div>
+                  </div>
+                `
+                    : ""
+                }
+                ${
+                  parsedAnalysis.locationClues.length > 0
+                    ? `
+                  <div>
+                    <div class="text-xs font-semibold text-gray-800 mb-1">📍 Location Clues</div>
+                    <div class="flex flex-wrap gap-1">
+                      ${parsedAnalysis.locationClues
+                        .map(
+                          (clue) => `
+                        <span class="inline-block px-2 py-1 text-xs bg-green-100 text-green-700 rounded">
+                          ${clue}
+                        </span>
+                      `,
+                        )
+                        .join("")}
+                    </div>
+                  </div>
+                `
+                    : ""
+                }
+                ${
+                  parsedAnalysis.safetyNotes
+                    ? `
+                  <div class="bg-yellow-50 border border-yellow-200 rounded p-2">
+                    <div class="text-xs font-semibold text-yellow-800 mb-1">⚠️ Safety Notes</div>
+                    <div class="text-xs text-yellow-700">${parsedAnalysis.safetyNotes}</div>
+                  </div>
+                `
+                    : ""
+                }
               </div>
             `
                 : image.analysisStatus === "not_analyzed" ||
@@ -246,10 +354,10 @@ export function ImageAnalysisOverlay({
               image.analyzedObjects && image.analyzedObjects.length > 0
                 ? `
               <div class="mt-2 pt-2 border-t border-gray-200">
-                <div class="text-xs font-medium text-gray-700 mb-1">Detected:</div>
+                <div class="text-xs font-medium text-gray-700 mb-1">Detected Objects:</div>
                 <div class="flex flex-wrap gap-1">
                   ${image.analyzedObjects
-                    .slice(0, 3)
+                    .slice(0, 5)
                     .map(
                       (obj) => `
                     <span class="inline-block px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded">
@@ -258,6 +366,11 @@ export function ImageAnalysisOverlay({
                   `,
                     )
                     .join("")}
+                  ${
+                    image.analyzedObjects.length > 5
+                      ? `<span class="text-xs text-gray-500">+${image.analyzedObjects.length - 5} more</span>`
+                      : ""
+                  }
                 </div>
               </div>
             `
