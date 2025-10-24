@@ -101,40 +101,9 @@ export function CameraCaptureButton({
     }
 
     setIsCapturing(true);
+
     try {
-      // Get device GPS location if available
-      let cameraGps: { latitude: number; longitude: number } | null = null;
-      try {
-        cameraGps = await Effect.runPromise(
-          getCurrentPositionEffect().pipe(
-            Effect.catchAll(() => Effect.succeed(null)),
-          ),
-        );
-      } catch (error) {
-        console.warn("Could not get camera GPS location:", error);
-      }
-
-      // Get device heading if available
-      let deviceHeading: number | null = null;
-      try {
-        deviceHeading = await Effect.runPromise(
-          Effect.gen(function* () {
-            const orientationService = yield* DeviceOrientationServiceTag;
-            return yield* orientationService.getCurrentHeading;
-          }).pipe(
-            Effect.provide(
-              Layer.succeed(
-                DeviceOrientationServiceTag,
-                getDeviceOrientationService(),
-              ),
-            ),
-          ),
-        );
-      } catch (error) {
-        console.warn("Could not get device heading:", error);
-      }
-
-      // Capture from stream
+      // 1. FAST: Capture from stream immediately
       const captured = await Effect.runPromise(
         Effect.gen(function* () {
           const imageCaptureService = yield* ImageCaptureServiceTag;
@@ -142,44 +111,74 @@ export function CameraCaptureButton({
         }).pipe(Effect.provide(ClientLayer)),
       );
 
-      // Upload to Convex storage
-      const uploadUrl = await generateUploadUrl();
-      const blob = captured.blob;
-
-      const uploadResponse = await fetch(uploadUrl, {
-        method: "POST",
-        headers: { "Content-Type": blob.type },
-        body: blob,
-      });
-
-      if (!uploadResponse.ok) {
-        throw new Error("Failed to upload image");
-      }
-
-      const { storageId } = await uploadResponse.json();
-
-      // Save metadata to Convex with both map location and camera GPS
-      const _imageId = await saveCapturedImage({
-        storageId,
-        width: captured.width,
-        height: captured.height,
-        orientation,
-        latitude: currentLocation?.latitude, // Map center location
-        longitude: currentLocation?.longitude, // Map center location
-        cameraGpsLatitude: cameraGps?.latitude, // Device GPS
-        cameraGpsLongitude: cameraGps?.longitude, // Device GPS
-        deviceHeading: deviceHeading ?? undefined,
-        cameraFov: 60, // Default field of view for mobile cameras
-        capturedAt: captured.timestamp,
-      });
-
-      toast.success(
-        "Image captured! Click 'Analyze with AI' to analyze the image.",
-      );
-    } catch (error) {
-      toast.error(`Failed to capture image: ${error}`);
-    } finally {
+      // 2. IMMEDIATE FEEDBACK: Show success immediately
       setIsCapturing(false);
+      toast.success("📸 Image captured! Uploading...");
+
+      // 3. BACKGROUND: Upload and save asynchronously (non-blocking)
+      (async () => {
+        try {
+          // Get device GPS location (parallel with heading)
+          const [cameraGps, deviceHeading] = await Promise.all([
+            Effect.runPromise(
+              getCurrentPositionEffect().pipe(
+                Effect.catchAll(() => Effect.succeed(null)),
+              ),
+            ).catch(() => null),
+            Effect.runPromise(
+              Effect.gen(function* () {
+                const orientationService = yield* DeviceOrientationServiceTag;
+                return yield* orientationService.getCurrentHeading;
+              }).pipe(
+                Effect.provide(
+                  Layer.succeed(
+                    DeviceOrientationServiceTag,
+                    getDeviceOrientationService(),
+                  ),
+                ),
+              ),
+            ).catch(() => null),
+          ]);
+
+          // Upload to Convex storage
+          const uploadUrl = await generateUploadUrl();
+          const blob = captured.blob;
+
+          const uploadResponse = await fetch(uploadUrl, {
+            method: "POST",
+            headers: { "Content-Type": blob.type },
+            body: blob,
+          });
+
+          if (!uploadResponse.ok) {
+            throw new Error("Failed to upload image");
+          }
+
+          const { storageId } = await uploadResponse.json();
+
+          // Save metadata to Convex with both map location and camera GPS
+          await saveCapturedImage({
+            storageId,
+            width: captured.width,
+            height: captured.height,
+            orientation,
+            latitude: currentLocation?.latitude, // Map center location
+            longitude: currentLocation?.longitude, // Map center location
+            cameraGpsLatitude: cameraGps?.latitude, // Device GPS
+            cameraGpsLongitude: cameraGps?.longitude, // Device GPS
+            deviceHeading: deviceHeading ?? undefined,
+            cameraFov: 60, // Default field of view for mobile cameras
+            capturedAt: captured.timestamp,
+          });
+
+          toast.success("✅ Upload complete! Click 'Analyze with AI'.");
+        } catch (error) {
+          toast.error(`Upload failed: ${error}`);
+        }
+      })();
+    } catch (error) {
+      setIsCapturing(false);
+      toast.error(`Failed to capture image: ${error}`);
     }
   }, [
     stream,
