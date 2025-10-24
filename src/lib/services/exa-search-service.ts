@@ -641,8 +641,9 @@ Example format:
         const partialAnswerData = yield* Effect.try({
           try: () =>
             Schema.decodeUnknownSync(PartialExaAnswerResponseSchema)(rawData),
-          catch: () => ({ answer: "" }),
-        });
+          catch: (error) =>
+            new ExaError(`Failed to decode Exa answer response: ${error}`),
+        }).pipe(Effect.catchAll(() => Effect.succeed({ answer: "" })));
 
         const answerData = normalizeExaAnswerResponse(partialAnswerData);
 

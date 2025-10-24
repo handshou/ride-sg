@@ -79,6 +79,8 @@ const moderateAndAnalyzeImageEffect = (
     });
 
     // Exa fallback: If OpenAI didn't identify landmarks but found location clues, use Exa
+    let landmarksToUse = [...analysisResult.landmarks]; // Start with OpenAI landmarks
+
     if (
       analysisResult.landmarks.length === 0 &&
       analysisResult.locationClues.length > 0 &&
@@ -97,7 +99,7 @@ const moderateAndAnalyzeImageEffect = (
       const exaService = yield* ExaSearchService;
       const exaLandmarks = yield* exaService
         .identifyLandmarkFromClues(
-          analysisResult.locationClues,
+          [...analysisResult.locationClues], // Convert readonly to mutable array
           latitude,
           longitude,
         )
@@ -116,10 +118,7 @@ const moderateAndAnalyzeImageEffect = (
         yield* Effect.log("Exa identified landmarks", {
           landmarks: exaLandmarks,
         });
-        analysisResult.landmarks = [
-          ...analysisResult.landmarks,
-          ...exaLandmarks,
-        ];
+        landmarksToUse = [...landmarksToUse, ...exaLandmarks];
       } else {
         yield* Effect.log("Exa did not identify any landmarks");
       }
@@ -134,7 +133,7 @@ const moderateAndAnalyzeImageEffect = (
     if (mapboxToken) {
       // Build list of location names to try geocoding (landmarks first, then location clues)
       const locationsToGeocode: string[] = [
-        ...analysisResult.landmarks,
+        ...landmarksToUse,
         ...analysisResult.locationClues,
       ].filter((loc) => loc && loc.trim() !== "");
 
@@ -166,8 +165,8 @@ const moderateAndAnalyzeImageEffect = (
     // Format the analysis result
     let formattedAnalysis = analysisResult.description;
 
-    if (analysisResult.landmarks && analysisResult.landmarks.length > 0) {
-      formattedAnalysis += `\n\n🏛️ Landmarks: ${analysisResult.landmarks.join(", ")}`;
+    if (landmarksToUse.length > 0) {
+      formattedAnalysis += `\n\n🏛️ Landmarks: ${landmarksToUse.join(", ")}`;
     }
 
     if (
@@ -267,9 +266,9 @@ const moderateAndAnalyzeImageEffect = (
       description?: string;
     }> = [];
 
-    // Add landmarks as analyzed objects
-    if (analysisResult.landmarks && analysisResult.landmarks.length > 0) {
-      for (const landmark of analysisResult.landmarks) {
+    // Add landmarks as analyzed objects (including Exa-identified ones)
+    if (landmarksToUse.length > 0) {
+      for (const landmark of landmarksToUse) {
         analyzedObjects.push({
           name: landmark,
           confidence: 0.8, // Default confidence for landmarks
