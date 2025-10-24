@@ -1,5 +1,7 @@
 import { Layer } from "effect";
+import { CameraServiceLive } from "../services/camera-service";
 import { GeolocationServiceLive } from "../services/geolocation-service";
+import { ImageCaptureServiceLive } from "../services/image-capture-service";
 import { MapReadinessServiceLive } from "../services/map-readiness-service";
 import { ThemeSyncServiceLive } from "../services/theme-sync-service";
 import { BaseLayer } from "./base-layer";
@@ -11,6 +13,8 @@ import { BaseLayer } from "./base-layer";
  * - GeolocationService: Browser Geolocation API (navigator.geolocation)
  * - MapReadinessService: Mapbox GL map readiness checks (DOM-dependent)
  * - ThemeSyncService: Theme/map style synchronization (window.matchMedia)
+ * - CameraService: Browser MediaDevices API (navigator.mediaDevices)
+ * - ImageCaptureService: Canvas-based image capture from video streams
  *
  * These services use browser-only APIs and will fail on the server.
  *
@@ -21,6 +25,8 @@ export const ClientLayer = Layer.mergeAll(
   GeolocationServiceLive,
   MapReadinessServiceLive,
   ThemeSyncServiceLive,
+  CameraServiceLive,
+  ImageCaptureServiceLive,
 );
 
 /**

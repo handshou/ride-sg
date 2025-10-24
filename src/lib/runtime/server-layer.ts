@@ -3,6 +3,8 @@ import { BicycleParkingService } from "../services/bicycle-parking-service";
 import { ConfigService } from "../services/config-service";
 import { MapboxService } from "../services/mapbox-service";
 import { RainfallService } from "../services/rainfall-service";
+import { VisionService } from "../services/vision-service";
+import { WeatherService } from "../services/weather-service";
 import { BaseLayer } from "./base-layer";
 
 /**
@@ -12,6 +14,8 @@ import { BaseLayer } from "./base-layer";
  * - MapboxService: Mapbox API with server-side secret token
  * - RainfallService: NEA Singapore Rainfall API
  * - BicycleParkingService: LTA DataMall API with secret key
+ * - VisionService: OpenAI Vision API for image analysis
+ * - WeatherService: NEA Weather API for temperature and humidity
  *
  * These services use secret API keys and should NEVER be exposed to the client.
  *
@@ -23,6 +27,8 @@ export const ServerLayer = Layer.mergeAll(
   MapboxService.Default,
   RainfallService.Default,
   BicycleParkingService.Default,
+  VisionService.Default,
+  WeatherService.Default,
 ).pipe(
   // Provide ConfigService to ensure services have access to configuration
   Layer.provide(ConfigService.Default),

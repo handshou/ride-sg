@@ -52,4 +52,26 @@ export default defineSchema({
     .index("by_timestamp", ["timestamp"])
     .index("by_station", ["stationId"])
     .index("by_fetched", ["fetchedAt"]),
+
+  // Captured images table - stores photos taken from camera with AI analysis
+  capturedImages: defineTable({
+    imageUrl: v.string(), // Convex storage URL
+    storageId: v.string(), // Convex storage ID for retrieval
+    width: v.number(),
+    height: v.number(),
+    orientation: v.union(v.literal("portrait"), v.literal("landscape")),
+    latitude: v.optional(v.number()), // Location where photo was taken
+    longitude: v.optional(v.number()),
+    analysis: v.optional(v.string()), // AI-generated description/analysis
+    analysisStatus: v.union(
+      v.literal("pending"),
+      v.literal("processing"),
+      v.literal("completed"),
+      v.literal("failed"),
+    ),
+    capturedAt: v.number(), // Unix timestamp
+  })
+    .index("by_captured_at", ["capturedAt"])
+    .index("by_location", ["latitude", "longitude"])
+    .index("by_analysis_status", ["analysisStatus"]),
 });

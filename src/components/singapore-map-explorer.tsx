@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { BicycleParkingOverlay } from "@/components/bicycle-parking-overlay";
 import { BicycleParkingPanel } from "@/components/bicycle-parking-panel";
 import { Buildings3DToggleButton } from "@/components/buildings-3d-toggle-button";
+import { CameraCaptureButton } from "@/components/camera-capture-button";
 import { ErrorToastHandler } from "@/components/error-toast-handler";
 import { HowToButton } from "@/components/how-to-button";
 import { LocateMeButton } from "@/components/locate-me-button";
@@ -598,6 +599,7 @@ export function SingaporeMapExplorer({
           onIndexChange={setCurrentLocationIndex}
         />
         <LocateMeButton onLocationFound={handleLocationFound} />
+        <CameraCaptureButton currentLocation={mapLocation || undefined} />
         <RainfallToggleButton
           isActive={showRainfall}
           onClick={() => setShowRainfall(!showRainfall)}
