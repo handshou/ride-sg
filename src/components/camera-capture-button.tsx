@@ -7,13 +7,14 @@ import {
   Image as ImageIcon,
   Monitor,
   Smartphone,
+  Trash2,
   X,
 } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { analyzeImageAction } from "@/lib/actions/analyze-image-action";
+import { moderateAndAnalyzeImageAction } from "@/lib/actions/moderate-and-analyze-image-action";
 import { ClientLayer } from "@/lib/runtime/client-layer";
 import {
   type CameraOrientation,
@@ -25,6 +26,7 @@ import {
 } from "@/lib/services/device-orientation-service";
 import { ImageCaptureServiceTag } from "@/lib/services/image-capture-service";
 import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 
 interface CameraCaptureButtonProps {
   currentLocation?: { latitude: number; longitude: number };
@@ -43,6 +45,9 @@ export function CameraCaptureButton({
   // Convex mutations
   const generateUploadUrl = useMutation(api.capturedImages.generateUploadUrl);
   const saveCapturedImage = useMutation(api.capturedImages.saveCapturedImage);
+  const deleteCapturedImage = useMutation(
+    api.capturedImages.deleteCapturedImage,
+  );
   const capturedImages = useQuery(api.capturedImages.getAllImages);
 
   // Start camera stream
@@ -157,15 +162,17 @@ export function CameraCaptureButton({
       const savedImage = images.find((img) => img._id === imageId);
 
       if (savedImage) {
-        // Trigger AI analysis in the background with location context
-        analyzeImageAction(
+        // Trigger AI analysis with moderation in the background
+        moderateAndAnalyzeImageAction(
           imageId,
           savedImage.imageUrl,
           currentLocation?.latitude,
           currentLocation?.longitude,
         )
           .then((result) => {
-            if (result.success) {
+            if (result.deleted) {
+              toast.warning("Image was removed due to inappropriate content");
+            } else if (result.success) {
               toast.success("Image analyzed with location context!");
             } else {
               toast.error(`Analysis failed: ${result.error}`);
@@ -219,6 +226,23 @@ export function CameraCaptureButton({
       }
     };
   }, [stream]);
+
+  // Delete image handler
+  const handleDeleteImage = useCallback(
+    async (imageId: string) => {
+      if (!confirm("Are you sure you want to delete this image?")) {
+        return;
+      }
+
+      try {
+        await deleteCapturedImage({ id: imageId as Id<"capturedImages"> });
+        toast.success("Image deleted successfully");
+      } catch (error) {
+        toast.error(`Failed to delete image: ${error}`);
+      }
+    },
+    [deleteCapturedImage],
+  );
 
   return (
     <>
@@ -351,25 +375,42 @@ export function CameraCaptureButton({
                         height={300}
                         className="w-full h-48 object-cover"
                       />
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity p-2 flex flex-col justify-end">
-                        <p className="text-white text-xs">
-                          {new Date(image.capturedAt).toLocaleString()}
-                        </p>
-                        {image.analysis && (
-                          <p className="text-white text-xs mt-1 line-clamp-3">
-                            {image.analysis}
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity p-2 flex flex-col justify-between">
+                        {/* Delete button at top right */}
+                        <div className="flex justify-end">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteImage(image._id);
+                            }}
+                            className="bg-red-500/80 hover:bg-red-600 text-white p-2 rounded-lg transition-colors"
+                            title="Delete image"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                        {/* Image info at bottom */}
+                        <div>
+                          <p className="text-white text-xs">
+                            {new Date(image.capturedAt).toLocaleString()}
                           </p>
-                        )}
-                        {image.analysisStatus === "pending" && (
-                          <p className="text-yellow-400 text-xs mt-1">
-                            Analysis pending...
-                          </p>
-                        )}
-                        {image.analysisStatus === "processing" && (
-                          <p className="text-blue-400 text-xs mt-1">
-                            Analyzing...
-                          </p>
-                        )}
+                          {image.analysis && (
+                            <p className="text-white text-xs mt-1 line-clamp-3">
+                              {image.analysis}
+                            </p>
+                          )}
+                          {image.analysisStatus === "pending" && (
+                            <p className="text-yellow-400 text-xs mt-1">
+                              Analysis pending...
+                            </p>
+                          )}
+                          {image.analysisStatus === "processing" && (
+                            <p className="text-blue-400 text-xs mt-1">
+                              Analyzing...
+                            </p>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
