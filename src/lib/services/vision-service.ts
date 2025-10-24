@@ -14,9 +14,28 @@ import { ConfigService } from "./config-service";
  */
 
 /**
- * Schema for OpenAI Vision API response
+ * Schema for OpenAI Vision API response with strict defaults
  */
 const VisionAnalysisResultSchema = Schema.Struct({
+  description: Schema.String,
+  landmarks: Schema.Array(Schema.String),
+  locationClues: Schema.Array(Schema.String),
+  objects: Schema.Array(Schema.String),
+  sceneType: Schema.String,
+  timeOfDay: Schema.String,
+  weatherCondition: Schema.String,
+  safetyNotes: Schema.String,
+}).pipe(
+  Schema.annotations({
+    identifier: "VisionAnalysisResult",
+    description: "OpenAI Vision API analysis result",
+  }),
+);
+
+/**
+ * Schema for partial OpenAI response (allows missing fields)
+ */
+const PartialVisionResponseSchema = Schema.Struct({
   description: Schema.String,
   landmarks: Schema.Array(Schema.String).pipe(Schema.optional),
   locationClues: Schema.Array(Schema.String).pipe(Schema.optional),
@@ -25,12 +44,23 @@ const VisionAnalysisResultSchema = Schema.Struct({
   timeOfDay: Schema.String.pipe(Schema.optional),
   weatherCondition: Schema.String.pipe(Schema.optional),
   safetyNotes: Schema.String.pipe(Schema.optional),
-}).pipe(
-  Schema.annotations({
-    identifier: "VisionAnalysisResult",
-    description: "OpenAI Vision API analysis result",
-  }),
-);
+});
+
+/**
+ * Transform partial response to complete result with defaults
+ */
+const normalizeVisionResponse = (
+  partial: Schema.Schema.Type<typeof PartialVisionResponseSchema>,
+): VisionAnalysisResult => ({
+  description: partial.description,
+  landmarks: partial.landmarks ?? [],
+  locationClues: partial.locationClues ?? [],
+  objects: partial.objects ?? [],
+  sceneType: partial.sceneType ?? "unknown",
+  timeOfDay: partial.timeOfDay ?? "unknown",
+  weatherCondition: partial.weatherCondition ?? "unknown",
+  safetyNotes: partial.safetyNotes ?? "",
+});
 
 export interface VisionAnalysisResult
   extends Schema.Schema.Type<typeof VisionAnalysisResultSchema> {}
@@ -207,8 +237,9 @@ Be specific and detailed. If you can identify exact locations or street names fr
 
             // Strip markdown code blocks if present (```json ... ``` or ``` ... ```)
             let cleanedContent = content.trim();
-            const jsonCodeBlockMatch =
-              cleanedContent.match(/^```(?:json)?\s*\n([\s\S]*?)\n```$/);
+            const jsonCodeBlockMatch = cleanedContent.match(
+              /^```(?:json)?\s*\n([\s\S]*?)\n```$/,
+            );
             if (jsonCodeBlockMatch) {
               cleanedContent = jsonCodeBlockMatch[1].trim();
               yield* Effect.log("Stripped markdown code blocks from response");
@@ -231,9 +262,9 @@ Be specific and detailed. If you can identify exact locations or street names fr
               ),
             );
 
-            // Validate and decode with Schema
-            const validatedResult = yield* Schema.decodeUnknown(
-              VisionAnalysisResultSchema,
+            // Decode partial response with Schema
+            const partialResult = yield* Schema.decodeUnknown(
+              PartialVisionResponseSchema,
             )(parseResult).pipe(
               Effect.catchAll((error) =>
                 Effect.gen(function* () {
@@ -241,39 +272,23 @@ Be specific and detailed. If you can identify exact locations or street names fr
                     error: String(error),
                     parseResult,
                   });
-                  // Fallback to plain description
-                  return {
-                    description: content,
-                    landmarks: [],
-                    locationClues: [],
-                    objects: [],
-                    sceneType: "unknown",
-                    timeOfDay: "unknown",
-                    weatherCondition: "unknown",
-                    safetyNotes: "",
-                  };
+                  // Fallback to minimal valid structure
+                  return { description: content };
                 }),
               ),
             );
 
+            // Normalize to complete result with defaults
+            const normalizedResult = normalizeVisionResponse(partialResult);
+
             yield* Effect.log("Successfully validated response", {
-              hasDescription: !!validatedResult.description,
-              landmarksCount: validatedResult.landmarks?.length || 0,
-              objectsCount: validatedResult.objects?.length || 0,
-              locationCluesCount: validatedResult.locationClues?.length || 0,
+              hasDescription: !!normalizedResult.description,
+              landmarksCount: normalizedResult.landmarks.length,
+              objectsCount: normalizedResult.objects.length,
+              locationCluesCount: normalizedResult.locationClues.length,
             });
 
-            // Return with defaults for optional fields
-            return {
-              description: validatedResult.description,
-              landmarks: validatedResult.landmarks || [],
-              locationClues: validatedResult.locationClues || [],
-              objects: validatedResult.objects || [],
-              sceneType: validatedResult.sceneType || "unknown",
-              timeOfDay: validatedResult.timeOfDay || "unknown",
-              weatherCondition: validatedResult.weatherCondition || "unknown",
-              safetyNotes: validatedResult.safetyNotes || "",
-            };
+            return normalizedResult;
           }).pipe(
             Effect.catchAll((error) =>
               Effect.gen(function* () {

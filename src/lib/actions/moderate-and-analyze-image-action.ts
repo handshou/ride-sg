@@ -86,8 +86,8 @@ const moderateAndAnalyzeImageEffect = (
     if (mapboxToken) {
       // Build list of location names to try geocoding (landmarks first, then location clues)
       const locationsToGeocode: string[] = [
-        ...(analysisResult.landmarks || []),
-        ...(analysisResult.locationClues || []),
+        ...analysisResult.landmarks,
+        ...analysisResult.locationClues,
       ].filter((loc) => loc && loc.trim() !== "");
 
       if (locationsToGeocode.length > 0) {

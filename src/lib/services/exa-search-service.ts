@@ -1,11 +1,15 @@
 import { Context, Effect, Schema } from "effect";
 import {
   type ExaAnswerResponse,
-  ExaAnswerResponseSchema,
   type ExtractedLocationEntry,
   ExtractedLocationEntrySchema,
+  normalizeExaAnswerResponse,
+  PartialExaAnswerResponseSchema,
 } from "../schema/exa-answer.schema";
-import { SearchResultSchema } from "../schema/search-result.schema";
+import {
+  normalizeSearchResult,
+  PartialSearchResultSchema,
+} from "../schema/search-result.schema";
 import type { AppConfig } from "./config-service";
 import { ConfigService } from "./config-service";
 import type { SearchResult } from "./search-state-service";
@@ -195,7 +199,12 @@ class ExaSearchServiceImpl {
   ): Effect.Effect<SearchResult | null> {
     return Effect.gen(function* () {
       try {
-        return Schema.decodeUnknownSync(SearchResultSchema)(result);
+        // Decode as partial result
+        const partialResult = Schema.decodeUnknownSync(
+          PartialSearchResultSchema,
+        )(result);
+        // Normalize to complete result with defaults
+        return normalizeSearchResult(partialResult);
       } catch (error) {
         // Log validation error for debugging but don't throw
         yield* Effect.logWarning(
@@ -440,19 +449,24 @@ Example format:
             new ExaError(`Failed to parse Exa response: ${error}`),
         });
 
-        // Decode and validate using Effect.Schema
-        const answerData: ExaAnswerResponse = yield* Effect.try({
-          try: () => Schema.decodeUnknownSync(ExaAnswerResponseSchema)(rawData),
+        // Decode and validate using Effect.Schema (partial)
+        const partialAnswerData = yield* Effect.try({
+          try: () =>
+            Schema.decodeUnknownSync(PartialExaAnswerResponseSchema)(rawData),
           catch: (error) =>
             new ExaError(
               `Schema validation failed: ${error instanceof Error ? error.message : String(error)}`,
             ),
         });
 
+        // Normalize to complete response with defaults
+        const answerData: ExaAnswerResponse =
+          normalizeExaAnswerResponse(partialAnswerData);
+
         yield* Effect.log(
           `Exa Answer received: "${answerData.answer.substring(0, 150)}..."`,
         );
-        if (answerData.sources) {
+        if (answerData.sources.length > 0) {
           yield* Effect.log(
             `Exa sources: ${answerData.sources.length} sources`,
           );
@@ -498,18 +512,18 @@ Example format:
 
           if (coordinates) {
             // Clean description from entry or fallback to source
-            const cleanedSourceDesc = answerData.sources?.[0]?.content
-              ? this.cleanDescription(
-                  answerData.sources[0].content.substring(0, 150),
-                )
-              : "";
+            const firstSource = answerData.sources[0];
+            const cleanedSourceDesc =
+              firstSource && firstSource.content
+                ? this.cleanDescription(firstSource.content.substring(0, 150))
+                : "";
             const description =
               entry.description ||
               cleanedSourceDesc ||
               "Singapore location (via Exa Answer API)";
 
             // Extract URL from sources if available
-            const url = answerData.sources?.[0]?.url;
+            const url = firstSource?.url ?? "";
 
             // Validate and add search result
             const validatedResult = yield* this.validateSearchResult({

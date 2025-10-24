@@ -26,7 +26,7 @@ export const CoordinatesSchema = Schema.Struct({
 export const SearchSourceSchema = Schema.Literal("mapbox", "exa", "database");
 
 /**
- * Search result
+ * Strict search result schema (all fields required)
  */
 export const SearchResultSchema = Schema.Struct({
   id: Schema.String,
@@ -35,9 +35,41 @@ export const SearchResultSchema = Schema.Struct({
   location: CoordinatesSchema,
   source: SearchSourceSchema,
   timestamp: Schema.Number,
-  address: Schema.optional(Schema.String),
-  url: Schema.optional(Schema.String),
-  distance: Schema.optional(Schema.Number), // Distance in meters from reference point
+  address: Schema.String,
+  url: Schema.String,
+  distance: Schema.Number, // Distance in meters from reference point
+});
+
+/**
+ * Partial search result schema for input (allows missing fields)
+ */
+export const PartialSearchResultSchema = Schema.Struct({
+  id: Schema.String,
+  title: Schema.String,
+  description: Schema.String,
+  location: CoordinatesSchema,
+  source: SearchSourceSchema,
+  timestamp: Schema.Number,
+  address: Schema.String.pipe(Schema.optional),
+  url: Schema.String.pipe(Schema.optional),
+  distance: Schema.Number.pipe(Schema.optional),
+});
+
+/**
+ * Normalize partial search result to complete result with defaults
+ */
+export const normalizeSearchResult = (
+  partial: Schema.Schema.Type<typeof PartialSearchResultSchema>,
+): SearchResult => ({
+  id: partial.id,
+  title: partial.title,
+  description: partial.description,
+  location: partial.location,
+  source: partial.source,
+  timestamp: partial.timestamp,
+  address: partial.address ?? "",
+  url: partial.url ?? "",
+  distance: partial.distance ?? 0,
 });
 
 /**
@@ -46,3 +78,6 @@ export const SearchResultSchema = Schema.Struct({
 export type Coordinates = Schema.Schema.Type<typeof CoordinatesSchema>;
 export type SearchSource = Schema.Schema.Type<typeof SearchSourceSchema>;
 export type SearchResult = Schema.Schema.Type<typeof SearchResultSchema>;
+export type PartialSearchResult = Schema.Schema.Type<
+  typeof PartialSearchResultSchema
+>;

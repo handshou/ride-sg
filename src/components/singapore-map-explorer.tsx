@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "convex/react";
-import { Effect } from "effect";
+import { Effect, Schema } from "effect";
 import { useTheme } from "next-themes";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BicycleParkingOverlay } from "@/components/bicycle-parking-overlay";
@@ -27,6 +27,10 @@ import { useMobile } from "@/hooks/use-mobile";
 import { logger } from "@/lib/client-logger";
 import { MAPBOX_STYLES } from "@/lib/map-styles";
 import type { BicycleParkingResult } from "@/lib/schema/bicycle-parking.schema";
+import {
+  normalizeBicycleParkingAPIResponse,
+  PartialBicycleParkingAPIResponseSchema,
+} from "@/lib/schema/bicycle-parking-api.schema";
 import type { GeocodeResult } from "@/lib/services/mapbox-service";
 import type { SearchResult } from "@/lib/services/search-state-service";
 import {
@@ -145,11 +149,26 @@ export function SingaporeMapExplorer({
         `/api/bicycle-parking?lat=${lat}&long=${long}`,
       );
       if (response.ok) {
-        const data = await response.json();
-        setBicycleParkingResults(data.results || []);
-        logger.info(
-          `Found ${data.results?.length || 0} bicycle parking locations`,
-        );
+        const rawData = await response.json();
+
+        // Validate and normalize response with Schema
+        try {
+          const partialData = Schema.decodeUnknownSync(
+            PartialBicycleParkingAPIResponseSchema,
+          )(rawData);
+          const normalizedData =
+            normalizeBicycleParkingAPIResponse(partialData);
+
+          setBicycleParkingResults(normalizedData.results);
+          logger.info(
+            `Found ${normalizedData.results.length} bicycle parking locations`,
+          );
+        } catch (schemaError) {
+          logger.error("Schema validation failed for bicycle parking", {
+            error: schemaError,
+          });
+          setBicycleParkingResults([]);
+        }
       } else {
         logger.error("Failed to fetch bicycle parking", {
           status: response.status,
