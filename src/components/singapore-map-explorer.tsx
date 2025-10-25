@@ -539,7 +539,8 @@ export function SingaporeMapExplorer({
       setIsUserLocation(true);
 
       // Use CrossBorderNavigationService to handle detection, flyTo, and routing
-      if (!mapInstanceRef.current) {
+      const mapInstance = mapInstanceRef.current;
+      if (!mapInstance) {
         logger.error("Map instance not available");
         return;
       }
@@ -551,7 +552,7 @@ export function SingaporeMapExplorer({
             return yield* service.handleLocationFound({
               coordinates: coords,
               currentCity: "singapore",
-              map: mapInstanceRef.current!,
+              map: mapInstance,
               mapboxToken: mapboxPublicToken,
               isMobile,
             });

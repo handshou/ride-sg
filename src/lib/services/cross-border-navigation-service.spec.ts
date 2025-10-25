@@ -1,6 +1,6 @@
 import { Effect } from "effect";
 import type mapboxgl from "mapbox-gl";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CrossBorderNavigationServiceImpl } from "./cross-border-navigation-service";
 
 // Mock the detect-location module
@@ -27,18 +27,22 @@ describe("CrossBorderNavigationService", () => {
     // Reset all mocks
     vi.clearAllMocks();
 
-    // Mock window.history
-    global.window = {
+    // Mock window.history using Vitest's stubGlobal
+    vi.stubGlobal("window", {
       history: {
         replaceState: vi.fn(),
       },
-    } as any;
+    });
 
     // Mock requestAnimationFrame (not available in Node.js)
     global.requestAnimationFrame = vi.fn((callback) => {
       callback(0);
       return 0;
     });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   describe("detectCrossBorder", () => {
@@ -205,6 +209,7 @@ describe("CrossBorderNavigationService", () => {
 
     it("should fail with MapNotReadyError if map is null", async () => {
       const effect = service.executeFlyTo(
+        // biome-ignore lint/suspicious/noExplicitAny: Testing null map input
         null as any,
         { latitude: 1.3521, longitude: 103.8198 },
         1800,
