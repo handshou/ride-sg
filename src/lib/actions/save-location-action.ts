@@ -5,6 +5,7 @@ import { Effect } from "effect";
 import { api } from "../../../convex/_generated/api";
 import { runServerEffectAsync } from "../server-runtime";
 import type { SearchResult } from "../services/search-state-service";
+import { detectCityFromCoords } from "../utils/detect-location";
 
 /**
  * Effect program for saving a location to Convex
@@ -40,6 +41,39 @@ const saveLocationEffect = (result: SearchResult) =>
       ]);
     };
 
+    // Detect city from coordinates
+    yield* Effect.log(
+      `Detecting city for: [${result.location.latitude}, ${result.location.longitude}]`,
+    );
+    const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+    if (!mapboxToken) {
+      yield* Effect.logError("NEXT_PUBLIC_MAPBOX_TOKEN not configured");
+      return {
+        success: false,
+        error: "Mapbox token not configured",
+      };
+    }
+
+    const detectedCity = yield* Effect.tryPromise({
+      try: () =>
+        detectCityFromCoords(
+          result.location.latitude,
+          result.location.longitude,
+          mapboxToken,
+        ),
+      catch: (error) => ({
+        _tag: "CityDetectionError" as const,
+        message: `Failed to detect city: ${error}`,
+      }),
+    });
+
+    // Default to singapore if unknown
+    const city =
+      detectedCity === "singapore" || detectedCity === "jakarta"
+        ? detectedCity
+        : "singapore";
+    yield* Effect.log(`Detected city: ${city}`);
+
     // First, search for existing results with similar titles (with timeout)
     yield* Effect.log(`Searching for existing results: "${result.title}"`);
     const existingResults = yield* Effect.tryPromise({
@@ -47,6 +81,7 @@ const saveLocationEffect = (result: SearchResult) =>
         withTimeout(
           client.query(api.locations.searchLocations, {
             query: result.title,
+            city, // Filter by city
           }),
           10000,
         ),
@@ -87,8 +122,11 @@ const saveLocationEffect = (result: SearchResult) =>
       }
     }
 
+    // Extract postal code from address if available (6 digits)
+    const postalCode = result.address?.match(/\b\d{6}\b/)?.[0];
+
     // Save the new result (with timeout)
-    yield* Effect.log(`Saving new result: "${result.title}"`);
+    yield* Effect.log(`Saving new result: "${result.title}" in ${city}`);
     const newConvexId = yield* Effect.tryPromise({
       try: () =>
         withTimeout(
@@ -99,7 +137,9 @@ const saveLocationEffect = (result: SearchResult) =>
             longitude: result.location.longitude,
             source: result.source,
             timestamp: Date.now(), // Update timestamp
+            city, // Save detected city
             isRandomizable: true, // Mark as randomizable for random navigation feature
+            postalCode: postalCode, // Save postal code if found
           }),
           10000,
         ),

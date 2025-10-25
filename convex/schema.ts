@@ -19,10 +19,14 @@ export default defineSchema({
       v.literal("database"),
     ),
     timestamp: v.number(),
+    city: v.union(v.literal("singapore"), v.literal("jakarta")), // City location
     isRandomizable: v.optional(v.boolean()), // Flag for random selection
+    postalCode: v.optional(v.string()), // Postal code for the location
   })
     .index("by_timestamp", ["timestamp"])
-    .index("by_source", ["source"]),
+    .index("by_source", ["source"])
+    .index("by_city", ["city"])
+    .index("by_city_randomizable", ["city", "isRandomizable"]),
 
   // Bicycle parking table - stores cached bicycle parking locations
   bicycleParking: defineTable({

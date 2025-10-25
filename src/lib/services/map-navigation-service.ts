@@ -178,7 +178,10 @@ export class MapNavigationServiceImpl implements MapNavigationService {
             requestAnimationFrame(() => {
               // Build flyTo options - cast needed for tuple type
               const flyToOptions = {
-                center: [options.coordinates.longitude, options.coordinates.latitude] as [number, number],
+                center: [
+                  options.coordinates.longitude,
+                  options.coordinates.latitude,
+                ] as [number, number],
                 zoom,
                 duration,
                 essential: true,
@@ -270,9 +273,7 @@ export const MapNavigationService = Context.GenericTag<MapNavigationService>(
 export const MapNavigationServiceLive = Layer.succeed(
   MapNavigationService,
   new MapNavigationServiceImpl(),
-).pipe(
-  Layer.tap(() => Effect.logDebug("🗺️  MapNavigationService initialized")),
-);
+).pipe(Layer.tap(() => Effect.logDebug("🗺️  MapNavigationService initialized")));
 
 /**
  * Test layer implementation

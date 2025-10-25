@@ -35,6 +35,7 @@ import { detectCityFromCoords } from "../utils/detect-location";
 describe("CrossBorderNavigationService", () => {
   let service: CrossBorderNavigationServiceImpl;
   let mockMap: Partial<mapboxgl.Map>;
+  // biome-ignore lint/suspicious/noExplicitAny: Test mock requires flexible typing
   let mockMapNavigationService: any;
 
   beforeEach(() => {
@@ -44,16 +45,17 @@ describe("CrossBorderNavigationService", () => {
       flyTo: vi.fn().mockImplementation((map, options) => {
         // Check if map is ready (same logic as real implementation)
         if (!map || !map.isStyleLoaded()) {
-          return Effect.fail(
-            new Error("Map is not ready for flyTo animation"),
-          );
+          return Effect.fail(new Error("Map is not ready for flyTo animation"));
         }
 
         // Simulate successful flyTo
         return Effect.gen(function* () {
           map.stop();
           map.flyTo({
-            center: [options.coordinates.longitude, options.coordinates.latitude],
+            center: [
+              options.coordinates.longitude,
+              options.coordinates.latitude,
+            ],
             zoom: options.zoom ?? (options.isMobile ? 15 : 16),
             duration: options.duration ?? 2000,
             essential: true,
@@ -196,7 +198,7 @@ describe("CrossBorderNavigationService", () => {
           center: [coords.longitude, coords.latitude],
           zoom: 16, // Desktop zoom
           duration: 1800,
-          curve: 1.3, // Local curve
+          curve: 1.6, // Local curve
         }),
       );
     });
@@ -220,7 +222,7 @@ describe("CrossBorderNavigationService", () => {
           center: [coords.longitude, coords.latitude],
           zoom: 16, // Desktop zoom
           duration: 6000,
-          curve: 1.8, // Cross-border curve
+          curve: 1.8, // Cross-border curve (unchanged)
         }),
       );
     }, 10000); // 10 second timeout for 6 second animation
@@ -327,7 +329,7 @@ describe("CrossBorderNavigationService", () => {
 
       expect(result.detectedCity).toBe("singapore");
       expect(result.isCrossBorder).toBe(false);
-      expect(result.flyToDuration).toBe(1800);
+      expect(result.flyToDuration).toBe(2500);
       expect(result.urlUpdated).toBe(false);
       expect(mockMap.flyTo).toHaveBeenCalled();
       expect(window.history.replaceState).not.toHaveBeenCalled();
@@ -348,7 +350,7 @@ describe("CrossBorderNavigationService", () => {
 
       expect(result.detectedCity).toBe("jakarta");
       expect(result.isCrossBorder).toBe(true);
-      expect(result.flyToDuration).toBe(6000);
+      expect(result.flyToDuration).toBe(6500);
       expect(result.urlUpdated).toBe(true);
       expect(mockMap.flyTo).toHaveBeenCalled();
       expect(window.history.replaceState).toHaveBeenCalledWith(
@@ -373,7 +375,7 @@ describe("CrossBorderNavigationService", () => {
 
       expect(result.detectedCity).toBe("singapore");
       expect(result.isCrossBorder).toBe(true);
-      expect(result.flyToDuration).toBe(6000);
+      expect(result.flyToDuration).toBe(6500);
       expect(result.urlUpdated).toBe(true);
       expect(window.history.replaceState).toHaveBeenCalledWith(
         null,
@@ -438,7 +440,7 @@ describe("CrossBorderNavigationService", () => {
       // Using the test layer's default mock implementation
       expect(result.detectedCity).toBe("singapore");
       expect(result.isCrossBorder).toBe(false);
-      expect(result.flyToDuration).toBe(1800);
+      expect(result.flyToDuration).toBe(2500);
       expect(result.urlUpdated).toBe(false);
     });
 
@@ -449,7 +451,7 @@ describe("CrossBorderNavigationService", () => {
           Effect.succeed({
             detectedCity: "jakarta" as const,
             isCrossBorder: true,
-            flyToDuration: 6000,
+            flyToDuration: 6500,
             urlUpdated: true,
           }),
       });
@@ -471,7 +473,7 @@ describe("CrossBorderNavigationService", () => {
 
       expect(result.detectedCity).toBe("jakarta");
       expect(result.isCrossBorder).toBe(true);
-      expect(result.flyToDuration).toBe(6000);
+      expect(result.flyToDuration).toBe(6500);
       expect(result.urlUpdated).toBe(true);
     });
   });

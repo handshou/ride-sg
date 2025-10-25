@@ -135,7 +135,9 @@ export interface CrossBorderNavigationService {
 /**
  * Extract the actual service shape from the tag
  */
-type MapNavigationServiceShape = Context.Tag.Service<typeof MapNavigationService>;
+type MapNavigationServiceShape = Context.Tag.Service<
+  typeof MapNavigationService
+>;
 
 /**
  * Implementation of CrossBorderNavigationService
@@ -146,9 +148,9 @@ export class CrossBorderNavigationServiceImpl
   /**
    * Constants for cross-border navigation
    */
-  private readonly LOCAL_FLY_DURATION = 1800; // 1.8 seconds
-  private readonly CROSS_BORDER_FLY_DURATION = 6000; // 6 seconds
-  private readonly LOCAL_CURVE = 1.3;
+  private readonly LOCAL_FLY_DURATION = 2500; // 2.5 seconds
+  private readonly CROSS_BORDER_FLY_DURATION = 6500; // 6.5 seconds
+  private readonly LOCAL_CURVE = 1.6;
   private readonly CROSS_BORDER_CURVE = 1.8; // More dramatic arc
   private readonly URL_UPDATE_BUFFER = 200; // ms after flyTo completes
 
@@ -156,7 +158,9 @@ export class CrossBorderNavigationServiceImpl
    * Constructor injection of dependencies
    * @param mapNavigationService - Injected map navigation service
    */
-  constructor(private readonly mapNavigationService: MapNavigationServiceShape) {}
+  constructor(
+    private readonly mapNavigationService: MapNavigationServiceShape,
+  ) {}
 
   detectCrossBorder(
     coordinates: { latitude: number; longitude: number },
@@ -175,7 +179,12 @@ export class CrossBorderNavigationServiceImpl
           mapboxToken,
         );
 
-        // Check if detected city is different from current city
+        // Cross-border definition:
+        // - On /singapore page: flying to Jakarta coords = cross-border (6.5s)
+        // - On /singapore page: flying to Singapore coords = local (2.5s)
+        // - On /jakarta page: flying to Singapore coords = cross-border (6.5s)
+        // - On /jakarta page: flying to Jakarta coords = local (2.5s)
+        // - Unknown locations are treated as local to avoid long animations
         const isCrossBorder =
           (currentCity === "singapore" && detectedCity === "jakarta") ||
           (currentCity === "jakarta" && detectedCity === "singapore");
@@ -203,15 +212,25 @@ export class CrossBorderNavigationServiceImpl
     const curve = isCrossBorder ? this.CROSS_BORDER_CURVE : this.LOCAL_CURVE;
     const zoom = isMobile ? 15 : 16;
 
-    // Use injected mapNavigationService directly (no yield needed)
-    return this.mapNavigationService.flyTo(map, {
-      coordinates,
-      zoom,
-      duration,
-      curve,
-      easing: (t) => t * (2 - t),
-      isMobile,
-    });
+    // Log for debugging
+    return Effect.gen(function* () {
+      yield* Effect.logInfo(
+        `Flying to: duration=${duration}ms, curve=${curve}, isCrossBorder=${isCrossBorder}, zoom=${zoom}`,
+      );
+      return yield* Effect.void;
+    }).pipe(
+      Effect.flatMap(() =>
+        // Use injected mapNavigationService directly (no yield needed)
+        this.mapNavigationService.flyTo(map, {
+          coordinates,
+          zoom,
+          duration,
+          curve,
+          easing: (t) => t * (2 - t),
+          isMobile,
+        }),
+      ),
+    );
   }
 
   updateUrlWithoutNavigation(
@@ -394,7 +413,7 @@ export const CrossBorderNavigationServiceTest = Layer.mock(
       Effect.succeed({
         detectedCity: "singapore" as const,
         isCrossBorder: false,
-        flyToDuration: 1800,
+        flyToDuration: 2500,
         urlUpdated: false,
       }),
     detectCrossBorder: () =>

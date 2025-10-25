@@ -10,6 +10,7 @@ import {
   Database,
   Heart,
   Loader2,
+  Map as MapIcon,
   MapPin,
   Search,
   X,
@@ -32,6 +33,26 @@ interface SearchPanelProps {
   onResultSelect: (result: SearchResult) => void;
   onSearchStateReady?: (addResult: (result: SearchResult) => void) => void;
   onGetMapCenter?: () => { lat: number; lng: number } | undefined;
+}
+
+/**
+ * Generate Google Maps URL with smart parameter selection
+ * Priority: lat/long > postal code > title
+ */
+function getGoogleMapsUrl(result: SearchResult): string {
+  // Highest confidence: Use coordinates
+  if (result.location?.latitude && result.location?.longitude) {
+    return `https://www.google.com/maps/search/?api=1&query=${result.location.latitude},${result.location.longitude}`;
+  }
+
+  // Medium confidence: Use postal code if available
+  const postalMatch = result.address?.match(/\b\d{6}\b/);
+  if (postalMatch) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(postalMatch[0])}`;
+  }
+
+  // Fallback: Use title
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(result.title)}`;
 }
 
 export function SearchPanel({
@@ -484,6 +505,22 @@ export function SearchPanel({
                                   ) : null;
                                 })()}
                             </div>
+                            {/* Open in Google Maps Link */}
+                            <a
+                              href={getGoogleMapsUrl(result)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-xs mt-1 inline-flex items-center gap-1"
+                            >
+                              <Badge
+                                variant="outline"
+                                className="flex items-center gap-1 text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 border-blue-300 dark:border-blue-600 hover:border-blue-400 dark:hover:border-blue-500 transition-colors cursor-pointer"
+                              >
+                                <MapIcon className="h-3 w-3" />
+                                <span>Google Maps</span>
+                              </Badge>
+                            </a>
                           </div>
                         </div>
                       </button>

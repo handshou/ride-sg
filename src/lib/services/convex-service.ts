@@ -2,6 +2,7 @@ import { ConvexHttpClient } from "convex/browser";
 import type { GenericId } from "convex/values";
 import { Context, Effect } from "effect";
 import { api } from "../../../convex/_generated/api";
+import { detectCityFromCoords } from "../utils/detect-location";
 import type { AppConfig } from "./config-service";
 import { ConfigService } from "./config-service";
 import type { SearchResult } from "./search-state-service";
@@ -185,7 +186,29 @@ class ConvexServiceImpl {
           return;
         }
 
-        yield* Effect.log(`Saving location to Convex: ${result.title}`);
+        // Get mapbox token from config
+        const mapboxToken = this.config.mapbox.publicToken;
+
+        // Detect city from coordinates
+        const detectedCity = yield* Effect.tryPromise({
+          try: () =>
+            detectCityFromCoords(
+              result.location.latitude,
+              result.location.longitude,
+              mapboxToken,
+            ),
+          catch: (error) => new ConvexError("Failed to detect city", error),
+        });
+
+        // Default to singapore if unknown
+        const city =
+          detectedCity === "singapore" || detectedCity === "jakarta"
+            ? detectedCity
+            : "singapore";
+
+        yield* Effect.log(
+          `Saving location to Convex: ${result.title} (city: ${city})`,
+        );
 
         // Call the Convex mutation
         yield* Effect.tryPromise({
@@ -197,6 +220,7 @@ class ConvexServiceImpl {
               longitude: result.location.longitude,
               source: result.source,
               timestamp: result.timestamp,
+              city,
             }),
           catch: (error) =>
             new ConvexError("Failed to save to Convex database", error),

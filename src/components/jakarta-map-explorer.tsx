@@ -3,7 +3,6 @@
 import { useQuery } from "convex/react";
 import { Effect, Schema } from "effect";
 import { useRouter, useSearchParams } from "next/navigation";
-import { runClientEffectAsync } from "@/lib/client-runtime";
 import { useTheme } from "next-themes";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -11,6 +10,7 @@ import { BicycleParkingOverlay } from "@/components/bicycle-parking-overlay";
 import { BicycleParkingPanel } from "@/components/bicycle-parking-panel";
 import { Buildings3DToggleButton } from "@/components/buildings-3d-toggle-button";
 import { CameraCaptureButton } from "@/components/camera-capture-button";
+import { CityToggleButton } from "@/components/city-toggle-button";
 import { ErrorToastHandler } from "@/components/error-toast-handler";
 import { HowToButton } from "@/components/how-to-button";
 import { ImageAnalysisOverlay } from "@/components/image-analysis-overlay";
@@ -24,6 +24,7 @@ import { SavedLocationsOverlay } from "@/components/saved-locations-overlay";
 import { SearchPanel } from "@/components/search-panel";
 import { useMobile } from "@/hooks/use-mobile";
 import { logger } from "@/lib/client-logger";
+import { runClientEffectAsync } from "@/lib/client-runtime";
 import { MAPBOX_STYLES } from "@/lib/map-styles";
 import type { BicycleParkingResult } from "@/lib/schema/bicycle-parking.schema";
 import {
@@ -89,7 +90,9 @@ export function JakartaMapExplorer({
   const [currentStyleSupports3D, setCurrentStyleSupports3D] = useState(true);
 
   // Saved locations for random navigation - using Convex reactive query
-  const convexLocations = useQuery(api.locations.getRandomizableLocations, {});
+  const convexLocations = useQuery(api.locations.getRandomizableLocations, {
+    city: "jakarta",
+  });
   const [savedLocations, setSavedLocations] = useState<
     Array<{
       latitude: number;
@@ -136,6 +139,38 @@ export function JakartaMapExplorer({
     setSavedLocations(mappedLocations);
     setCurrentLocationIndex(0);
   }, [convexLocations]);
+
+  // Automatically add saved locations as search results
+  useEffect(() => {
+    // Wait for both convexLocations and addSearchResult callback to be ready
+    if (!convexLocations || convexLocations.length === 0 || !addSearchResult) {
+      return;
+    }
+
+    logger.info(
+      `📍 Auto-adding ${convexLocations.length} saved locations to search results`,
+    );
+
+    // Convert each saved location to SearchResult format and add to search
+    for (const location of convexLocations) {
+      const searchResult: SearchResult = {
+        id: location._id,
+        title: location.title,
+        description: location.description,
+        location: {
+          latitude: location.latitude,
+          longitude: location.longitude,
+        },
+        source: "database",
+        timestamp: location.timestamp,
+        address: location.postalCode ? `Jakarta ${location.postalCode}` : "",
+        url: "",
+        distance: 0,
+      };
+
+      addSearchResult(searchResult);
+    }
+  }, [convexLocations, addSearchResult]);
 
   // Fetch bicycle parking for a location
   const fetchBicycleParking = useCallback(async (lat: number, long: number) => {
@@ -377,12 +412,24 @@ export function JakartaMapExplorer({
         });
 
         const executeFlyTo = async () => {
-          await mapNavigation.flyToSearchResult(
-            map,
-            result.location,
-            isMobile,
-            () => toast.error("Failed to navigate to location"),
-          );
+          await runClientEffectAsync(
+            Effect.gen(function* () {
+              const crossBorderService = yield* CrossBorderNavigationServiceTag;
+              const navigationResult =
+                yield* crossBorderService.handleLocationFound({
+                  coordinates: result.location,
+                  currentCity: "jakarta",
+                  map,
+                  mapboxToken: mapboxPublicToken,
+                  isMobile,
+                });
+
+              logger.info("Navigation completed", navigationResult);
+            }),
+          ).catch((error) => {
+            logger.error("Navigation failed", error);
+            toast.error("Failed to navigate to location");
+          });
 
           setMapLocation(result.location);
           setIsUserLocation(false);
@@ -401,7 +448,7 @@ export function JakartaMapExplorer({
         logger.warn("Map instance not ready yet");
       }
     },
-    [isMobile],
+    [isMobile, mapboxPublicToken],
   );
 
   const handleCoordinatesGenerated = useCallback(
@@ -665,6 +712,15 @@ export function JakartaMapExplorer({
           </>
         )}
       </div>
+
+      {/* City Toggle Button */}
+      {isMapReady && mapInstanceRef.current && (
+        <CityToggleButton
+          currentCity="jakarta"
+          mapInstance={mapInstanceRef.current}
+          isMobile={isMobile}
+        />
+      )}
     </div>
   );
 }

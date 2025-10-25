@@ -1,7 +1,7 @@
 "use client";
 
 import { Effect } from "effect";
-import { Dices } from "lucide-react";
+import { Bookmark, Dices } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -110,6 +110,8 @@ export function RandomCoordinatesButton({
     >
       {isGenerating ? (
         <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+      ) : hasLocations ? (
+        <Bookmark className="h-5 w-5" />
       ) : (
         <Dices className="h-5 w-5" />
       )}

@@ -1,4 +1,4 @@
-import { logger } from "@/lib/client-logger";
+import { logger } from "../client-logger";
 
 export type DetectedCity = "singapore" | "jakarta" | "unknown";
 

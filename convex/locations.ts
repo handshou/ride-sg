@@ -31,9 +31,19 @@ function calculateSimilarity(str1: string, str2: string): number {
  * Only returns results with high keyword match (>= 0.4 similarity)
  */
 export const searchLocations = query({
-  args: { query: v.string() },
+  args: {
+    query: v.string(),
+    city: v.optional(v.union(v.literal("singapore"), v.literal("jakarta"))),
+  },
   handler: async (ctx, args) => {
-    const locations = await ctx.db.query("locations").collect();
+    const locations = args.city
+      ? await ctx.db
+          .query("locations")
+          .withIndex("by_city", (q) =>
+            q.eq("city", args.city as "singapore" | "jakarta"),
+          )
+          .collect()
+      : await ctx.db.query("locations").collect();
     const queryLower = args.query.toLowerCase();
 
     // Filter and score locations
@@ -67,8 +77,19 @@ export const searchLocations = query({
  * Query: Get all locations
  */
 export const getAllLocations = query({
-  args: {},
-  handler: async (ctx) => {
+  args: {
+    city: v.optional(v.union(v.literal("singapore"), v.literal("jakarta"))),
+  },
+  handler: async (ctx, args) => {
+    if (args.city) {
+      return await ctx.db
+        .query("locations")
+        .withIndex("by_city", (q) =>
+          q.eq("city", args.city as "singapore" | "jakarta"),
+        )
+        .order("desc")
+        .collect();
+    }
     return await ctx.db.query("locations").order("desc").collect();
   },
 });
@@ -77,8 +98,20 @@ export const getAllLocations = query({
  * Query: Get randomizable locations (for random navigation feature)
  */
 export const getRandomizableLocations = query({
-  args: {},
-  handler: async (ctx) => {
+  args: {
+    city: v.optional(v.union(v.literal("singapore"), v.literal("jakarta"))),
+  },
+  handler: async (ctx, args) => {
+    if (args.city) {
+      return await ctx.db
+        .query("locations")
+        .withIndex("by_city_randomizable", (q) =>
+          q
+            .eq("city", args.city as "singapore" | "jakarta")
+            .eq("isRandomizable", true),
+        )
+        .collect();
+    }
     return await ctx.db
       .query("locations")
       .filter((q) => q.eq(q.field("isRandomizable"), true))
@@ -101,7 +134,9 @@ export const saveLocation = mutation({
       v.literal("database"),
     ),
     timestamp: v.number(),
+    city: v.union(v.literal("singapore"), v.literal("jakarta")),
     isRandomizable: v.optional(v.boolean()),
+    postalCode: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const locationId = await ctx.db.insert("locations", {
@@ -111,7 +146,9 @@ export const saveLocation = mutation({
       longitude: args.longitude,
       source: args.source,
       timestamp: args.timestamp,
+      city: args.city,
       isRandomizable: args.isRandomizable,
+      postalCode: args.postalCode,
     });
 
     return locationId;
@@ -134,6 +171,8 @@ export const updateLocation = mutation({
       v.literal("database"),
     ),
     timestamp: v.number(),
+    city: v.union(v.literal("singapore"), v.literal("jakarta")),
+    postalCode: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { id, ...updates } = args;
