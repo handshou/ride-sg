@@ -11,14 +11,16 @@ import { internal } from "./_generated/api";
 const crons = cronJobs();
 
 /**
- * Fetch rainfall data every 5 minutes
+ * Fetch rainfall data every 30 minutes
  *
  * Keeps the database updated with the latest rainfall readings
  * from NEA Singapore's real-time rainfall API.
+ * Reduced frequency (2x per hour) to minimize API calls,
+ * as primary data fetch happens on-demand via server runtime.
  */
 crons.interval(
   "fetch-rainfall-data",
-  { minutes: 5 },
+  { minutes: 30 },
   internal.rainfall.fetchAndSaveRainfall,
 );
 

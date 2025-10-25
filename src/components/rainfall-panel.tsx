@@ -8,6 +8,15 @@ import { Spinner } from "@/components/ui/spinner";
 import { api } from "../../convex/_generated/api";
 
 interface RainfallPanelProps {
+  initialRainfallData: Array<{
+    stationId: string;
+    stationName: string;
+    latitude: number;
+    longitude: number;
+    value: number;
+    timestamp: string;
+    fetchedAt: number;
+  }>;
   onStationClick?: (latitude: number, longitude: number) => void;
   useMockData?: boolean;
 }
@@ -21,14 +30,25 @@ interface RainfallPanelProps {
  * - Station list sorted by rainfall (descending)
  * - Color indicators matching heat map
  * - Loading/empty states
+ *
+ * Data source:
+ * - Uses initialRainfallData from server (NEA API → Convex fallback)
+ * - Only queries Convex when useMockData is true for testing/demo
  */
 export function RainfallPanel({
+  initialRainfallData,
   onStationClick,
   useMockData,
 }: RainfallPanelProps) {
-  const rainfallData = useQuery(api.rainfall.getLatestRainfall, {
-    useMockData: useMockData || false,
-  });
+  // Only query Convex when using mock data (for testing/demo)
+  const mockDataFromConvex = useQuery(
+    api.rainfall.getLatestRainfall,
+    useMockData ? { useMockData: true } : "skip",
+  );
+
+  // Use mock data from Convex if requested, otherwise use server-fetched data
+  const rainfallData = useMockData ? mockDataFromConvex : initialRainfallData;
+
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Get rainfall color based on value

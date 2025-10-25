@@ -12,6 +12,15 @@ import { api } from "../../convex/_generated/api";
 
 interface RainfallHeatMapOverlayProps {
   map: mapboxgl.Map | null;
+  initialRainfallData: Array<{
+    stationId: string;
+    stationName: string;
+    latitude: number;
+    longitude: number;
+    value: number;
+    timestamp: string;
+    fetchedAt: number;
+  }>;
   useMockData?: boolean;
   useInterpolation?: boolean; // Enable IDW interpolation
 }
@@ -20,7 +29,10 @@ interface RainfallHeatMapOverlayProps {
  * Rainfall Heat Map Overlay
  *
  * Renders real-time rainfall data as a heat map on the Mapbox map.
- * Uses Convex reactive queries to automatically update when new data arrives.
+ *
+ * Data source:
+ * - Uses initialRainfallData from server (NEA API → Convex fallback)
+ * - Only queries Convex when useMockData is true for testing/demo
  *
  * Visualization approach:
  * - Heatmap activates even at trace rainfall (0.1mm+)
@@ -36,12 +48,19 @@ interface RainfallHeatMapOverlayProps {
  */
 export function RainfallHeatMapOverlay({
   map,
+  initialRainfallData,
   useMockData,
   useInterpolation = true, // Default to using interpolation
 }: RainfallHeatMapOverlayProps) {
-  const rainfallData = useQuery(api.rainfall.getLatestRainfall, {
-    useMockData: useMockData || false,
-  });
+  // Only query Convex when using mock data (for testing/demo)
+  const mockDataFromConvex = useQuery(
+    api.rainfall.getLatestRainfall,
+    useMockData ? { useMockData: true } : "skip",
+  );
+
+  // Use mock data from Convex if requested, otherwise use server-fetched data
+  const rainfallData = useMockData ? mockDataFromConvex : initialRainfallData;
+
   const layerAddedRef = useRef(false);
   const sourceIdRef = useRef("rainfall-data");
   const layerIdRef = useRef("rainfall-heat");

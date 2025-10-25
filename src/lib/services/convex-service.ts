@@ -45,6 +45,22 @@ export interface IConvexService {
    * Delete a location by ID
    */
   deleteLocation(id: string): Effect.Effect<void, ConvexError>;
+
+  /**
+   * Get latest rainfall data from Convex database
+   */
+  getLatestRainfall(useMockData?: boolean): Effect.Effect<
+    Array<{
+      stationId: string;
+      stationName: string;
+      latitude: number;
+      longitude: number;
+      value: number;
+      timestamp: string;
+      fetchedAt: number;
+    }>,
+    ConvexError
+  >;
 }
 
 /**
@@ -303,6 +319,64 @@ class ConvexServiceImpl {
             error instanceof ConvexError
               ? error
               : new ConvexError("Failed to delete from Convex", error),
+          );
+        }),
+      ),
+    );
+  }
+
+  getLatestRainfall(useMockData?: boolean): Effect.Effect<
+    Array<{
+      stationId: string;
+      stationName: string;
+      latitude: number;
+      longitude: number;
+      value: number;
+      timestamp: string;
+      fetchedAt: number;
+    }>,
+    ConvexError
+  > {
+    return Effect.gen(
+      function* (this: ConvexServiceImpl) {
+        const client = yield* this.getClient();
+
+        if (!client) {
+          yield* Effect.logWarning(
+            "Convex client not available, returning empty rainfall data",
+          );
+          return [];
+        }
+
+        yield* Effect.log("Getting latest rainfall data from Convex");
+
+        // Call the Convex query
+        const rainfallData = yield* Effect.tryPromise({
+          try: () =>
+            client.query(api.rainfall.getLatestRainfall, {
+              useMockData: useMockData ?? false,
+            }),
+          catch: (error) =>
+            new ConvexError("Failed to get rainfall data from Convex", error),
+        });
+
+        yield* Effect.log(
+          `Retrieved ${rainfallData.length} rainfall readings from Convex`,
+        );
+
+        return rainfallData;
+      }.bind(this),
+    ).pipe(
+      Effect.catchAll((error) =>
+        Effect.gen(function* () {
+          yield* Effect.logError("Convex rainfall fetch error", error);
+          return yield* Effect.fail(
+            error instanceof ConvexError
+              ? error
+              : new ConvexError(
+                  "Failed to get rainfall data from Convex",
+                  error,
+                ),
           );
         }),
       ),

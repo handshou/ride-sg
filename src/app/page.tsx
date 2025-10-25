@@ -2,6 +2,7 @@ import { ClientOnly } from "@/components/client-only";
 import { SingaporeMapExplorer } from "@/components/singapore-map-explorer";
 import {
   getMapboxPublicToken,
+  getRainfallData,
   getSingaporeCenterCoords,
   getSingaporeLocation,
   getStaticMap,
@@ -28,6 +29,9 @@ export default function Home() {
   // Get Mapbox public token for client-side use
   const mapboxPublicToken = runServerEffect(getMapboxPublicToken());
 
+  // Get rainfall data (NEA API → Convex fallback)
+  const rainfallData = runServerEffect(getRainfallData());
+
   return (
     <ClientOnly
       fallback={
@@ -44,6 +48,7 @@ export default function Home() {
         singaporeLocations={singaporeLocations}
         staticMapUrl={staticMapUrl}
         mapboxPublicToken={mapboxPublicToken}
+        initialRainfallData={rainfallData}
       />
     </ClientOnly>
   );

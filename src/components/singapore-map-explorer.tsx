@@ -44,6 +44,15 @@ interface SingaporeMapExplorerProps {
   singaporeLocations: GeocodeResult[];
   staticMapUrl: string;
   mapboxPublicToken: string;
+  initialRainfallData: Array<{
+    stationId: string;
+    stationName: string;
+    latitude: number;
+    longitude: number;
+    value: number;
+    timestamp: string;
+    fetchedAt: number;
+  }>;
 }
 
 export function SingaporeMapExplorer({
@@ -51,6 +60,7 @@ export function SingaporeMapExplorer({
   singaporeLocations,
   staticMapUrl,
   mapboxPublicToken,
+  initialRainfallData,
 }: SingaporeMapExplorerProps) {
   const isMobile = useMobile();
   const { setTheme } = useTheme();
@@ -663,6 +673,7 @@ export function SingaporeMapExplorer({
       {/* Rainfall Panel - Hide on Mobile, Show when rainfall is active */}
       {!isMobile && showRainfall && (
         <RainfallPanel
+          initialRainfallData={initialRainfallData}
           useMockData={useMockRainfall}
           onStationClick={(lat, lng) => {
             if (mapInstanceRef.current) {
@@ -709,6 +720,7 @@ export function SingaporeMapExplorer({
             {showRainfall && (
               <RainfallHeatMapOverlay
                 map={mapInstanceRef.current}
+                initialRainfallData={initialRainfallData}
                 useMockData={useMockRainfall}
                 useInterpolation={false}
               />

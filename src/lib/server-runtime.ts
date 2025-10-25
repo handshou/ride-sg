@@ -1,6 +1,7 @@
 import { Effect } from "effect";
 import { getServerRuntime } from "../../instrumentation";
 import { ConfigService } from "./services/config-service";
+import { ConvexService } from "./services/convex-service";
 import {
   type GeocodeResult,
   getCurrentLocationEffect,
@@ -8,6 +9,7 @@ import {
   getStaticMapEffect,
   MapboxService,
 } from "./services/mapbox-service";
+import { RainfallService } from "./services/rainfall-service";
 import { showErrorToast, showWarningToast } from "./services/toast-service";
 
 /**
@@ -211,6 +213,133 @@ export const getMapboxPublicToken = () => {
           "Mapbox public token unavailable - using fallback",
         );
         return "pk.test";
+      }),
+    ),
+  );
+};
+
+/**
+ * Rainfall reading data structure
+ */
+export type RainfallReading = {
+  stationId: string;
+  stationName: string;
+  latitude: number;
+  longitude: number;
+  value: number;
+  timestamp: string;
+  fetchedAt: number;
+};
+
+/**
+ * Helper function to get rainfall data with NEA API → Convex fallback
+ *
+ * Strategy:
+ * 1. First, try to fetch fresh data from NEA API using RainfallService
+ * 2. If NEA API fails, fallback to cached data in Convex database
+ * 3. Return empty array if both fail
+ *
+ * This ensures the user always gets the freshest data available,
+ * with Convex as a reliable fallback when the API is unavailable.
+ */
+export const getRainfallData = () => {
+  return Effect.gen(function* () {
+    yield* Effect.log("Fetching rainfall data (NEA API → Convex fallback)");
+
+    // Try NEA API first
+    const rainfallService = yield* RainfallService;
+    const neaResult = yield* rainfallService.fetchRainfallData().pipe(
+      Effect.andThen((response) =>
+        Effect.gen(function* () {
+          // Process NEA response into the format we need
+          const stations = response.data.stations;
+          const readings = response.data.readings;
+
+          if (readings.length === 0) {
+            return yield* Effect.fail({
+              _tag: "EmptyData" as const,
+              message: "No readings available from NEA",
+            });
+          }
+
+          // Create station lookup map
+          const stationMap = new Map(
+            stations.map((s) => [
+              s.id,
+              {
+                name: s.name,
+                latitude: s.location.latitude,
+                longitude: s.location.longitude,
+              },
+            ]),
+          );
+
+          // Get latest reading set
+          const latestReading = readings[0];
+          const timestamp = latestReading.timestamp;
+          const fetchedAt = Date.now();
+
+          // Process readings
+          const processedReadings: RainfallReading[] = latestReading.data
+            .map((reading) => {
+              const station = stationMap.get(reading.stationId);
+              if (!station) return null;
+
+              return {
+                stationId: reading.stationId,
+                stationName: station.name,
+                latitude: station.latitude,
+                longitude: station.longitude,
+                value: reading.value,
+                timestamp: timestamp,
+                fetchedAt: fetchedAt,
+              };
+            })
+            .filter((r): r is RainfallReading => r !== null);
+
+          yield* Effect.log(
+            `Successfully fetched ${processedReadings.length} readings from NEA API`,
+          );
+
+          return processedReadings;
+        }),
+      ),
+      Effect.catchAll((error) =>
+        Effect.gen(function* () {
+          yield* Effect.logWarning(
+            "NEA API fetch failed, trying Convex fallback",
+            error,
+          );
+          return yield* Effect.fail(error);
+        }),
+      ),
+    );
+
+    return neaResult;
+  }).pipe(
+    Effect.catchAll(() =>
+      Effect.gen(function* () {
+        // Fallback to Convex database
+        yield* Effect.log("Falling back to Convex database for rainfall data");
+
+        const convexService = yield* ConvexService;
+        const convexData = yield* convexService.getLatestRainfall(false).pipe(
+          Effect.catchAll((error) =>
+            Effect.gen(function* () {
+              yield* Effect.logError(
+                "Convex fallback also failed, returning empty array",
+                error,
+              );
+              return [];
+            }),
+          ),
+        );
+
+        yield* Effect.log(
+          `Retrieved ${convexData.length} readings from Convex (fallback)`,
+        );
+
+        return convexData;
       }),
     ),
   );
