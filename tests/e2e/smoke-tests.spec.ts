@@ -23,12 +23,8 @@ test.describe("Smoke Tests", () => {
       }
     });
 
-    // Wait for landing page to load
-    await page.waitForLoadState("load");
-    await page.waitForTimeout(2000);
-
-    // Navigate to Singapore page
-    await page.click('text="Explore Singapore"');
+    // Navigate directly to Singapore page (landing page redirects automatically)
+    await page.goto("/singapore");
     await page.waitForLoadState("load");
     await page.waitForTimeout(5000); // Wait for async rainfall data
 
@@ -54,18 +50,17 @@ test.describe("Smoke Tests", () => {
     expect(criticalErrors).toHaveLength(0);
   });
 
-  test("should load landing page and navigate to city", async ({ page }) => {
-    // Check landing page elements
-    await expect(page.locator('text="Choose Your City"')).toBeVisible();
-    await expect(page.locator('text="Explore Singapore"')).toBeVisible();
-    await expect(page.locator('text="Explore Jakarta"')).toBeVisible();
-
-    console.log("✓ Landing page loaded");
-
-    // Click Singapore
-    await page.click('text="Explore Singapore"');
+  test("should redirect from landing page to Singapore and load city page", async ({
+    page,
+  }) => {
+    // Landing page should redirect to /singapore automatically
+    await page.goto("/");
     await page.waitForLoadState("load");
-    await page.waitForTimeout(3000);
+
+    // Wait for redirect to complete
+    await page.waitForURL("/singapore", { timeout: 5000 });
+
+    console.log("✓ Redirected to Singapore page");
 
     // Check map container
     const mapContainer = page.getByTestId("mapbox-gl-map");

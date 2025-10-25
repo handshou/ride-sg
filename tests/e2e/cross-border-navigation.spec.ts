@@ -96,15 +96,14 @@ test.describe("Cross-Border Navigation", () => {
       },
     );
 
-    await page.goto("/");
-    await page.waitForLoadState("load");
+    // Note: Tests navigate directly to city pages since landing page redirects to /singapore
   });
 
   test("should stay on same page for local navigation (Singapore)", async ({
     page,
   }) => {
-    // Navigate to Singapore page
-    await page.click('text="Explore Singapore"');
+    // Navigate directly to Singapore page
+    await page.goto("/singapore");
     await page.waitForLoadState("load");
     await page.waitForTimeout(3000);
 
@@ -155,8 +154,8 @@ test.describe("Cross-Border Navigation", () => {
       }
     });
 
-    // Navigate to Singapore page
-    await page.click('text="Explore Singapore"');
+    // Navigate directly to Singapore page
+    await page.goto("/singapore");
     await page.waitForLoadState("load");
 
     // Wait for map to be ready (mapbox container should be visible)
@@ -210,8 +209,8 @@ test.describe("Cross-Border Navigation", () => {
   test("should navigate to Singapore page when location is in Singapore (from Jakarta)", async ({
     page,
   }) => {
-    // Navigate to Jakarta page
-    await page.click('text="Explore Jakarta"');
+    // Navigate directly to Jakarta page
+    await page.goto("/jakarta");
     await page.waitForLoadState("load");
 
     // Wait for map to be ready (mapbox container should be visible)
@@ -265,8 +264,8 @@ test.describe("Cross-Border Navigation", () => {
   test("should handle geolocation permission denied gracefully", async ({
     page,
   }) => {
-    // Navigate to Singapore page
-    await page.click('text="Explore Singapore"');
+    // Navigate directly to Singapore page
+    await page.goto("/singapore");
     await page.waitForLoadState("load");
     await page.waitForTimeout(3000);
 
@@ -302,8 +301,8 @@ test.describe("Cross-Border Navigation", () => {
   });
 
   test("should handle unknown location gracefully", async ({ page }) => {
-    // Navigate to Singapore page
-    await page.click('text="Explore Singapore"');
+    // Navigate directly to Singapore page
+    await page.goto("/singapore");
     await page.waitForLoadState("load");
     await page.waitForTimeout(3000);
 

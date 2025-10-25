@@ -2,20 +2,11 @@ import { expect, test } from "@playwright/test";
 
 test.describe("Jakarta Search", () => {
   test.beforeEach(async ({ page }) => {
-    // Start from landing page
-    await page.goto("/");
+    // Navigate directly to Jakarta page
+    await page.goto("/jakarta");
+    await page.waitForLoadState("load");
 
-    console.log("✓ Landing page loaded");
-
-    // Click Jakarta button to navigate
-    const jakartaButton = page.locator('a[href="/jakarta"]');
-    await expect(jakartaButton).toBeVisible({ timeout: 5000 });
-    await jakartaButton.click();
-
-    console.log("✓ Clicked Jakarta button");
-
-    // Wait for navigation to complete
-    await page.waitForURL("/jakarta", { timeout: 5000 });
+    console.log("✓ Jakarta page loaded");
 
     // Wait for map to load
     const mapContainer = page.getByTestId("mapbox-gl-map");
