@@ -15,11 +15,11 @@ import {
   Search,
   X,
 } from "lucide-react";
-import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useCityContext } from "@/hooks/use-city-context";
 import { useMobile } from "@/hooks/use-mobile";
 import { useSearchState } from "@/hooks/use-search-state";
 import { deleteLocationFromConvexAction } from "@/lib/actions/delete-location-action";
@@ -61,7 +61,7 @@ export function SearchPanel({
   onGetMapCenter,
 }: SearchPanelProps) {
   const isMobile = useMobile();
-  const pathname = usePathname();
+  const { city, countryLabel } = useCityContext();
   const {
     search,
     results,
@@ -161,23 +161,14 @@ export function SearchPanel({
       }
     }
 
-    // If locationName is still not set, detect from URL path (Singapore or Jakarta)
+    // If locationName is still not set, use city context from hook
     if (!locationName) {
-      if (pathname.includes("/jakarta")) {
-        locationName = "Jakarta, Indonesia";
-        logger.info("Using Jakarta as location context from URL");
-      } else if (pathname.includes("/singapore")) {
-        locationName = "Singapore";
-        logger.info("Using Singapore as location context from URL");
-      } else {
-        // Default fallback
-        locationName = "Singapore";
-        logger.info("Using Singapore as default location context");
-      }
+      locationName = countryLabel;
+      logger.info(`Using ${countryLabel} as location context from city hook`);
     }
 
-    // Perform search with location context
-    await search(query, userLocation, referenceLocation, locationName);
+    // Perform search with location and city context
+    await search(query, userLocation, referenceLocation, locationName, city);
   };
 
   const handleResultClick = (result: SearchResult) => {

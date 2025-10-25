@@ -2,6 +2,7 @@
 
 import { Effect } from "effect";
 import { useCallback, useState } from "react";
+import type { City } from "@/hooks/use-city-context";
 import { searchLandmarksAction } from "@/lib/actions/search-actions";
 import { logger } from "@/lib/client-logger";
 import { runSelectResult } from "@/lib/search-orchestrator";
@@ -32,12 +33,14 @@ export function useSearchState() {
    * @param userLocation - Optional user location for Exa query context
    * @param referenceLocation - Optional reference location for distance calculation
    * @param locationName - Optional human-readable location name from reverse geocoding
+   * @param city - City context (singapore or jakarta) for search filtering
    */
   const search = async (
     query: string,
     userLocation?: { latitude: number; longitude: number },
     referenceLocation?: { latitude: number; longitude: number },
     locationName?: string,
+    city?: City,
   ) => {
     try {
       // Set loading state
@@ -54,6 +57,7 @@ export function useSearchState() {
         userLocation,
         referenceLocation,
         locationName,
+        city,
       );
 
       if (error) {

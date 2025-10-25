@@ -1,5 +1,6 @@
 "use server";
 
+import type { City } from "@/hooks/use-city-context";
 import { runCoordinatedSearch } from "../search-orchestrator";
 import { runServerEffectAsync } from "../server-runtime";
 import type { SearchResult } from "../services/search-state-service";
@@ -23,12 +24,14 @@ import type { SearchResult } from "../services/search-state-service";
  * @param userLocation - Optional user location for Exa query context
  * @param referenceLocation - Optional reference location for distance calculation
  * @param locationName - Optional human-readable location name from reverse geocoding
+ * @param city - City context (singapore or jakarta) for search filtering
  */
 export async function searchLandmarksAction(
   query: string,
   userLocation?: { latitude: number; longitude: number },
   referenceLocation?: { latitude: number; longitude: number },
   locationName?: string,
+  city?: City,
 ): Promise<{ results: SearchResult[]; error?: string }> {
   try {
     // Run the coordinated search effect using managed runtime
@@ -38,6 +41,7 @@ export async function searchLandmarksAction(
         userLocation,
         referenceLocation,
         locationName,
+        city,
       ),
     );
 

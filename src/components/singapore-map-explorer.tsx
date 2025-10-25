@@ -798,7 +798,6 @@ export function SingaporeMapExplorer({
       {/* City Toggle Button */}
       {isMapReady && mapInstanceRef.current && (
         <CityToggleButton
-          currentCity="singapore"
           mapInstance={mapInstanceRef.current}
           isMobile={isMobile}
         />

@@ -1,4 +1,5 @@
 import { Effect, Layer } from "effect";
+import type { City } from "@/hooks/use-city-context";
 import { ConvexService } from "./services/convex-service";
 import { DatabaseSearchService } from "./services/database-search-service";
 import { ExaSearchService } from "./services/exa-search-service";
@@ -136,12 +137,14 @@ function deduplicateResults(
  * @param userLocation - Optional user location for Exa query context
  * @param referenceLocation - Optional reference location for distance calculation
  * @param locationName - Optional human-readable location name from reverse geocoding
+ * @param city - City context (singapore or jakarta) for search filtering
  */
 export const coordinatedSearchEffect = (
   query: string,
   userLocation?: { latitude: number; longitude: number },
   referenceLocation?: { latitude: number; longitude: number },
   locationName?: string,
+  city?: City,
 ) =>
   Effect.gen(function* () {
     const searchState = yield* SearchStateService;
@@ -163,7 +166,7 @@ export const coordinatedSearchEffect = (
             }),
           ),
         ),
-        exaService.search(query, userLocation, locationName).pipe(
+        exaService.search(query, userLocation, locationName, city).pipe(
           Effect.catchAll((error) =>
             Effect.gen(function* () {
               yield* Effect.logError("Exa search failed", error);
@@ -263,12 +266,14 @@ export const runCoordinatedSearch = (
   userLocation?: { latitude: number; longitude: number },
   referenceLocation?: { latitude: number; longitude: number },
   locationName?: string,
+  city?: City,
 ) =>
   coordinatedSearchEffect(
     query,
     userLocation,
     referenceLocation,
     locationName,
+    city,
   ).pipe(Effect.provide(SearchLayer));
 
 /**

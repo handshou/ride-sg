@@ -4,6 +4,7 @@ import { useQuery } from "convex/react";
 import mapboxgl from "mapbox-gl";
 import { useEffect, useRef } from "react";
 import { logger } from "@/lib/client-logger";
+import { useCityContext } from "@/hooks/use-city-context";
 import { api } from "../../convex/_generated/api";
 
 interface SavedLocationsOverlayProps {
@@ -12,10 +13,12 @@ interface SavedLocationsOverlayProps {
 
 export function SavedLocationsOverlay({ map }: SavedLocationsOverlayProps) {
   const markersRef = useRef<mapboxgl.Marker[]>([]);
+  const { city } = useCityContext();
 
   // Use Convex reactive query - automatically updates when data changes!
+  // Filter by current city to only show saved locations for the active city
   // Returns undefined during SSR or when ConvexProvider is not available
-  const locations = useQuery(api.locations.getRandomizableLocations, {});
+  const locations = useQuery(api.locations.getRandomizableLocations, { city });
 
   // Reactively render markers whenever Convex data changes
   useEffect(() => {

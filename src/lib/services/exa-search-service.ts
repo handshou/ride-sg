@@ -1,4 +1,5 @@
 import { Context, Effect, Schema } from "effect";
+import type { City } from "@/hooks/use-city-context";
 import {
   type ExaAnswerResponse,
   type ExtractedLocationEntry,
@@ -406,15 +407,17 @@ class ExaSearchServiceImpl {
   }
 
   /**
-   * Search for Singapore landmarks using Exa Answer API
+   * Search for landmarks using Exa Answer API
    * @param query - Search query
    * @param userLocation - Optional user location for location-based queries
    * @param locationName - Optional human-readable location name from reverse geocoding
+   * @param city - City context (singapore or jakarta) for search filtering
    */
   search(
     query: string,
     userLocation?: { latitude: number; longitude: number },
     locationName?: string,
+    city?: City,
   ) {
     return Effect.gen(
       function* (this: ExaSearchServiceImpl) {
@@ -468,16 +471,21 @@ class ExaSearchServiceImpl {
           return mockResults;
         }
 
+        // Determine city context for search
+        const cityContext =
+          city === "jakarta" ? "in Jakarta, Indonesia" : "in Singapore";
+        const cityName = city === "jakarta" ? "Jakarta" : "Singapore";
+
         yield* Effect.log(
-          `Searching Exa Answer API for Singapore landmarks: "${query}"`,
+          `Searching Exa Answer API for ${cityName} landmarks: "${query}"`,
         );
 
-        // Add location context: use reverse-geocoded name if available, otherwise just "in Singapore"
+        // Add location context: use reverse-geocoded name if available, otherwise use city context
         const locationContext = locationName
-          ? `near ${locationName}`
+          ? `near ${locationName} ${cityContext}`
           : userLocation
-            ? `near ${userLocation.latitude}, ${userLocation.longitude} (coordinates) in Singapore`
-            : "in Singapore";
+            ? `near ${userLocation.latitude}, ${userLocation.longitude} (coordinates) ${cityContext}`
+            : cityContext;
 
         // Concise query focused on essential location data
         const enhancedQuery = `Find up to ${MAX_EXA_SEARCH_RESULTS} locations for "${query}" ${locationContext}. For each, list:

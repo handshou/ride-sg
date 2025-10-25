@@ -3,11 +3,11 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { logger } from "@/lib/client-logger";
+import { useCityContext } from "@/hooks/use-city-context";
 
 export type City = "singapore" | "jakarta";
 
 interface CityToggleButtonProps {
-  currentCity: City;
   mapInstance: mapboxgl.Map | null;
   isMobile: boolean;
 }
@@ -31,20 +31,22 @@ const CITY_FLAGS = {
 /**
  * City Toggle Button Component
  *
- * Displays a button with the opposite city's flag in the bottom right corner.
+ * Displays a button with the current city's flag in the bottom right corner.
+ * Shows which city you're currently viewing.
  * When clicked:
- * 1. Flies to the center of the target city
+ * 1. Flies to the center of the opposite city
  * 2. Updates the URL using window.history.pushState (no page reload)
  */
 export function CityToggleButton({
-  currentCity,
   mapInstance,
   isMobile,
 }: CityToggleButtonProps) {
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const { city: currentCity, cityLabel } = useCityContext();
 
   const targetCity = currentCity === "singapore" ? "jakarta" : "singapore";
-  const targetFlag = CITY_FLAGS[targetCity];
+  const targetCityLabel = targetCity === "singapore" ? "Singapore" : "Jakarta";
+  const currentFlag = CITY_FLAGS[currentCity];
   const targetCenter = CITY_CENTERS[targetCity];
 
   const handleToggle = async () => {
@@ -98,13 +100,13 @@ export function CityToggleButton({
       onClick={handleToggle}
       disabled={isTransitioning}
       className="fixed bottom-4 right-4 z-10 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm hover:bg-white dark:hover:bg-gray-800 transition-all duration-200 shadow-lg hover:shadow-xl text-2xl sm:text-3xl px-3 sm:px-4 py-2 sm:py-3 h-auto"
-      aria-label={`Switch to ${targetCity}`}
-      title={`Switch to ${targetCity === "singapore" ? "Singapore" : "Jakarta"}`}
+      aria-label={`Currently in ${cityLabel}, click to switch to ${targetCityLabel}`}
+      title={`Currently viewing ${cityLabel}. Click to switch to ${targetCityLabel}`}
     >
       {isTransitioning ? (
         <span className="animate-pulse">✈️</span>
       ) : (
-        <span>{targetFlag}</span>
+        <span>{currentFlag}</span>
       )}
     </Button>
   );

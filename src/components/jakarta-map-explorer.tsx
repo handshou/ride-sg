@@ -716,7 +716,6 @@ export function JakartaMapExplorer({
       {/* City Toggle Button */}
       {isMapReady && mapInstanceRef.current && (
         <CityToggleButton
-          currentCity="jakarta"
           mapInstance={mapInstanceRef.current}
           isMobile={isMobile}
         />
