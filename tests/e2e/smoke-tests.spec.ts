@@ -10,8 +10,8 @@ import { expect, test } from "@playwright/test";
 test.describe("Smoke Tests", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
-    await page.waitForLoadState("networkidle");
-    await page.waitForTimeout(2000);
+    await page.waitForLoadState("load");
+    await page.waitForTimeout(3000); // Wait for async data fetching
   });
 
   test("should not have critical JavaScript errors", async ({ page }) => {
@@ -25,8 +25,8 @@ test.describe("Smoke Tests", () => {
     });
 
     // Wait for page to fully load and initialize
-    await page.waitForLoadState("networkidle");
-    await page.waitForTimeout(3000);
+    await page.waitForLoadState("load");
+    await page.waitForTimeout(5000); // Wait for async rainfall data
 
     // Filter out known non-critical errors
     const criticalErrors = errors.filter(

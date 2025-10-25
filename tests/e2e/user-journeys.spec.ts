@@ -17,8 +17,8 @@ const takeSnapshot = async (page: Page, name: string) => {
 test.describe("User Journeys", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
-    await page.waitForLoadState("networkidle");
-    await page.waitForTimeout(2000);
+    await page.waitForLoadState("load");
+    await page.waitForTimeout(3000); // Wait for async data fetching
   });
 
   test("Journey 1: First-Time Explorer - discovers locations", async ({

@@ -1,2 +1,2 @@
-echo "🔍 Running pre-push checks (lint → type-check → test → build)..."
+echo "🔍 Running pre-push checks (lint → type-check → test → e2e → build)..."
 pnpm run check-all

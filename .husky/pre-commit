@@ -1,0 +1,2 @@
+echo "🧪 Running pre-commit checks (lint → type-check → test)..."
+pnpm run fix && pnpm run type-check && pnpm run test
