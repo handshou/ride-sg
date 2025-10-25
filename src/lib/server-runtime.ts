@@ -30,6 +30,9 @@ import { showErrorToast, showWarningToast } from "./services/toast-service";
  * Uses the managed server runtime initialized at startup.
  * The runtime automatically provides all server-side services.
  *
+ * Type-safe: Accepts any Effect program. The runtime will provide required services
+ * or fail at runtime if a service is missing from ServerLayer.
+ *
  * @param program - The Effect program to run
  * @returns The result of the Effect program
  *
@@ -45,8 +48,7 @@ import { showErrorToast, showWarningToast } from "./services/toast-service";
  */
 export function runServerEffect<A, E, R>(program: Effect.Effect<A, E, R>): A {
   const runtime = getServerRuntime();
-  // biome-ignore lint/suspicious/noExplicitAny: Runtime type inference is complex
-  return runtime.runSync(program as any) as A;
+  return runtime.runSync(program) as A;
 }
 
 /**
@@ -54,6 +56,9 @@ export function runServerEffect<A, E, R>(program: Effect.Effect<A, E, R>): A {
  *
  * Uses the managed server runtime initialized at startup.
  * The runtime automatically provides all server-side services.
+ *
+ * Type-safe: Accepts any Effect program. The runtime will provide required services
+ * or fail at runtime if a service is missing from ServerLayer.
  *
  * @param program - The Effect program to run
  * @returns Promise that resolves to the result of the Effect program
@@ -72,8 +77,7 @@ export async function runServerEffectAsync<A, E, R>(
   program: Effect.Effect<A, E, R>,
 ): Promise<A> {
   const runtime = getServerRuntime();
-  // biome-ignore lint/suspicious/noExplicitAny: Runtime type inference is complex
-  return await runtime.runPromise(program as any);
+  return await runtime.runPromise(program);
 }
 
 /**
@@ -81,12 +85,11 @@ export async function runServerEffectAsync<A, E, R>(
  *
  * This helper uses the managed runtime automatically.
  * No need to manually provide layers - the runtime handles it.
+ *
+ * Note: Returns Effect<T, E, never> because the runtime provides all required services.
+ * This makes it type-safe to use with runServerEffect/runServerEffectAsync.
  */
-export const getSingaporeLocation = (): Effect.Effect<
-  GeocodeResult[],
-  never,
-  MapboxService
-> => {
+export const getSingaporeLocation = () => {
   return getSingaporeLocationEffect().pipe(
     Effect.catchAll((error) =>
       Effect.gen(function* () {
@@ -104,12 +107,10 @@ export const getSingaporeLocation = (): Effect.Effect<
  * Helper function to get current location data with proper context
  *
  * This helper uses the managed runtime automatically.
+ *
+ * Note: Returns Effect<T, E, never> because the runtime provides all required services.
  */
-export const getCurrentLocation = (): Effect.Effect<
-  GeocodeResult[],
-  never,
-  MapboxService
-> => {
+export const getCurrentLocation = () => {
   return getCurrentLocationEffect().pipe(
     Effect.catchAll((error) =>
       Effect.gen(function* () {
@@ -127,12 +128,14 @@ export const getCurrentLocation = (): Effect.Effect<
  * Helper function to get static map URL with proper context
  *
  * This helper uses the managed runtime automatically.
+ *
+ * Note: Returns Effect<T, E, never> because the runtime provides all required services.
  */
 export const getStaticMap = (
   center: { longitude: number; latitude: number },
   zoom: number = 12,
   size: { width: number; height: number } = { width: 400, height: 300 },
-): Effect.Effect<string, never, MapboxService> => {
+) => {
   return getStaticMapEffect(center, zoom, size).pipe(
     Effect.catchAll((error) =>
       Effect.gen(function* () {
@@ -150,12 +153,10 @@ export const getStaticMap = (
  * Helper function to get Singapore center coordinates with proper context
  *
  * This helper uses the managed runtime automatically.
+ *
+ * Note: Returns Effect<T, E, never> because the runtime provides all required services.
  */
-export const getSingaporeCenterCoords = (): Effect.Effect<
-  { latitude: number; longitude: number },
-  never,
-  MapboxService
-> => {
+export const getSingaporeCenterCoords = () => {
   return Effect.gen(function* () {
     const mapboxService = yield* MapboxService;
     return yield* mapboxService.getSingaporeCenterCoords();
@@ -168,12 +169,10 @@ export const getSingaporeCenterCoords = (): Effect.Effect<
  * Helper function to get random Singapore coordinates with proper context
  *
  * This helper uses the managed runtime automatically.
+ *
+ * Note: Returns Effect<T, E, never> because the runtime provides all required services.
  */
-export const getRandomSingaporeCoords = (): Effect.Effect<
-  { latitude: number; longitude: number },
-  never,
-  MapboxService
-> => {
+export const getRandomSingaporeCoords = () => {
   return Effect.gen(function* () {
     const mapboxService = yield* MapboxService;
     return yield* mapboxService.getRandomSingaporeCoords();
@@ -197,12 +196,10 @@ export const getRandomSingaporeCoords = (): Effect.Effect<
  * Helper function to get Mapbox public token for client-side use
  *
  * This helper uses the managed runtime automatically.
+ *
+ * Note: Returns Effect<T, E, never> because the runtime provides all required services.
  */
-export const getMapboxPublicToken = (): Effect.Effect<
-  string,
-  never,
-  ConfigService
-> => {
+export const getMapboxPublicToken = () => {
   return Effect.gen(function* () {
     const config = yield* ConfigService;
     return config.mapbox.publicToken;

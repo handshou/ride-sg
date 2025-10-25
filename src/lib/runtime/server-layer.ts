@@ -1,8 +1,10 @@
 import { Layer } from "effect";
 import { BicycleParkingService } from "../services/bicycle-parking-service";
 import { ConfigService } from "../services/config-service";
+import { ExaSearchService } from "../services/exa-search-service";
 import { MapboxService } from "../services/mapbox-service";
 import { RainfallService } from "../services/rainfall-service";
+import { SearchStateService } from "../services/search-state-service";
 import { VisionService } from "../services/vision-service";
 import { WeatherService } from "../services/weather-service";
 import { BaseLayer } from "./base-layer";
@@ -16,11 +18,13 @@ import { BaseLayer } from "./base-layer";
  * - BicycleParkingService: LTA DataMall API with secret key
  * - VisionService: OpenAI Vision API for image analysis
  * - WeatherService: NEA Weather API for temperature and humidity
+ * - ExaSearchService: Exa AI search API for landmark identification
+ * - SearchStateService: Shared search state management
  *
  * These services use secret API keys and should NEVER be exposed to the client.
  *
- * Note: ExaSearchService, ConvexService, and DatabaseSearchService will be added
- * as they are migrated to the new runtime pattern.
+ * Note: ConvexService and DatabaseSearchService will be added as they are
+ * migrated to the new runtime pattern.
  */
 export const ServerLayer = Layer.mergeAll(
   BaseLayer,
@@ -29,6 +33,8 @@ export const ServerLayer = Layer.mergeAll(
   BicycleParkingService.Default,
   VisionService.Default,
   WeatherService.Default,
+  SearchStateService.Default,
+  ExaSearchService.Default,
 ).pipe(
   // Provide ConfigService to ensure services have access to configuration
   Layer.provide(ConfigService.Default),
