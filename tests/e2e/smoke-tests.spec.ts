@@ -11,7 +11,6 @@ test.describe("Smoke Tests", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
     await page.waitForLoadState("load");
-    await page.waitForTimeout(3000); // Wait for async data fetching
   });
 
   test("should not have critical JavaScript errors", async ({ page }) => {
@@ -24,7 +23,12 @@ test.describe("Smoke Tests", () => {
       }
     });
 
-    // Wait for page to fully load and initialize
+    // Wait for landing page to load
+    await page.waitForLoadState("load");
+    await page.waitForTimeout(2000);
+
+    // Navigate to Singapore page
+    await page.click('text="Explore Singapore"');
     await page.waitForLoadState("load");
     await page.waitForTimeout(5000); // Wait for async rainfall data
 
@@ -50,7 +54,19 @@ test.describe("Smoke Tests", () => {
     expect(criticalErrors).toHaveLength(0);
   });
 
-  test("should load essential UI elements", async ({ page }) => {
+  test("should load landing page and navigate to city", async ({ page }) => {
+    // Check landing page elements
+    await expect(page.locator('text="Choose Your City"')).toBeVisible();
+    await expect(page.locator('text="Explore Singapore"')).toBeVisible();
+    await expect(page.locator('text="Explore Jakarta"')).toBeVisible();
+
+    console.log("✓ Landing page loaded");
+
+    // Click Singapore
+    await page.click('text="Explore Singapore"');
+    await page.waitForLoadState("load");
+    await page.waitForTimeout(3000);
+
     // Check map container
     const mapContainer = page.getByTestId("mapbox-gl-map");
     await expect(mapContainer).toBeVisible({ timeout: 15000 });

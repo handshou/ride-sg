@@ -1,56 +1,79 @@
-import { ClientOnly } from "@/components/client-only";
-import { SingaporeMapExplorer } from "@/components/singapore-map-explorer";
-import {
-  getMapboxPublicToken,
-  getRainfallData,
-  getSingaporeCenterCoords,
-  getSingaporeLocation,
-  getStaticMap,
-  runServerEffect,
-  runServerEffectAsync,
-} from "@/lib/server-runtime";
+"use client";
 
-// Force dynamic rendering to enable Convex real-time subscriptions
-export const dynamic = "force-dynamic";
+import { MapPin } from "lucide-react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
-export default async function Home() {
-  // Start at Singapore's center from MapboxService
-  const singaporeCenter = runServerEffect(getSingaporeCenterCoords());
-
-  // Get Mapbox location data
-  const singaporeLocations = runServerEffect(getSingaporeLocation());
-  // Note: currentLocation removed - use "Locate Me" button for actual GPS location
-  const staticMapUrl = runServerEffect(
-    getStaticMap(singaporeCenter, 10, {
-      width: 400,
-      height: 300,
-    }),
-  );
-
-  // Get Mapbox public token for client-side use
-  const mapboxPublicToken = runServerEffect(getMapboxPublicToken());
-
-  // Get rainfall data (NEA API → Convex fallback) - async operation
-  const rainfallData = await runServerEffectAsync(getRainfallData());
-
+export default function Home() {
   return (
-    <ClientOnly
-      fallback={
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-          <div className="text-center">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4" />
-            <p className="text-gray-600 dark:text-gray-400">Loading map...</p>
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
+      <div className="max-w-4xl w-full">
+        <div className="text-center mb-12">
+          <h1 className="text-5xl font-bold text-gray-900 dark:text-white mb-4">
+            Choose Your City
+          </h1>
+          <p className="text-xl text-gray-600 dark:text-gray-300">
+            Explore maps, find bicycle parking, and discover your city
+          </p>
         </div>
-      }
-    >
-      <SingaporeMapExplorer
-        initialRandomCoords={singaporeCenter}
-        singaporeLocations={singaporeLocations}
-        staticMapUrl={staticMapUrl}
-        mapboxPublicToken={mapboxPublicToken}
-        initialRainfallData={rainfallData}
-      />
-    </ClientOnly>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Singapore Card */}
+          <Link href="/singapore" className="group">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 transition-all duration-300 hover:shadow-2xl hover:scale-105 cursor-pointer">
+              <div className="flex items-center justify-center mb-6">
+                <div className="p-4 bg-red-100 dark:bg-red-900/30 rounded-full">
+                  <MapPin className="w-12 h-12 text-red-600 dark:text-red-400" />
+                </div>
+              </div>
+              <h2 className="text-3xl font-bold text-center text-gray-900 dark:text-white mb-3">
+                Singapore
+              </h2>
+              <p className="text-center text-gray-600 dark:text-gray-300 mb-6">
+                Explore the Lion City with real-time rainfall data, bicycle
+                parking locations, and interactive 3D maps
+              </p>
+              <Button
+                className="w-full bg-red-600 hover:bg-red-700 text-white"
+                size="lg"
+              >
+                Explore Singapore
+              </Button>
+            </div>
+          </Link>
+
+          {/* Jakarta Card */}
+          <Link href="/jakarta" className="group">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 transition-all duration-300 hover:shadow-2xl hover:scale-105 cursor-pointer">
+              <div className="flex items-center justify-center mb-6">
+                <div className="p-4 bg-blue-100 dark:bg-blue-900/30 rounded-full">
+                  <MapPin className="w-12 h-12 text-blue-600 dark:text-blue-400" />
+                </div>
+              </div>
+              <h2 className="text-3xl font-bold text-center text-gray-900 dark:text-white mb-3">
+                Jakarta
+              </h2>
+              <p className="text-center text-gray-600 dark:text-gray-300 mb-6">
+                Discover Indonesia's capital with interactive maps, bicycle
+                parking, and location search features
+              </p>
+              <Button
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                size="lg"
+              >
+                Explore Jakarta
+              </Button>
+            </div>
+          </Link>
+        </div>
+
+        <div className="text-center mt-12">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Can't decide? Use the "Locate Me" button in each city to
+            automatically detect your location
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }

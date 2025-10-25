@@ -168,6 +168,22 @@ export const getSingaporeCenterCoords = () => {
 };
 
 /**
+ * Helper function to get Jakarta center coordinates with proper context
+ *
+ * This helper uses the managed runtime automatically.
+ *
+ * Note: Returns Effect<T, E, never> because the runtime provides all required services.
+ */
+export const getJakartaCenterCoords = () => {
+  return Effect.gen(function* () {
+    const mapboxService = yield* MapboxService;
+    return yield* mapboxService.getJakartaCenterCoords();
+  }).pipe(
+    Effect.orDie, // This should never fail as it's a constant value
+  );
+};
+
+/**
  * Helper function to get random Singapore coordinates with proper context
  *
  * This helper uses the managed runtime automatically.

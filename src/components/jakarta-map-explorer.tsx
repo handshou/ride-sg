@@ -17,10 +17,6 @@ import { LocateMeButton } from "@/components/locate-me-button";
 import { MapStyleSelector } from "@/components/map-style-selector";
 import { MapboxGLMap } from "@/components/mapbox-gl-map";
 import { MapboxSimpleOverlay } from "@/components/mapbox-simple-overlay";
-import { RainfallHeatMapOverlay } from "@/components/rainfall-heat-map-overlay";
-import { RainfallMockToggleButton } from "@/components/rainfall-mock-toggle-button";
-import { RainfallPanel } from "@/components/rainfall-panel";
-import { RainfallToggleButton } from "@/components/rainfall-toggle-button";
 import { RandomCoordinatesButton } from "@/components/random-coordinates-button";
 import { SavedBicycleParkingOverlay } from "@/components/saved-bicycle-parking-overlay";
 import { SavedLocationsOverlay } from "@/components/saved-locations-overlay";
@@ -45,29 +41,19 @@ import {
 } from "@/lib/services/theme-sync-service";
 import { api } from "../../convex/_generated/api";
 
-interface SingaporeMapExplorerProps {
+interface JakartaMapExplorerProps {
   initialRandomCoords: { latitude: number; longitude: number };
   singaporeLocations: GeocodeResult[];
   staticMapUrl: string;
   mapboxPublicToken: string;
-  initialRainfallData: Array<{
-    stationId: string;
-    stationName: string;
-    latitude: number;
-    longitude: number;
-    value: number;
-    timestamp: string;
-    fetchedAt: number;
-  }>;
 }
 
-export function SingaporeMapExplorer({
+export function JakartaMapExplorer({
   initialRandomCoords,
   singaporeLocations,
   staticMapUrl,
   mapboxPublicToken,
-  initialRainfallData,
-}: SingaporeMapExplorerProps) {
+}: JakartaMapExplorerProps) {
   const isMobile = useMobile();
   const { setTheme } = useTheme();
   const _router = useRouter();
@@ -99,16 +85,11 @@ export function SingaporeMapExplorer({
   // Use dark theme as default map style
   const [mapStyle, setMapStyle] = useState(MAPBOX_STYLES.dark);
 
-  // Rainfall visualization state - auto-enabled on load
-  const [showRainfall, setShowRainfall] = useState(true);
-  const [useMockRainfall, setUseMockRainfall] = useState(false);
-
   // 3D Buildings visualization state
   const [show3DBuildings, setShow3DBuildings] = useState(false);
   const [currentStyleSupports3D, setCurrentStyleSupports3D] = useState(true);
 
   // Saved locations for random navigation - using Convex reactive query
-  // Returns undefined during SSR or when ConvexProvider is not available
   const convexLocations = useQuery(api.locations.getRandomizableLocations, {});
   const [savedLocations, setSavedLocations] = useState<
     Array<{
@@ -140,24 +121,22 @@ export function SingaporeMapExplorer({
     // Shuffle the locations array
     const shuffled = [...convexLocations].sort(() => Math.random() - 0.5);
 
-    // Log the shuffled order
     logger.info(
       "🔀 Shuffled order:",
       shuffled.map((loc, idx) => `${idx + 1}. ${loc.title}`).join(", "),
     );
 
-    // Map to simple format, keeping Convex ID and description
     const mappedLocations = shuffled.map((loc) => ({
       latitude: loc.latitude,
       longitude: loc.longitude,
       title: loc.title,
       description: loc.description,
-      convexId: loc._id, // Keep the Convex ID for proper delete functionality
+      convexId: loc._id,
     }));
 
     setSavedLocations(mappedLocations);
-    setCurrentLocationIndex(0); // Reset to start of shuffled list
-  }, [convexLocations]); // This will re-run whenever Convex data changes!
+    setCurrentLocationIndex(0);
+  }, [convexLocations]);
 
   // Fetch bicycle parking for a location
   const fetchBicycleParking = useCallback(async (lat: number, long: number) => {
@@ -169,7 +148,6 @@ export function SingaporeMapExplorer({
       if (response.ok) {
         const rawData = await response.json();
 
-        // Validate and normalize response with Schema
         try {
           const partialData = Schema.decodeUnknownSync(
             PartialBicycleParkingAPIResponseSchema,
@@ -208,10 +186,9 @@ export function SingaporeMapExplorer({
     }
   }, [mapLocation, fetchBicycleParking]);
 
-  // Handle 3D buildings toggle using centralized Map Style Context
+  // Handle 3D buildings toggle
   const toggle3DBuildings = useCallback(
     (map: mapboxgl.Map) => {
-      // Wait for style to be loaded
       if (!map.isStyleLoaded()) {
         map.once("style.load", () => toggle3DBuildings(map));
         return;
@@ -220,7 +197,6 @@ export function SingaporeMapExplorer({
       const layer = map.getLayer("3d-buildings");
 
       if (show3DBuildings && !layer) {
-        // Determine the best layer to insert before for proper ordering
         const beforeLayers = [
           "waterway-label",
           "road-label",
@@ -236,7 +212,6 @@ export function SingaporeMapExplorer({
           }
         }
 
-        // Add 3D buildings layer
         const layerConfig: mapboxgl.AnyLayer = {
           id: "3d-buildings",
           source: "composite",
@@ -276,7 +251,6 @@ export function SingaporeMapExplorer({
           logger.info("3D buildings layer added (top layer)");
         }
       } else if (!show3DBuildings && layer) {
-        // Remove 3D buildings layer
         map.removeLayer("3d-buildings");
         logger.info("3D buildings layer removed");
       }
@@ -290,29 +264,26 @@ export function SingaporeMapExplorer({
     toggle3DBuildings(mapInstanceRef.current);
   }, [isMapReady, toggle3DBuildings]);
 
-  // Listen for style changes and re-add 3D buildings (with style compatibility check)
+  // Listen for style changes and re-add 3D buildings
   useEffect(() => {
     if (!mapInstanceRef.current || !isMapReady) return;
 
     const map = mapInstanceRef.current;
 
     const handle3DBuildingsStyleChange = () => {
-      // Get current style and check if it supports 3D buildings
       const currentStyleUrl = map.getStyle()?.sprite;
 
-      // Detect which style is currently active
       let currentStyle = "light";
       if (currentStyleUrl?.includes("satellite-streets")) {
         currentStyle = "satelliteStreets";
       } else if (currentStyleUrl?.includes("satellite")) {
-        currentStyle = "satellite"; // Pure satellite (no buildings)
+        currentStyle = "satellite";
       } else if (currentStyleUrl?.includes("dark")) {
         currentStyle = "dark";
       } else if (currentStyleUrl?.includes("outdoors")) {
         currentStyle = "outdoors";
       }
 
-      // Only pure satellite (v9) doesn't support 3D buildings
       const supports3D = currentStyle !== "satellite";
       setCurrentStyleSupports3D(supports3D);
 
@@ -325,7 +296,6 @@ export function SingaporeMapExplorer({
       }
 
       if (show3DBuildings && supports3D) {
-        // Delay to ensure style is fully loaded (500ms for reliability across devices)
         setTimeout(() => {
           if (!map.isStyleLoaded()) {
             logger.warn(
@@ -363,23 +333,22 @@ export function SingaporeMapExplorer({
         logger.error("Failed to sync initial theme:", error);
       }
 
-      // Mobile-responsive zoom: start more zoomed in on desktop for better detail
-      const targetZoom = isMobile ? 9 : 12; // Desktop: 12 (closer), Mobile: 9
+      // Mobile-responsive zoom
+      const targetZoom = isMobile ? 9 : 12;
       logger.debug(
         `Map ready, flying to zoom ${targetZoom} (${isMobile ? "mobile" : "desktop"})`,
       );
-      map.stop(); // Stop any ongoing animations
+      map.stop();
 
-      // Wait for next frame to ensure stop() has completed
       requestAnimationFrame(() => {
         map.flyTo({
           center: [initialRandomCoords.longitude, initialRandomCoords.latitude],
-          zoom: targetZoom, // Mobile: 9, Desktop: 12
-          pitch: 60, // Tilt the camera at 60 degrees for 3D view
-          bearing: 0, // North-facing orientation
-          duration: 2500, // Longer duration for dramatic effect
+          zoom: targetZoom,
+          pitch: 60,
+          bearing: 0,
+          duration: 2500,
           essential: true,
-          curve: 1.5, // Higher curve for more dramatic arc
+          curve: 1.5,
           easing: (t) => t * (2 - t),
         });
       });
@@ -387,7 +356,7 @@ export function SingaporeMapExplorer({
     [initialRandomCoords, isMobile, setTheme],
   );
 
-  // Handle search result selection - flyTo the selected location (moved before handleCoordinatesGenerated)
+  // Handle search result selection
   const handleSearchResultSelect = useCallback(
     (result: SearchResult) => {
       logger.info("Search result selected", {
@@ -395,7 +364,6 @@ export function SingaporeMapExplorer({
         location: result.location,
       });
 
-      // Fly to the search result with cinematic animation
       if (mapInstanceRef.current) {
         const map = mapInstanceRef.current;
         const currentCenter = map.getCenter();
@@ -409,34 +377,29 @@ export function SingaporeMapExplorer({
           latitude: result.location.latitude,
         });
 
-        // Function to execute flyTo
         const executeFlyTo = () => {
-          map.stop(); // Stop any ongoing animations before starting new one
+          map.stop();
 
-          // Wait for next frame to ensure stop() has completed
           requestAnimationFrame(() => {
             map.flyTo({
               center: [result.location.longitude, result.location.latitude],
-              zoom: isMobile ? 16 : 17, // Mobile: 16, Desktop: 17 (very close for POIs)
-              duration: 2500, // 2.5 second cinematic animation
+              zoom: isMobile ? 16 : 17,
+              duration: 2500,
               essential: true,
-              curve: 1.6, // High arc for sweeping motion
+              curve: 1.6,
               easing: (t) => {
-                // Custom easing: slow start, fast middle, slow end
                 return t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
               },
-              pitch: 50, // Tilt for dramatic 3D view
-              bearing: 30, // Slight rotation for visual interest
+              pitch: 50,
+              bearing: 30,
             });
             logger.success("flyTo called successfully");
 
-            // Update marker location AFTER flyTo starts (to avoid re-render before animation)
             setMapLocation(result.location);
             setIsUserLocation(false);
           });
         };
 
-        // If map style is still loading, wait for it to finish
         if (!map.isStyleLoaded()) {
           logger.debug("Map style loading, waiting for styledata event");
           map.once("styledata", () => {
@@ -460,57 +423,48 @@ export function SingaporeMapExplorer({
       title?: string;
       description?: string;
     }) => {
-      // Update static map URL with new coordinates
       const newStaticMapUrl = `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/${newCoords.longitude},${newCoords.latitude},12/400x300?access_token=${mapboxPublicToken}`;
       setStaticMapUrlState(newStaticMapUrl);
 
-      // If we have location info, create a SearchResult and add it to search panel
       if (newCoords.title) {
         const searchResult: SearchResult = {
-          // Use Convex ID if available (from saved locations), otherwise generate temp ID
-          // biome-ignore lint/suspicious/noExplicitAny: Optional convexId property from saved locations
+          // biome-ignore lint/suspicious/noExplicitAny: Optional convexId property
           id: (newCoords as any).convexId || `random-${Date.now()}`,
           title: newCoords.title,
-          description: newCoords.description || "Random location in Singapore",
+          description: newCoords.description || "Random location",
           location: {
             latitude: newCoords.latitude,
             longitude: newCoords.longitude,
           },
-          // Mark as database if it has a Convex ID, otherwise mapbox
-          // biome-ignore lint/suspicious/noExplicitAny: Optional convexId property from saved locations
+          // biome-ignore lint/suspicious/noExplicitAny: Optional convexId property
           source: (newCoords as any).convexId ? "database" : "mapbox",
           timestamp: Date.now(),
         };
 
-        // Add to search results first (if callback is available)
         if (addSearchResult) {
           addSearchResult(searchResult);
         }
 
-        // Then fly to location
         handleSearchResultSelect(searchResult);
         return;
       }
 
-      // Fly to new random coordinates with smooth animation (no pitch/bearing)
       if (mapInstanceRef.current) {
         const map = mapInstanceRef.current;
 
         const executeFlyTo = () => {
-          map.stop(); // Stop any ongoing animations before starting new one
+          map.stop();
 
-          // Wait for next frame to ensure stop() has completed
           requestAnimationFrame(() => {
             map.flyTo({
               center: [newCoords.longitude, newCoords.latitude],
-              zoom: isMobile ? 9 : 12, // Mobile: 9, Desktop: 12 (match initial zoom)
+              zoom: isMobile ? 9 : 12,
               duration: 1500,
               essential: true,
               curve: 1.2,
               easing: (t) => t * (2 - t),
             });
 
-            // Update state after flyTo starts
             setRandomCoords(newCoords);
             setMapLocation(newCoords);
             setIsUserLocation(false);
@@ -550,7 +504,7 @@ export function SingaporeMapExplorer({
             const service = yield* CrossBorderNavigationServiceTag;
             return yield* service.handleLocationFound({
               coordinates: coords,
-              currentCity: "singapore",
+              currentCity: "jakarta",
               map: mapInstanceRef.current!,
               mapboxToken: mapboxPublicToken,
               isMobile,
@@ -616,7 +570,7 @@ export function SingaporeMapExplorer({
     logger.info(`Map style changed to: ${newStyle}`);
   }, []);
 
-  // Handle bicycle parking selection - flyTo the parking location
+  // Handle bicycle parking selection
   const handleParkingSelect = useCallback(
     (parking: BicycleParkingResult) => {
       logger.info("Bicycle parking selected", {
@@ -626,18 +580,16 @@ export function SingaporeMapExplorer({
 
       setSelectedParking(parking);
 
-      // Fly to the parking location
       if (mapInstanceRef.current) {
         const map = mapInstanceRef.current;
 
         const executeFlyTo = () => {
-          map.stop(); // Stop any ongoing animations before starting new one
+          map.stop();
 
-          // Wait for next frame to ensure stop() has completed
           requestAnimationFrame(() => {
             map.flyTo({
               center: [parking.longitude, parking.latitude],
-              zoom: isMobile ? 17 : 18, // Mobile: 17, Desktop: 18 (very close)
+              zoom: isMobile ? 17 : 18,
               duration: 2000,
               essential: true,
               curve: 1.4,
@@ -684,17 +636,6 @@ export function SingaporeMapExplorer({
         />
         <LocateMeButton onLocationFound={handleLocationFound} />
         <CameraCaptureButton currentLocation={mapLocation || undefined} />
-        <RainfallToggleButton
-          isActive={showRainfall}
-          onClick={() => setShowRainfall(!showRainfall)}
-        />
-        {showRainfall && (
-          <RainfallMockToggleButton
-            isMockMode={useMockRainfall}
-            onClick={() => setUseMockRainfall(!useMockRainfall)}
-          />
-        )}
-        {/* <ThemeToggle /> */}
       </div>
 
       {/* Search Panel */}
@@ -717,23 +658,6 @@ export function SingaporeMapExplorer({
           isLoading={isFetchingParking}
           onParkingSelect={handleParkingSelect}
           selectedParking={selectedParking}
-        />
-      )}
-
-      {/* Rainfall Panel - Hide on Mobile, Show when rainfall is active */}
-      {!isMobile && showRainfall && (
-        <RainfallPanel
-          initialRainfallData={initialRainfallData}
-          useMockData={useMockRainfall}
-          onStationClick={(lat, lng) => {
-            if (mapInstanceRef.current) {
-              mapInstanceRef.current.flyTo({
-                center: [lng, lat],
-                zoom: isMobile ? 15 : 16, // Mobile: 15, Desktop: 16
-                duration: 1500,
-              });
-            }
-          }}
         />
       )}
 
@@ -767,14 +691,6 @@ export function SingaporeMapExplorer({
               map={mapInstanceRef.current}
               currentLocation={mapLocation}
             />
-            {showRainfall && (
-              <RainfallHeatMapOverlay
-                map={mapInstanceRef.current}
-                initialRainfallData={initialRainfallData}
-                useMockData={useMockRainfall}
-                useInterpolation={false}
-              />
-            )}
           </>
         )}
       </div>

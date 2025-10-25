@@ -136,7 +136,7 @@ describe("Geolocation Service - Live Functionality", () => {
       ).rejects.toThrow("Location request timed out");
     });
 
-    it("should work with the helper function and provide fallback on error", async () => {
+    it("should propagate errors from the helper function", async () => {
       const mockError = {
         code: 1, // PERMISSION_DENIED
         message: "User denied geolocation",
@@ -148,13 +148,10 @@ describe("Geolocation Service - Live Functionality", () => {
         },
       );
 
-      // The helper function should catch errors and return fallback coordinates
-      const result = await Effect.runPromise(getCurrentPositionEffect());
-
-      expect(result).toEqual({
-        latitude: 1.351616,
-        longitude: 103.808053,
-      });
+      // The helper function should now propagate errors (no fallback)
+      await expect(Effect.runPromise(getCurrentPositionEffect())).rejects.toThrow(
+        /Location access denied by user/,
+      );
     });
 
     it("should handle geolocation not supported", async () => {

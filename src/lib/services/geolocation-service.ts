@@ -98,14 +98,5 @@ export const getCurrentPositionEffect = (): Effect.Effect<
   return Effect.gen(function* () {
     const service = yield* GeolocationServiceTag;
     return yield* service.getCurrentPosition();
-  }).pipe(
-    Effect.provide(GeolocationServiceLive),
-    Effect.catchAll((error) =>
-      Effect.gen(function* () {
-        yield* Effect.logError("Geolocation failed", error);
-        // Return fallback coordinates (Marina Bay, Singapore)
-        return { latitude: 1.351616, longitude: 103.808053 };
-      }),
-    ),
-  );
+  }).pipe(Effect.provide(GeolocationServiceLive));
 };

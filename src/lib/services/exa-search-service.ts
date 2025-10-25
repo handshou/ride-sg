@@ -513,10 +513,9 @@ Example format:
           if (coordinates) {
             // Clean description from entry or fallback to source
             const firstSource = answerData.sources[0];
-            const cleanedSourceDesc =
-              firstSource && firstSource.content
-                ? this.cleanDescription(firstSource.content.substring(0, 150))
-                : "";
+            const cleanedSourceDesc = firstSource?.content
+              ? this.cleanDescription(firstSource.content.substring(0, 150))
+              : "";
             const description =
               entry.description ||
               cleanedSourceDesc ||

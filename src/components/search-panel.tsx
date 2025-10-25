@@ -14,6 +14,7 @@ import {
   Search,
   X,
 } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +40,7 @@ export function SearchPanel({
   onGetMapCenter,
 }: SearchPanelProps) {
   const isMobile = useMobile();
+  const pathname = usePathname();
   const {
     search,
     results,
@@ -135,6 +137,21 @@ export function SearchPanel({
           longitude: mapCenter.lng,
         };
         logger.info("Using map center for location-based search", mapCenter);
+      }
+    }
+
+    // If locationName is still not set, detect from URL path (Singapore or Jakarta)
+    if (!locationName) {
+      if (pathname.includes("/jakarta")) {
+        locationName = "Jakarta, Indonesia";
+        logger.info("Using Jakarta as location context from URL");
+      } else if (pathname.includes("/singapore")) {
+        locationName = "Singapore";
+        logger.info("Using Singapore as location context from URL");
+      } else {
+        // Default fallback
+        locationName = "Singapore";
+        logger.info("Using Singapore as default location context");
       }
     }
 

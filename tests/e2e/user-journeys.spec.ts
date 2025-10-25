@@ -18,6 +18,10 @@ test.describe("User Journeys", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
     await page.waitForLoadState("load");
+
+    // Navigate to Singapore page from landing
+    await page.click('text="Explore Singapore"');
+    await page.waitForLoadState("load");
     await page.waitForTimeout(3000); // Wait for async data fetching
   });
 

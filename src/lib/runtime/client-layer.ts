@@ -1,5 +1,6 @@
 import { Layer } from "effect";
 import { CameraServiceLive } from "../services/camera-service";
+import { CrossBorderNavigationServiceLive } from "../services/cross-border-navigation-service";
 import { GeolocationServiceLive } from "../services/geolocation-service";
 import { ImageCaptureServiceLive } from "../services/image-capture-service";
 import { MapReadinessServiceLive } from "../services/map-readiness-service";
@@ -15,6 +16,7 @@ import { BaseLayer } from "./base-layer";
  * - ThemeSyncService: Theme/map style synchronization (window.matchMedia)
  * - CameraService: Browser MediaDevices API (navigator.mediaDevices)
  * - ImageCaptureService: Canvas-based image capture from video streams
+ * - CrossBorderNavigationService: Cross-border city detection and navigation
  *
  * These services use browser-only APIs and will fail on the server.
  *
@@ -27,6 +29,7 @@ export const ClientLayer = Layer.mergeAll(
   ThemeSyncServiceLive,
   CameraServiceLive,
   ImageCaptureServiceLive,
+  CrossBorderNavigationServiceLive,
 );
 
 /**

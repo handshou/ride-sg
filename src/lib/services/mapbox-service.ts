@@ -47,6 +47,14 @@ export interface IMapboxService {
     { latitude: number; longitude: number },
     never
   >;
+
+  /**
+   * Get Jakarta's geographic center coordinates
+   */
+  getJakartaCenterCoords(): Effect.Effect<
+    { latitude: number; longitude: number },
+    never
+  >;
 }
 
 /**
@@ -153,6 +161,16 @@ class MapboxServiceImpl {
     return Effect.succeed({
       latitude: 1.3521,
       longitude: 103.8198,
+    });
+  }
+
+  getJakartaCenterCoords(): Effect.Effect<
+    { latitude: number; longitude: number },
+    never
+  > {
+    return Effect.succeed({
+      latitude: -6.2088,
+      longitude: 106.8456,
     });
   }
 }
