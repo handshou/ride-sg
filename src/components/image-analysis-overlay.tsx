@@ -240,6 +240,10 @@ export function ImageAnalysisOverlay({
 
       // Create popup content with analyze button
       const isAnalyzing = analyzingImages.has(image._id);
+      const thirtyMinutesAgo = Date.now() - 30 * 60 * 1000;
+      const isStuckProcessing =
+        image.analysisStatus === "processing" &&
+        image.capturedAt < thirtyMinutesAgo;
       const popupContent = `
         <div class="popup-container">
           <img src="${image.imageUrl}" alt="Captured image" class="popup-image" />
@@ -343,7 +347,21 @@ export function ImageAnalysisOverlay({
               </button>
             `
                   : image.analysisStatus === "processing"
-                    ? `
+                    ? isStuckProcessing
+                      ? `
+              <div class="space-y-2">
+                <div class="text-xs text-yellow-600 flex items-center gap-1">
+                  ⚠️ Analysis seems stuck
+                </div>
+                <button
+                  id="analyze-btn-${image._id}"
+                  class="w-full px-3 py-2 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700 transition-colors"
+                >
+                  🔄 Retry Analysis
+                </button>
+              </div>
+            `
+                      : `
               <div class="text-xs text-gray-500 italic flex items-center gap-2">
                 <div class="animate-spin h-3 w-3 border-2 border-blue-500 border-t-transparent rounded-full"></div>
                 Analyzing...

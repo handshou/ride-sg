@@ -577,11 +577,39 @@ export function CameraCaptureButton({
                                 : "🤖 Analyze with AI"}
                             </button>
                           )}
-                          {image.analysisStatus === "processing" && (
-                            <p className="text-blue-400 text-xs mt-1">
-                              Analyzing...
-                            </p>
-                          )}
+                          {image.analysisStatus === "processing" &&
+                            (() => {
+                              const thirtyMinutesAgo =
+                                Date.now() - 30 * 60 * 1000;
+                              const isStuck =
+                                image.capturedAt < thirtyMinutesAgo;
+
+                              return isStuck ? (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleAnalyzeImage(
+                                      image._id,
+                                      image.imageUrl,
+                                      image.cameraGpsLatitude ?? image.latitude,
+                                      image.cameraGpsLongitude ??
+                                        image.longitude,
+                                    );
+                                  }}
+                                  disabled={analyzingImages.has(image._id)}
+                                  className="mt-2 w-full px-2 py-1 text-xs font-medium text-white bg-yellow-600 hover:bg-yellow-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  {analyzingImages.has(image._id)
+                                    ? "Analyzing..."
+                                    : "⚠️ Retry (Stuck?)"}
+                                </button>
+                              ) : (
+                                <p className="text-blue-400 text-xs mt-1">
+                                  Analyzing...
+                                </p>
+                              );
+                            })()}
                           {image.analysisStatus === "completed" && (
                             <button
                               type="button"
