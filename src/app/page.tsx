@@ -7,12 +7,13 @@ import {
   getSingaporeLocation,
   getStaticMap,
   runServerEffect,
+  runServerEffectAsync,
 } from "@/lib/server-runtime";
 
 // Force dynamic rendering to enable Convex real-time subscriptions
 export const dynamic = "force-dynamic";
 
-export default function Home() {
+export default async function Home() {
   // Start at Singapore's center from MapboxService
   const singaporeCenter = runServerEffect(getSingaporeCenterCoords());
 
@@ -29,8 +30,8 @@ export default function Home() {
   // Get Mapbox public token for client-side use
   const mapboxPublicToken = runServerEffect(getMapboxPublicToken());
 
-  // Get rainfall data (NEA API → Convex fallback)
-  const rainfallData = runServerEffect(getRainfallData());
+  // Get rainfall data (NEA API → Convex fallback) - async operation
+  const rainfallData = await runServerEffectAsync(getRainfallData());
 
   return (
     <ClientOnly
