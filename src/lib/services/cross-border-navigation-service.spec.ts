@@ -148,33 +148,29 @@ describe("CrossBorderNavigationService", () => {
       );
     });
 
-    it(
-      "should execute flyTo for cross-border navigation",
-      async () => {
-        const coords = { latitude: -6.2088, longitude: 106.8456 };
+    it("should execute flyTo for cross-border navigation", async () => {
+      const coords = { latitude: -6.2088, longitude: 106.8456 };
 
-        await Effect.runPromise(
-          service.executeFlyTo(
-            mockMap as mapboxgl.Map,
-            coords,
-            6000,
-            true,
-            false,
-          ),
-        );
+      await Effect.runPromise(
+        service.executeFlyTo(
+          mockMap as mapboxgl.Map,
+          coords,
+          6000,
+          true,
+          false,
+        ),
+      );
 
-        expect(mockMap.stop).toHaveBeenCalled();
-        expect(mockMap.flyTo).toHaveBeenCalledWith(
-          expect.objectContaining({
-            center: [coords.longitude, coords.latitude],
-            zoom: 16, // Desktop zoom
-            duration: 6000,
-            curve: 1.8, // Cross-border curve
-          }),
-        );
-      },
-      10000,
-    ); // 10 second timeout for 6 second animation
+      expect(mockMap.stop).toHaveBeenCalled();
+      expect(mockMap.flyTo).toHaveBeenCalledWith(
+        expect.objectContaining({
+          center: [coords.longitude, coords.latitude],
+          zoom: 16, // Desktop zoom
+          duration: 6000,
+          curve: 1.8, // Cross-border curve
+        }),
+      );
+    }, 10000); // 10 second timeout for 6 second animation
 
     it("should use mobile zoom when isMobile is true", async () => {
       const coords = { latitude: 1.3521, longitude: 103.8198 };
@@ -283,62 +279,54 @@ describe("CrossBorderNavigationService", () => {
       expect(window.history.replaceState).not.toHaveBeenCalled();
     });
 
-    it(
-      "should handle cross-border navigation (Singapore to Jakarta)",
-      async () => {
-        vi.mocked(detectCityFromCoords).mockResolvedValue("jakarta");
+    it("should handle cross-border navigation (Singapore to Jakarta)", async () => {
+      vi.mocked(detectCityFromCoords).mockResolvedValue("jakarta");
 
-        const result = await Effect.runPromise(
-          service.handleLocationFound({
-            coordinates: { latitude: -6.2088, longitude: 106.8456 },
-            currentCity: "singapore",
-            map: mockMap as mapboxgl.Map,
-            mapboxToken: "test-token",
-            isMobile: false,
-          }),
-        );
+      const result = await Effect.runPromise(
+        service.handleLocationFound({
+          coordinates: { latitude: -6.2088, longitude: 106.8456 },
+          currentCity: "singapore",
+          map: mockMap as mapboxgl.Map,
+          mapboxToken: "test-token",
+          isMobile: false,
+        }),
+      );
 
-        expect(result.detectedCity).toBe("jakarta");
-        expect(result.isCrossBorder).toBe(true);
-        expect(result.flyToDuration).toBe(6000);
-        expect(result.urlUpdated).toBe(true);
-        expect(mockMap.flyTo).toHaveBeenCalled();
-        expect(window.history.replaceState).toHaveBeenCalledWith(
-          null,
-          "",
-          "/jakarta",
-        );
-      },
-      10000,
-    ); // 10 second timeout
+      expect(result.detectedCity).toBe("jakarta");
+      expect(result.isCrossBorder).toBe(true);
+      expect(result.flyToDuration).toBe(6000);
+      expect(result.urlUpdated).toBe(true);
+      expect(mockMap.flyTo).toHaveBeenCalled();
+      expect(window.history.replaceState).toHaveBeenCalledWith(
+        null,
+        "",
+        "/jakarta",
+      );
+    }, 10000); // 10 second timeout
 
-    it(
-      "should handle cross-border navigation (Jakarta to Singapore)",
-      async () => {
-        vi.mocked(detectCityFromCoords).mockResolvedValue("singapore");
+    it("should handle cross-border navigation (Jakarta to Singapore)", async () => {
+      vi.mocked(detectCityFromCoords).mockResolvedValue("singapore");
 
-        const result = await Effect.runPromise(
-          service.handleLocationFound({
-            coordinates: { latitude: 1.3521, longitude: 103.8198 },
-            currentCity: "jakarta",
-            map: mockMap as mapboxgl.Map,
-            mapboxToken: "test-token",
-            isMobile: false,
-          }),
-        );
+      const result = await Effect.runPromise(
+        service.handleLocationFound({
+          coordinates: { latitude: 1.3521, longitude: 103.8198 },
+          currentCity: "jakarta",
+          map: mockMap as mapboxgl.Map,
+          mapboxToken: "test-token",
+          isMobile: false,
+        }),
+      );
 
-        expect(result.detectedCity).toBe("singapore");
-        expect(result.isCrossBorder).toBe(true);
-        expect(result.flyToDuration).toBe(6000);
-        expect(result.urlUpdated).toBe(true);
-        expect(window.history.replaceState).toHaveBeenCalledWith(
-          null,
-          "",
-          "/singapore",
-        );
-      },
-      10000,
-    ); // 10 second timeout
+      expect(result.detectedCity).toBe("singapore");
+      expect(result.isCrossBorder).toBe(true);
+      expect(result.flyToDuration).toBe(6000);
+      expect(result.urlUpdated).toBe(true);
+      expect(window.history.replaceState).toHaveBeenCalledWith(
+        null,
+        "",
+        "/singapore",
+      );
+    }, 10000); // 10 second timeout
 
     it("should handle errors gracefully and propagate CityDetectionError", async () => {
       vi.mocked(detectCityFromCoords).mockRejectedValue(new Error("API Error"));

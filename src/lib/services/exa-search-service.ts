@@ -57,15 +57,58 @@ class ExaSearchServiceImpl {
   constructor(private readonly config: AppConfig) {}
   /**
    * Geocode a location name to coordinates using Mapbox
+   * Truncates long addresses to meet Mapbox's 20 token limit
    */
   geocodeLocation(
     locationName: string,
     mapboxToken: string,
+    contextLocation?: string,
   ): Effect.Effect<{ latitude: number; longitude: number } | null> {
     return Effect.gen(function* () {
-      // Add Singapore bias to the query for better results
-      const query = `${locationName} Singapore`;
-      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${mapboxToken}&country=SG&limit=1`;
+      // Detect if we're searching in Jakarta or Singapore
+      const isJakarta =
+        contextLocation?.toLowerCase().includes("jakarta") ||
+        contextLocation?.toLowerCase().includes("indonesia") ||
+        locationName.toLowerCase().includes("jakarta") ||
+        locationName.toLowerCase().includes("indonesia");
+
+      // Build query and country filter based on location
+      const countryCode = isJakarta ? "ID" : "SG";
+
+      // Truncate query to prevent "Query too long" errors (Mapbox limit: 20 tokens)
+      // Keep the most important parts: name + street + postal code
+      let query = locationName;
+
+      // For Indonesian addresses, extract key components
+      if (isJakarta) {
+        // Try to extract: Name, main street (Jl./Jalan), and postal code
+        const parts = query.split(",").map((p) => p.trim());
+
+        // Keep first part (name) and any part with Jl./Jalan or postal code
+        const importantParts = parts.filter((part, idx) => {
+          if (idx === 0) return true; // Always keep name
+          if (/Jl\.|Jalan/i.test(part)) return true; // Keep street
+          if (/\d{5}/.test(part)) return true; // Keep postal code
+          if (/Jakarta|Indonesia/i.test(part)) return true; // Keep city/country
+          return false;
+        });
+
+        // Reconstruct query with essential parts only
+        if (importantParts.length > 0 && importantParts.length < parts.length) {
+          query = importantParts.slice(0, 4).join(", "); // Max 4 parts to stay under limit
+          yield* Effect.logDebug(
+            `Truncated Jakarta address from ${parts.length} parts to ${importantParts.slice(0, 4).length}`,
+          );
+        }
+      }
+
+      // Fallback: if still too long (>100 chars), truncate to first 100 chars
+      if (query.length > 100) {
+        query = query.substring(0, 100);
+        yield* Effect.logDebug(`Truncated long query to 100 chars`);
+      }
+
+      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${mapboxToken}&country=${countryCode}&limit=1`;
 
       const response = yield* Effect.tryPromise({
         try: () => fetch(url),
@@ -132,40 +175,66 @@ class ExaSearchServiceImpl {
   /**
    * Calculate confidence score for a search result
    * Returns 0-1, where 1 is highest confidence
+   * Jakarta results use more lenient scoring due to less structured online data
    */
-  private calculateConfidence(entry: {
-    name: string;
-    searchQuery: string;
-    description: string;
-  }): number {
-    let score = 0.5; // Base score
+  private calculateConfidence(
+    entry: {
+      name: string;
+      searchQuery: string;
+      description: string;
+    },
+    locationContext?: string,
+  ): number {
+    // Detect if this is Jakarta
+    const isJakarta =
+      locationContext?.toLowerCase().includes("jakarta") ||
+      locationContext?.toLowerCase().includes("indonesia") ||
+      entry.searchQuery.toLowerCase().includes("jakarta") ||
+      entry.searchQuery.toLowerCase().includes("indonesia");
+
+    // Jakarta gets higher base score due to less structured data available
+    let score = isJakarta ? 0.55 : 0.5;
 
     // Good indicators (increase score)
-    const hasAddress =
-      /\d+\s+\w+\s+(Road|Street|Avenue|Drive|Boulevard|Lane|Way|Singapore)/i.test(
-        entry.searchQuery,
-      );
-    const hasPostalCode = /\d{6}/.test(entry.searchQuery);
+    // Support both Singapore and Indonesian street patterns
+    const hasAddress = isJakarta
+      ? /\d+\s+\w+\s+(Jl\.|Jalan|Road|Street|Avenue)/i.test(entry.searchQuery)
+      : /\d+\s+\w+\s+(Road|Street|Avenue|Drive|Boulevard|Lane|Way|Singapore)/i.test(
+          entry.searchQuery,
+        );
+
+    // Support both 6-digit (Singapore) and 5-digit (Indonesia) postal codes
+    const hasPostalCode = isJakarta
+      ? /\d{5}/.test(entry.searchQuery)
+      : /\d{6}/.test(entry.searchQuery);
+
     const hasGoodDesc =
       entry.description.length >= 20 && entry.description.length <= 200;
     const hasSpecificName =
       entry.name.length >= 3 &&
       !/^(location|place|area|spot)$/i.test(entry.name);
 
-    if (hasAddress) score += 0.2;
-    if (hasPostalCode) score += 0.15;
+    // Jakarta addresses get slightly more lenient scoring
+    const addressBonus = isJakarta ? 0.15 : 0.2;
+    const postalBonus = isJakarta ? 0.1 : 0.15;
+
+    if (hasAddress) score += addressBonus;
+    if (hasPostalCode) score += postalBonus;
     if (hasGoodDesc) score += 0.1;
     if (hasSpecificName) score += 0.05;
 
-    // Bad indicators (decrease score)
+    // Bad indicators (decrease score) - more lenient for Jakarta
     const isGeneric =
-      /^(unnamed|unknown|n\/a|not available|singapore|landmark)$/i.test(
+      /^(unnamed|unknown|n\/a|not available|singapore|jakarta|landmark)$/i.test(
         entry.name,
       );
     const hasNoDesc = entry.description.length < 10;
 
-    if (isGeneric) score -= 0.3;
-    if (hasNoDesc) score -= 0.2;
+    const genericPenalty = isJakarta ? -0.25 : -0.3;
+    const noDescPenalty = isJakarta ? -0.15 : -0.2;
+
+    if (isGeneric) score += genericPenalty;
+    if (hasNoDesc) score += noDescPenalty;
 
     return Math.max(0, Math.min(1, score)); // Clamp to 0-1
   }
@@ -222,6 +291,7 @@ class ExaSearchServiceImpl {
    */
   extractLocationEntries(
     answer: string,
+    locationContext?: string,
   ): Effect.Effect<ExtractedLocationEntry[]> {
     const self = this;
     return Effect.gen(function* () {
@@ -250,11 +320,14 @@ class ExaSearchServiceImpl {
           // Clean description and calculate confidence
           const description = self.cleanDescription(rawDescription);
           const searchQuery = `${name}, ${address}`;
-          const confidence = self.calculateConfidence({
-            name,
-            searchQuery,
-            description,
-          });
+          const confidence = self.calculateConfidence(
+            {
+              name,
+              searchQuery,
+              description,
+            },
+            locationContext,
+          );
 
           // Validate and add entry
           const validatedEntry = yield* self.validateEntry({
@@ -302,11 +375,14 @@ class ExaSearchServiceImpl {
           const address = addressMatch ? addressMatch[1].trim() : "Singapore";
           const searchQuery = `${name}, ${address}, Singapore`;
 
-          const confidence = self.calculateConfidence({
-            name,
-            searchQuery,
-            description,
-          });
+          const confidence = self.calculateConfidence(
+            {
+              name,
+              searchQuery,
+              description,
+            },
+            locationContext,
+          );
 
           // Validate and add entry
           const validatedEntry = yield* self.validateEntry({
@@ -475,6 +551,7 @@ Example format:
         // Extract location entries from the answer
         const locationEntries = yield* this.extractLocationEntries(
           answerData.answer,
+          locationName,
         );
 
         yield* Effect.log(
@@ -498,6 +575,7 @@ Example format:
           const coordinates = yield* this.geocodeLocation(
             entry.searchQuery,
             mapboxToken,
+            locationName,
           );
 
           if (coordinates) {

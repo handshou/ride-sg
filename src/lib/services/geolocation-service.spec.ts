@@ -149,9 +149,9 @@ describe("Geolocation Service - Live Functionality", () => {
       );
 
       // The helper function should now propagate errors (no fallback)
-      await expect(Effect.runPromise(getCurrentPositionEffect())).rejects.toThrow(
-        /Location access denied by user/,
-      );
+      await expect(
+        Effect.runPromise(getCurrentPositionEffect()),
+      ).rejects.toThrow(/Location access denied by user/);
     });
 
     it("should handle geolocation not supported", async () => {
