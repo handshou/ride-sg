@@ -3,6 +3,7 @@
 import { useQuery } from "convex/react";
 import { Effect, Schema } from "effect";
 import { useRouter, useSearchParams } from "next/navigation";
+import { runClientEffectAsync } from "@/lib/client-runtime";
 import { useTheme } from "next-themes";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -29,10 +30,8 @@ import {
   normalizeBicycleParkingAPIResponse,
   PartialBicycleParkingAPIResponseSchema,
 } from "@/lib/schema/bicycle-parking-api.schema";
-import {
-  CrossBorderNavigationServiceLive,
-  CrossBorderNavigationServiceTag,
-} from "@/lib/services/cross-border-navigation-service";
+import { CrossBorderNavigationServiceTag } from "@/lib/services/cross-border-navigation-service";
+import { mapNavigation } from "@/lib/services/map-navigation-service";
 import type { GeocodeResult } from "@/lib/services/mapbox-service";
 import type { SearchResult } from "@/lib/services/search-state-service";
 import {
@@ -377,27 +376,16 @@ export function JakartaMapExplorer({
           latitude: result.location.latitude,
         });
 
-        const executeFlyTo = () => {
-          map.stop();
+        const executeFlyTo = async () => {
+          await mapNavigation.flyToSearchResult(
+            map,
+            result.location,
+            isMobile,
+            () => toast.error("Failed to navigate to location"),
+          );
 
-          requestAnimationFrame(() => {
-            map.flyTo({
-              center: [result.location.longitude, result.location.latitude],
-              zoom: isMobile ? 16 : 17,
-              duration: 2500,
-              essential: true,
-              curve: 1.6,
-              easing: (t) => {
-                return t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
-              },
-              pitch: 50,
-              bearing: 30,
-            });
-            logger.success("flyTo called successfully");
-
-            setMapLocation(result.location);
-            setIsUserLocation(false);
-          });
+          setMapLocation(result.location);
+          setIsUserLocation(false);
         };
 
         if (!map.isStyleLoaded()) {
@@ -452,23 +440,12 @@ export function JakartaMapExplorer({
       if (mapInstanceRef.current) {
         const map = mapInstanceRef.current;
 
-        const executeFlyTo = () => {
-          map.stop();
+        const executeFlyTo = async () => {
+          await mapNavigation.flyToRandomLocation(map, newCoords, isMobile);
 
-          requestAnimationFrame(() => {
-            map.flyTo({
-              center: [newCoords.longitude, newCoords.latitude],
-              zoom: isMobile ? 9 : 12,
-              duration: 1500,
-              essential: true,
-              curve: 1.2,
-              easing: (t) => t * (2 - t),
-            });
-
-            setRandomCoords(newCoords);
-            setMapLocation(newCoords);
-            setIsUserLocation(false);
-          });
+          setRandomCoords(newCoords);
+          setMapLocation(newCoords);
+          setIsUserLocation(false);
         };
 
         if (!map.isStyleLoaded()) {
@@ -500,7 +477,7 @@ export function JakartaMapExplorer({
       }
 
       try {
-        const result = await Effect.runPromise(
+        const result = await runClientEffectAsync(
           Effect.gen(function* () {
             const service = yield* CrossBorderNavigationServiceTag;
             return yield* service.handleLocationFound({
@@ -510,7 +487,7 @@ export function JakartaMapExplorer({
               mapboxToken: mapboxPublicToken,
               isMobile,
             });
-          }).pipe(Effect.provide(CrossBorderNavigationServiceLive)),
+          }),
         );
 
         logger.success("Cross-border navigation completed", result);
@@ -543,24 +520,23 @@ export function JakartaMapExplorer({
       const newStaticMapUrl = `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/${coords.longitude},${coords.latitude},12/400x300?access_token=${mapboxPublicToken}`;
       setStaticMapUrlState(newStaticMapUrl);
 
-      // Fly to location
+      // Fly to location using mapNavigation client API
       const map = mapInstanceRef.current;
       if (map.isStyleLoaded()) {
-        map.stop();
-        requestAnimationFrame(() => {
-          map.flyTo({
-            center: [coords.longitude, coords.latitude],
+        (async () => {
+          await mapNavigation.flyTo(map, {
+            coordinates: coords,
             zoom: isMobile ? 15 : 16,
             duration: 1800,
-            essential: true,
             curve: 1.3,
             easing: (t) => t * (2 - t),
+            isMobile,
           });
 
           setRandomCoords(coords);
           setMapLocation(coords);
           setIsUserLocation(true);
-        });
+        })();
       }
     }
   }, [searchParams, mapboxPublicToken, isMobile]);
@@ -584,19 +560,13 @@ export function JakartaMapExplorer({
       if (mapInstanceRef.current) {
         const map = mapInstanceRef.current;
 
-        const executeFlyTo = () => {
-          map.stop();
-
-          requestAnimationFrame(() => {
-            map.flyTo({
-              center: [parking.longitude, parking.latitude],
-              zoom: isMobile ? 17 : 18,
-              duration: 2000,
-              essential: true,
-              curve: 1.4,
-              easing: (t) => t * (2 - t),
-            });
-          });
+        const executeFlyTo = async () => {
+          await mapNavigation.flyToParking(
+            map,
+            { latitude: parking.latitude, longitude: parking.longitude },
+            isMobile,
+            () => toast.error("Failed to navigate to parking location"),
+          );
         };
 
         if (!map.isStyleLoaded()) {

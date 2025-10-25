@@ -1,7 +1,11 @@
-import { Effect } from "effect";
+import { Effect, Layer } from "effect";
 import type mapboxgl from "mapbox-gl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { CrossBorderNavigationServiceImpl } from "./cross-border-navigation-service";
+import {
+  CrossBorderNavigationServiceImpl,
+  CrossBorderNavigationServiceTag,
+  CrossBorderNavigationServiceTest,
+} from "./cross-border-navigation-service";
 
 // Mock the detect-location module
 vi.mock("../utils/detect-location", () => ({
@@ -10,12 +14,62 @@ vi.mock("../utils/detect-location", () => ({
 
 import { detectCityFromCoords } from "../utils/detect-location";
 
+/**
+ * Note: These tests use the implementation class directly for unit testing.
+ * For integration-style tests that use the service through Effect layers,
+ * you can use CrossBorderNavigationServiceTest:
+ *
+ * @example
+ * ```typescript
+ * const program = Effect.gen(function* () {
+ *   const service = yield* CrossBorderNavigationServiceTag;
+ *   return yield* service.handleLocationFound({...});
+ * });
+ *
+ * const result = await Effect.runPromise(
+ *   program.pipe(Effect.provide(CrossBorderNavigationServiceTest))
+ * );
+ * ```
+ */
+
 describe("CrossBorderNavigationService", () => {
   let service: CrossBorderNavigationServiceImpl;
   let mockMap: Partial<mapboxgl.Map>;
+  let mockMapNavigationService: any;
 
   beforeEach(() => {
-    service = new CrossBorderNavigationServiceImpl();
+    // Create mock MapNavigationService that implements actual behavior
+    // This is needed because tests verify the service properly checks map readiness
+    mockMapNavigationService = {
+      flyTo: vi.fn().mockImplementation((map, options) => {
+        // Check if map is ready (same logic as real implementation)
+        if (!map || !map.isStyleLoaded()) {
+          return Effect.fail(
+            new Error("Map is not ready for flyTo animation"),
+          );
+        }
+
+        // Simulate successful flyTo
+        return Effect.gen(function* () {
+          map.stop();
+          map.flyTo({
+            center: [options.coordinates.longitude, options.coordinates.latitude],
+            zoom: options.zoom ?? (options.isMobile ? 15 : 16),
+            duration: options.duration ?? 2000,
+            essential: true,
+            curve: options.curve ?? 1.4,
+            easing: options.easing ?? ((t: number) => t * (2 - t)),
+          });
+          // No need to actually wait in tests
+          return yield* Effect.void;
+        });
+      }),
+      flyToSearchResult: vi.fn().mockReturnValue(Effect.void),
+      flyToParking: vi.fn().mockReturnValue(Effect.void),
+      flyToRandomLocation: vi.fn().mockReturnValue(Effect.void),
+    };
+
+    service = new CrossBorderNavigationServiceImpl(mockMapNavigationService);
 
     // Create mock map instance
     mockMap = {
@@ -359,6 +413,66 @@ describe("CrossBorderNavigationService", () => {
       await expect(Effect.runPromise(effect)).rejects.toThrow(
         /Map is not ready for flyTo animation/,
       );
+    });
+  });
+
+  describe("Integration Tests (using test layers)", () => {
+    it("should work through the Effect layer system", async () => {
+      // This demonstrates using the service through Effect's layer system
+      // rather than directly instantiating the implementation class
+      const program = Effect.gen(function* () {
+        const service = yield* CrossBorderNavigationServiceTag;
+        return yield* service.handleLocationFound({
+          coordinates: { latitude: 1.3521, longitude: 103.8198 },
+          currentCity: "singapore",
+          map: mockMap as mapboxgl.Map,
+          mapboxToken: "test-token",
+          isMobile: false,
+        });
+      });
+
+      const result = await Effect.runPromise(
+        program.pipe(Effect.provide(CrossBorderNavigationServiceTest)),
+      );
+
+      // Using the test layer's default mock implementation
+      expect(result.detectedCity).toBe("singapore");
+      expect(result.isCrossBorder).toBe(false);
+      expect(result.flyToDuration).toBe(1800);
+      expect(result.urlUpdated).toBe(false);
+    });
+
+    it("should allow custom mock implementations", async () => {
+      // You can override specific methods while still using the layer system
+      const CustomTestLayer = Layer.mock(CrossBorderNavigationServiceTag, {
+        handleLocationFound: () =>
+          Effect.succeed({
+            detectedCity: "jakarta" as const,
+            isCrossBorder: true,
+            flyToDuration: 6000,
+            urlUpdated: true,
+          }),
+      });
+
+      const program = Effect.gen(function* () {
+        const service = yield* CrossBorderNavigationServiceTag;
+        return yield* service.handleLocationFound({
+          coordinates: { latitude: -6.2088, longitude: 106.8456 },
+          currentCity: "singapore",
+          map: mockMap as mapboxgl.Map,
+          mapboxToken: "test-token",
+          isMobile: false,
+        });
+      });
+
+      const result = await Effect.runPromise(
+        program.pipe(Effect.provide(CustomTestLayer)),
+      );
+
+      expect(result.detectedCity).toBe("jakarta");
+      expect(result.isCrossBorder).toBe(true);
+      expect(result.flyToDuration).toBe(6000);
+      expect(result.urlUpdated).toBe(true);
     });
   });
 });

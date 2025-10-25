@@ -3,6 +3,7 @@
 import { useQuery } from "convex/react";
 import { Effect, Schema } from "effect";
 import { useRouter, useSearchParams } from "next/navigation";
+import { runClientEffectAsync } from "@/lib/client-runtime";
 import { useTheme } from "next-themes";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -33,10 +34,8 @@ import {
   normalizeBicycleParkingAPIResponse,
   PartialBicycleParkingAPIResponseSchema,
 } from "@/lib/schema/bicycle-parking-api.schema";
-import {
-  CrossBorderNavigationServiceLive,
-  CrossBorderNavigationServiceTag,
-} from "@/lib/services/cross-border-navigation-service";
+import { CrossBorderNavigationServiceTag } from "@/lib/services/cross-border-navigation-service";
+import { mapNavigation } from "@/lib/services/map-navigation-service";
 import type { GeocodeResult } from "@/lib/services/mapbox-service";
 import type { SearchResult } from "@/lib/services/search-state-service";
 import {
@@ -409,31 +408,18 @@ export function SingaporeMapExplorer({
           latitude: result.location.latitude,
         });
 
-        // Function to execute flyTo
-        const executeFlyTo = () => {
-          map.stop(); // Stop any ongoing animations before starting new one
+        // Function to execute flyTo using mapNavigation client API
+        const executeFlyTo = async () => {
+          await mapNavigation.flyToSearchResult(
+            map,
+            result.location,
+            isMobile,
+            () => toast.error("Failed to navigate to location"),
+          );
 
-          // Wait for next frame to ensure stop() has completed
-          requestAnimationFrame(() => {
-            map.flyTo({
-              center: [result.location.longitude, result.location.latitude],
-              zoom: isMobile ? 16 : 17, // Mobile: 16, Desktop: 17 (very close for POIs)
-              duration: 2500, // 2.5 second cinematic animation
-              essential: true,
-              curve: 1.6, // High arc for sweeping motion
-              easing: (t) => {
-                // Custom easing: slow start, fast middle, slow end
-                return t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
-              },
-              pitch: 50, // Tilt for dramatic 3D view
-              bearing: 30, // Slight rotation for visual interest
-            });
-            logger.success("flyTo called successfully");
-
-            // Update marker location AFTER flyTo starts (to avoid re-render before animation)
-            setMapLocation(result.location);
-            setIsUserLocation(false);
-          });
+          // Update marker location AFTER flyTo completes
+          setMapLocation(result.location);
+          setIsUserLocation(false);
         };
 
         // If map style is still loading, wait for it to finish
@@ -492,29 +478,17 @@ export function SingaporeMapExplorer({
         return;
       }
 
-      // Fly to new random coordinates with smooth animation (no pitch/bearing)
+      // Fly to new random coordinates using mapNavigation client API
       if (mapInstanceRef.current) {
         const map = mapInstanceRef.current;
 
-        const executeFlyTo = () => {
-          map.stop(); // Stop any ongoing animations before starting new one
+        const executeFlyTo = async () => {
+          await mapNavigation.flyToRandomLocation(map, newCoords, isMobile);
 
-          // Wait for next frame to ensure stop() has completed
-          requestAnimationFrame(() => {
-            map.flyTo({
-              center: [newCoords.longitude, newCoords.latitude],
-              zoom: isMobile ? 9 : 12, // Mobile: 9, Desktop: 12 (match initial zoom)
-              duration: 1500,
-              essential: true,
-              curve: 1.2,
-              easing: (t) => t * (2 - t),
-            });
-
-            // Update state after flyTo starts
-            setRandomCoords(newCoords);
-            setMapLocation(newCoords);
-            setIsUserLocation(false);
-          });
+          // Update state after flyTo completes
+          setRandomCoords(newCoords);
+          setMapLocation(newCoords);
+          setIsUserLocation(false);
         };
 
         if (!map.isStyleLoaded()) {
@@ -546,7 +520,7 @@ export function SingaporeMapExplorer({
       }
 
       try {
-        const result = await Effect.runPromise(
+        const result = await runClientEffectAsync(
           Effect.gen(function* () {
             const service = yield* CrossBorderNavigationServiceTag;
             return yield* service.handleLocationFound({
@@ -556,7 +530,7 @@ export function SingaporeMapExplorer({
               mapboxToken: mapboxPublicToken,
               isMobile,
             });
-          }).pipe(Effect.provide(CrossBorderNavigationServiceLive)),
+          }),
         );
 
         logger.success("Cross-border navigation completed", result);
@@ -589,24 +563,23 @@ export function SingaporeMapExplorer({
       const newStaticMapUrl = `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/${coords.longitude},${coords.latitude},12/400x300?access_token=${mapboxPublicToken}`;
       setStaticMapUrlState(newStaticMapUrl);
 
-      // Fly to location
+      // Fly to location using mapNavigation client API
       const map = mapInstanceRef.current;
       if (map.isStyleLoaded()) {
-        map.stop();
-        requestAnimationFrame(() => {
-          map.flyTo({
-            center: [coords.longitude, coords.latitude],
+        (async () => {
+          await mapNavigation.flyTo(map, {
+            coordinates: coords,
             zoom: isMobile ? 15 : 16,
             duration: 1800,
-            essential: true,
             curve: 1.3,
             easing: (t) => t * (2 - t),
+            isMobile,
           });
 
           setRandomCoords(coords);
           setMapLocation(coords);
           setIsUserLocation(true);
-        });
+        })();
       }
     }
   }, [searchParams, mapboxPublicToken, isMobile]);
@@ -627,24 +600,17 @@ export function SingaporeMapExplorer({
 
       setSelectedParking(parking);
 
-      // Fly to the parking location
+      // Fly to the parking location using mapNavigation client API
       if (mapInstanceRef.current) {
         const map = mapInstanceRef.current;
 
-        const executeFlyTo = () => {
-          map.stop(); // Stop any ongoing animations before starting new one
-
-          // Wait for next frame to ensure stop() has completed
-          requestAnimationFrame(() => {
-            map.flyTo({
-              center: [parking.longitude, parking.latitude],
-              zoom: isMobile ? 17 : 18, // Mobile: 17, Desktop: 18 (very close)
-              duration: 2000,
-              essential: true,
-              curve: 1.4,
-              easing: (t) => t * (2 - t),
-            });
-          });
+        const executeFlyTo = async () => {
+          await mapNavigation.flyToParking(
+            map,
+            { latitude: parking.latitude, longitude: parking.longitude },
+            isMobile,
+            () => toast.error("Failed to navigate to parking location"),
+          );
         };
 
         if (!map.isStyleLoaded()) {
@@ -728,10 +694,12 @@ export function SingaporeMapExplorer({
           useMockData={useMockRainfall}
           onStationClick={(lat, lng) => {
             if (mapInstanceRef.current) {
-              mapInstanceRef.current.flyTo({
-                center: [lng, lat],
-                zoom: isMobile ? 15 : 16, // Mobile: 15, Desktop: 16
+              const map = mapInstanceRef.current;
+              mapNavigation.flyTo(map, {
+                coordinates: { latitude: lat, longitude: lng },
+                zoom: isMobile ? 15 : 16,
                 duration: 1500,
+                isMobile,
               });
             }
           }}

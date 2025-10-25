@@ -57,3 +57,5 @@ next-env.d.ts
 .convex/
 convex/_generated/
 convex/node_modules/
+
+.mcp.json

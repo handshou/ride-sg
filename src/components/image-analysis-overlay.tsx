@@ -5,6 +5,7 @@ import mapboxgl from "mapbox-gl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { moderateAndAnalyzeImageAction } from "@/lib/actions/moderate-and-analyze-image-action";
+import { mapNavigation } from "@/lib/services/map-navigation-service";
 import {
   calculateBearing,
   calculateDistance,
@@ -444,10 +445,13 @@ export function ImageAnalysisOverlay({
         if (onImageSelect) {
           onImageSelect(image);
         }
-        // Fly to image location
+        // Fly to image location using mapNavigation client API (default error logging)
         if (image.longitude && image.latitude) {
-          map.flyTo({
-            center: [image.longitude, image.latitude],
+          mapNavigation.flyTo(map, {
+            coordinates: {
+              latitude: image.latitude,
+              longitude: image.longitude,
+            },
             zoom: 17,
             duration: 1500,
           });

@@ -4,6 +4,7 @@ import {
   type DetectedCity,
   detectCityFromCoords,
 } from "../utils/detect-location";
+import { MapNavigationService } from "./map-navigation-service";
 
 /**
  * Supported cities for cross-border navigation
@@ -132,6 +133,11 @@ export interface CrossBorderNavigationService {
 }
 
 /**
+ * Extract the actual service shape from the tag
+ */
+type MapNavigationServiceShape = Context.Tag.Service<typeof MapNavigationService>;
+
+/**
  * Implementation of CrossBorderNavigationService
  */
 export class CrossBorderNavigationServiceImpl
@@ -145,6 +151,12 @@ export class CrossBorderNavigationServiceImpl
   private readonly LOCAL_CURVE = 1.3;
   private readonly CROSS_BORDER_CURVE = 1.8; // More dramatic arc
   private readonly URL_UPDATE_BUFFER = 200; // ms after flyTo completes
+
+  /**
+   * Constructor injection of dependencies
+   * @param mapNavigationService - Injected map navigation service
+   */
+  constructor(private readonly mapNavigationService: MapNavigationServiceShape) {}
 
   detectCrossBorder(
     coordinates: { latitude: number; longitude: number },
@@ -188,47 +200,17 @@ export class CrossBorderNavigationServiceImpl
     isCrossBorder: boolean,
     isMobile: boolean,
   ): Effect.Effect<void, MapNotReadyError, never> {
-    const crossBorderCurve = this.CROSS_BORDER_CURVE;
-    const localCurve = this.LOCAL_CURVE;
+    const curve = isCrossBorder ? this.CROSS_BORDER_CURVE : this.LOCAL_CURVE;
+    const zoom = isMobile ? 15 : 16;
 
-    return Effect.gen(function* () {
-      // Check if map is ready
-      if (!map || !map.isStyleLoaded()) {
-        return yield* Effect.fail(
-          new MapNotReadyError("Map is not ready for flyTo animation"),
-        );
-      }
-
-      yield* Effect.logInfo(
-        `FlyTo starting: ${coordinates.latitude}, ${coordinates.longitude} (duration: ${duration}ms)`,
-      );
-
-      // Execute flyTo in a promise that resolves after animation
-      yield* Effect.promise(
-        () =>
-          new Promise<void>((resolve) => {
-            map.stop(); // Stop any ongoing animations
-
-            requestAnimationFrame(() => {
-              const zoom = isMobile ? 15 : 16;
-              const curve = isCrossBorder ? crossBorderCurve : localCurve;
-
-              map.flyTo({
-                center: [coordinates.longitude, coordinates.latitude],
-                zoom,
-                duration,
-                essential: true,
-                curve,
-                easing: (t) => t * (2 - t),
-              });
-
-              // Resolve after animation completes
-              setTimeout(resolve, duration);
-            });
-          }),
-      );
-
-      yield* Effect.logInfo("FlyTo animation completed");
+    // Use injected mapNavigationService directly (no yield needed)
+    return this.mapNavigationService.flyTo(map, {
+      coordinates,
+      zoom,
+      duration,
+      curve,
+      easing: (t) => t * (2 - t),
+      isMobile,
     });
   }
 
@@ -261,9 +243,30 @@ export class CrossBorderNavigationServiceImpl
     const localDuration = this.LOCAL_FLY_DURATION;
     const urlBuffer = this.URL_UPDATE_BUFFER;
 
-    const detectCrossBorderFn = this.detectCrossBorder.bind(this);
-    const executeFlyToFn = this.executeFlyTo.bind(this);
-    const updateUrlFn = this.updateUrlWithoutNavigation.bind(this);
+    // Explicitly type the bound functions to preserve `never` in Requirements
+    const detectCrossBorderFn: (
+      coords: { latitude: number; longitude: number },
+      city: SupportedCity,
+      token: string,
+    ) => Effect.Effect<
+      { detectedCity: DetectedCity; isCrossBorder: boolean },
+      CityDetectionError,
+      never
+    > = this.detectCrossBorder.bind(this);
+
+    const executeFlyToFn: (
+      m: mapboxgl.Map,
+      coords: { latitude: number; longitude: number },
+      duration: number,
+      isCrossBorder: boolean,
+      isMobile: boolean,
+    ) => Effect.Effect<void, MapNotReadyError, never> =
+      this.executeFlyTo.bind(this);
+
+    const updateUrlFn: (
+      targetCity: SupportedCity,
+    ) => Effect.Effect<void, CrossBorderNavigationError, never> =
+      this.updateUrlWithoutNavigation.bind(this);
 
     return Effect.gen(function* () {
       // Step 1: Detect which city the user is in
@@ -331,7 +334,11 @@ export class CrossBorderNavigationServiceImpl
           error,
         ),
       ),
-    );
+    ) as Effect.Effect<
+      NavigationResult,
+      CrossBorderNavigationError | MapNotReadyError | CityDetectionError,
+      never
+    >;
   }
 }
 
@@ -345,12 +352,57 @@ export const CrossBorderNavigationServiceTag =
 
 /**
  * Live layer implementation
+ *
+ * Uses Layer.effect to inject MapNavigationService dependency into the constructor.
  */
-export const CrossBorderNavigationServiceLive = Layer.succeed(
+export const CrossBorderNavigationServiceLive = Layer.effect(
   CrossBorderNavigationServiceTag,
-  new CrossBorderNavigationServiceImpl(),
-).pipe(
-  Layer.tap(() =>
-    Effect.logDebug("🗺️  CrossBorderNavigationService initialized"),
-  ),
+  Effect.gen(function* () {
+    const mapNavService = yield* MapNavigationService;
+    yield* Effect.logDebug("🗺️  CrossBorderNavigationService initialized");
+    return new CrossBorderNavigationServiceImpl(mapNavService);
+  }),
 );
+
+/**
+ * Test layer implementation
+ *
+ * Creates a mock layer for testing with MapNavigationService dependency satisfied.
+ * Provide partial implementations of methods you need for testing.
+ * Any methods not provided will throw UnimplementedError when called.
+ *
+ * @example
+ * ```typescript
+ * // Use with all dependencies provided
+ * const program = myTest.pipe(Effect.provide(CrossBorderNavigationServiceTest));
+ *
+ * // Or override specific methods
+ * const CustomTest = Layer.mock(CrossBorderNavigationServiceTag, {
+ *   handleLocationFound: (options) => Effect.succeed({
+ *     detectedCity: "singapore",
+ *     isCrossBorder: false,
+ *     flyToDuration: 1800,
+ *     urlUpdated: false,
+ *   }),
+ * }).pipe(Layer.provide(MapNavigationServiceTest));
+ * ```
+ */
+export const CrossBorderNavigationServiceTest = Layer.mock(
+  CrossBorderNavigationServiceTag,
+  {
+    handleLocationFound: () =>
+      Effect.succeed({
+        detectedCity: "singapore" as const,
+        isCrossBorder: false,
+        flyToDuration: 1800,
+        urlUpdated: false,
+      }),
+    detectCrossBorder: () =>
+      Effect.succeed({
+        detectedCity: "singapore" as const,
+        isCrossBorder: false,
+      }),
+    executeFlyTo: () => Effect.void,
+    updateUrlWithoutNavigation: () => Effect.void,
+  },
+).pipe(Layer.provide(Layer.mock(MapNavigationService, {})));
