@@ -239,7 +239,8 @@ export class CrossBorderNavigationServiceImpl
     return Effect.try({
       try: () => {
         const targetPath = `/${targetCity}`;
-        window.history.replaceState(null, "", targetPath);
+        // Use pushState to maintain browser back button support
+        window.history.pushState({}, "", targetPath);
         return Effect.logInfo(`URL updated to ${targetPath} (no rerender)`);
       },
       catch: (error) =>

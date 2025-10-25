@@ -86,7 +86,7 @@ describe("CrossBorderNavigationService", () => {
     // Mock window.history using Vitest's stubGlobal
     vi.stubGlobal("window", {
       history: {
-        replaceState: vi.fn(),
+        pushState: vi.fn(),
       },
     });
 
@@ -283,8 +283,8 @@ describe("CrossBorderNavigationService", () => {
     it("should update URL to Singapore", async () => {
       await Effect.runPromise(service.updateUrlWithoutNavigation("singapore"));
 
-      expect(window.history.replaceState).toHaveBeenCalledWith(
-        null,
+      expect(window.history.pushState).toHaveBeenCalledWith(
+        {},
         "",
         "/singapore",
       );
@@ -293,15 +293,11 @@ describe("CrossBorderNavigationService", () => {
     it("should update URL to Jakarta", async () => {
       await Effect.runPromise(service.updateUrlWithoutNavigation("jakarta"));
 
-      expect(window.history.replaceState).toHaveBeenCalledWith(
-        null,
-        "",
-        "/jakarta",
-      );
+      expect(window.history.pushState).toHaveBeenCalledWith({}, "", "/jakarta");
     });
 
     it("should fail with CrossBorderNavigationError if history API fails", async () => {
-      vi.mocked(window.history.replaceState).mockImplementation(() => {
+      vi.mocked(window.history.pushState).mockImplementation(() => {
         throw new Error("History API error");
       });
 
@@ -332,7 +328,7 @@ describe("CrossBorderNavigationService", () => {
       expect(result.flyToDuration).toBe(2500);
       expect(result.urlUpdated).toBe(false);
       expect(mockMap.flyTo).toHaveBeenCalled();
-      expect(window.history.replaceState).not.toHaveBeenCalled();
+      expect(window.history.pushState).not.toHaveBeenCalled();
     });
 
     it("should handle cross-border navigation (Singapore to Jakarta)", async () => {
@@ -353,11 +349,7 @@ describe("CrossBorderNavigationService", () => {
       expect(result.flyToDuration).toBe(6500);
       expect(result.urlUpdated).toBe(true);
       expect(mockMap.flyTo).toHaveBeenCalled();
-      expect(window.history.replaceState).toHaveBeenCalledWith(
-        null,
-        "",
-        "/jakarta",
-      );
+      expect(window.history.pushState).toHaveBeenCalledWith({}, "", "/jakarta");
     }, 10000); // 10 second timeout
 
     it("should handle cross-border navigation (Jakarta to Singapore)", async () => {
@@ -377,8 +369,8 @@ describe("CrossBorderNavigationService", () => {
       expect(result.isCrossBorder).toBe(true);
       expect(result.flyToDuration).toBe(6500);
       expect(result.urlUpdated).toBe(true);
-      expect(window.history.replaceState).toHaveBeenCalledWith(
-        null,
+      expect(window.history.pushState).toHaveBeenCalledWith(
+        {},
         "",
         "/singapore",
       );

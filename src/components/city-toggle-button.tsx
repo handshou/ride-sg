@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { logger } from "@/lib/client-logger";
@@ -35,14 +34,13 @@ const CITY_FLAGS = {
  * Displays a button with the opposite city's flag in the bottom right corner.
  * When clicked:
  * 1. Flies to the center of the target city
- * 2. Updates the URL using router.push (adds to history)
+ * 2. Updates the URL using window.history.pushState (no page reload)
  */
 export function CityToggleButton({
   currentCity,
   mapInstance,
   isMobile,
 }: CityToggleButtonProps) {
-  const router = useRouter();
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   const targetCity = currentCity === "singapore" ? "jakarta" : "singapore";
@@ -81,9 +79,9 @@ export function CityToggleButton({
         });
       });
 
-      // Update URL (pushState, not replaceState - adds to history)
-      logger.info(`Updating URL to /${targetCity}`);
-      router.push(`/${targetCity}`);
+      // Update URL using window.history.pushState (no page reload, no rerender)
+      logger.info(`Updating URL to /${targetCity} (no rerender)`);
+      window.history.pushState({}, "", `/${targetCity}`);
 
       logger.success(`Successfully switched to ${targetCity}`);
     } catch (error) {
