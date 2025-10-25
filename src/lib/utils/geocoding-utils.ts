@@ -106,3 +106,56 @@ export const geocodeFirstAvailable = (
     );
     return null;
   });
+
+/**
+ * Reverse geocode coordinates to get a human-readable location name
+ * Returns place name like "Marina Bay, Singapore" or "Central Jakarta, Indonesia"
+ */
+export const reverseGeocode = (
+  latitude: number,
+  longitude: number,
+  mapboxToken: string,
+): Effect.Effect<string | null, Error> =>
+  Effect.gen(function* () {
+    if (!mapboxToken) {
+      yield* Effect.logWarning(
+        "No Mapbox token provided for reverse geocoding",
+      );
+      return null;
+    }
+
+    // Mapbox reverse geocoding: longitude, latitude order
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${mapboxToken}&types=place,locality,neighborhood,address&limit=1`;
+
+    yield* Effect.log("Reverse geocoding coordinates", { latitude, longitude });
+
+    const response = yield* Effect.tryPromise({
+      try: () => fetch(url),
+      catch: (error) => new Error(`Reverse geocoding fetch failed: ${error}`),
+    });
+
+    if (!response.ok) {
+      yield* Effect.logWarning(`Reverse geocoding failed: ${response.status}`);
+      return null;
+    }
+
+    const data: MapboxGeocodingResponse = yield* Effect.tryPromise({
+      try: () => response.json(),
+      catch: (error) => new Error(`Reverse geocoding parse failed: ${error}`),
+    });
+
+    if (data.features.length === 0) {
+      yield* Effect.logWarning("No reverse geocoding results");
+      return null;
+    }
+
+    const placeName = data.features[0].place_name;
+
+    yield* Effect.log("Successfully reverse geocoded", {
+      latitude,
+      longitude,
+      placeName,
+    });
+
+    return placeName;
+  });

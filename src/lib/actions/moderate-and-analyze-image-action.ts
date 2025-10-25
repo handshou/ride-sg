@@ -11,7 +11,10 @@ import {
 } from "../services/content-moderation-service";
 import { ExaSearchService } from "../services/exa-search-service";
 import { VisionService } from "../services/vision-service";
-import { geocodeFirstAvailable } from "../utils/geocoding-utils";
+import {
+  geocodeFirstAvailable,
+  reverseGeocode,
+} from "../utils/geocoding-utils";
 
 /**
  * Effect program for moderating and analyzing an image
@@ -54,10 +57,47 @@ const moderateAndAnalyzeImageEffect = (
     // First, analyze the image to get description
     const visionService = yield* VisionService;
 
+    // Get Mapbox token for reverse geocoding
+    const mapboxToken = yield* Config.string("MAPBOX_ACCESS_TOKEN").pipe(
+      Config.withDefault(""),
+    );
+
+    // Reverse geocode to get human-readable location name
+    let locationName: string | undefined;
+    if (latitude !== undefined && longitude !== undefined && mapboxToken) {
+      yield* Effect.log(
+        `Reverse geocoding coordinates: ${latitude}, ${longitude}`,
+      );
+      const reverseGeocoded = yield* reverseGeocode(
+        latitude,
+        longitude,
+        mapboxToken,
+      ).pipe(
+        Effect.catchAll((error) =>
+          Effect.gen(function* () {
+            yield* Effect.logWarning(
+              "Failed to reverse geocode, continuing without location name",
+              error,
+            );
+            return null;
+          }),
+        ),
+      );
+      locationName = reverseGeocoded || undefined;
+      if (locationName) {
+        yield* Effect.log(`Location identified as: ${locationName}`);
+      }
+    }
+
     // Build context for Vision API
     const visionContext =
       latitude && longitude
-        ? { latitude, longitude, timestamp: new Date().toISOString() }
+        ? {
+            latitude,
+            longitude,
+            locationName: locationName || undefined,
+            timestamp: new Date().toISOString(),
+          }
         : undefined;
 
     yield* Effect.log("Calling VisionService.analyzeImage");
@@ -126,9 +166,6 @@ const moderateAndAnalyzeImageEffect = (
 
     // Try to geocode landmarks or location clues to get precise location
     let geocodedLocation: { latitude: number; longitude: number } | null = null;
-    const mapboxToken = yield* Config.string("MAPBOX_ACCESS_TOKEN").pipe(
-      Config.withDefault(""),
-    );
 
     if (mapboxToken) {
       // Build list of location names to try geocoding (landmarks first, then location clues)

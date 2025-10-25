@@ -1,12 +1,13 @@
 "use server";
 
 import { ConvexHttpClient } from "convex/browser";
-import { Effect } from "effect";
+import { Config, Effect } from "effect";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { runServerEffectAsync } from "../server-runtime";
 import { VisionService } from "../services/vision-service";
 import { WeatherService } from "../services/weather-service";
+import { reverseGeocode } from "../utils/geocoding-utils";
 
 /**
  * Effect program for analyzing an image using OpenAI Vision API with location context
@@ -45,6 +46,38 @@ const analyzeImageEffect = (
       }),
     });
 
+    // Get Mapbox token for reverse geocoding
+    const mapboxToken = yield* Config.string("MAPBOX_ACCESS_TOKEN").pipe(
+      Config.withDefault(""),
+    );
+
+    // Reverse geocode to get human-readable location name
+    let locationName: string | undefined;
+    if (latitude !== undefined && longitude !== undefined && mapboxToken) {
+      yield* Effect.log(
+        `Reverse geocoding coordinates: ${latitude}, ${longitude}`,
+      );
+      const reverseGeocoded = yield* reverseGeocode(
+        latitude,
+        longitude,
+        mapboxToken,
+      ).pipe(
+        Effect.catchAll((error) =>
+          Effect.gen(function* () {
+            yield* Effect.logWarning(
+              "Failed to reverse geocode, continuing without location name",
+              error,
+            );
+            return null;
+          }),
+        ),
+      );
+      locationName = reverseGeocoded || undefined;
+      if (locationName) {
+        yield* Effect.log(`Location identified as: ${locationName}`);
+      }
+    }
+
     // Fetch current weather data if we have location
     let weatherData:
       | { temperature: number; humidity: number; timestamp: string }
@@ -75,12 +108,18 @@ const analyzeImageEffect = (
       ? {
           latitude,
           longitude,
+          locationName: locationName || undefined,
           temperature: weatherData.temperature,
           humidity: weatherData.humidity,
           timestamp: weatherData.timestamp,
         }
       : latitude && longitude
-        ? { latitude, longitude, timestamp: new Date().toISOString() }
+        ? {
+            latitude,
+            longitude,
+            locationName: locationName || undefined,
+            timestamp: new Date().toISOString(),
+          }
         : undefined;
 
     // Call VisionService to analyze the image with context

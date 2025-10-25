@@ -1,12 +1,7 @@
 import { Effect } from "effect";
 import type mapboxgl from "mapbox-gl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  CityDetectionError,
-  CrossBorderNavigationError,
-  CrossBorderNavigationServiceImpl,
-  MapNotReadyError,
-} from "./cross-border-navigation-service";
+import { CrossBorderNavigationServiceImpl } from "./cross-border-navigation-service";
 
 // Mock the detect-location module
 vi.mock("../utils/detect-location", () => ({

@@ -85,7 +85,7 @@ test.describe("Jakarta Search", () => {
     }
 
     // Verify no 422 errors occurred
-    const geocodingRequests422 = geocodingRequests.filter((url) => {
+    const _geocodingRequests422 = geocodingRequests.filter((_url) => {
       // This is a simplified check - in reality we'd need to check response codes
       return false;
     });

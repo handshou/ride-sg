@@ -97,6 +97,7 @@ export class VisionService extends Effect.Service<VisionService>()(
           context?: {
             latitude?: number;
             longitude?: number;
+            locationName?: string;
             temperature?: number;
             humidity?: number;
             timestamp?: string;
@@ -117,11 +118,13 @@ export class VisionService extends Effect.Service<VisionService>()(
               imageUrl: `${imageUrl.substring(0, 50)}...`,
               hasContext: !!context,
               hasLocation: !!(context?.latitude && context?.longitude),
+              locationName: context?.locationName || "unknown",
             });
 
             // Build context message with available data
-            let contextMessage =
-              "Analyze this image captured in Singapore and help identify the location.";
+            // Use location name if available, otherwise fall back to generic description
+            const locationContext = context?.locationName || "Southeast Asia";
+            let contextMessage = `Analyze this image captured in ${locationContext} and help identify the specific location.`;
 
             if (context?.latitude && context?.longitude) {
               contextMessage += ` GPS coordinates: ${context.latitude.toFixed(5)}, ${context.longitude.toFixed(5)}.`;
@@ -165,15 +168,16 @@ export class VisionService extends Effect.Service<VisionService>()(
                   messages: [
                     {
                       role: "system",
-                      content: `You are a geolocation expert AI analyzing images from Singapore to help identify precise locations. You have access to GPS coordinates and real-time environmental data to enhance your analysis.
+                      content: `You are a geolocation expert AI analyzing images to help identify precise locations. You have access to GPS coordinates, location context, and real-time environmental data to enhance your analysis.
 
 Your analysis should prioritize:
 - Identifying specific landmarks, buildings, street names from visible signage
 - Recognizing distinctive architectural or environmental features
-- Reading visible text on signs, storefronts, or street markers
+- Reading visible text on signs, storefronts, or street markers (in any language)
 - Assessing time of day from lighting and shadows
 - Noting weather conditions visible in the image
 - Providing cycling safety insights
+- Using the provided location context (city/country) to guide your identification
 
 Return your response as JSON with these keys:
 - description (string): Detailed analysis of the scene
@@ -185,7 +189,7 @@ Return your response as JSON with these keys:
 - weatherCondition (string): Visible weather conditions
 - safetyNotes (string): Cycling safety observations
 
-Be specific and detailed. If you can identify exact locations or street names from visible signs, mention them.`,
+Be specific and detailed. If you can identify exact locations or street names from visible signs, mention them. Use the provided location context to improve accuracy.`,
                     },
                     {
                       role: "user",
