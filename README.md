@@ -1,6 +1,6 @@
 # Ride-SG
 
-A modern Singapore map explorer with intelligent landmark search, real-time bicycle parking, and rainfall visualization.
+A modern Singapore and Jakarta map explorer with intelligent landmark search, cross-border navigation, real-time bicycle parking, and rainfall visualization.
 
 **🏆 Hackathon Submission (Cutoff: Oct 19, 2025 9:00 AM SGT)**
 - **[Live Demo](https://ride-lwfrxwc1s-handshous-projects.vercel.app?_vercel_share=pdX2roJsPJaV2fITyuAlUH4aARHA4p7I)** - Production deployment at cutoff time
@@ -37,12 +37,14 @@ A modern Singapore map explorer with intelligent landmark search, real-time bicy
 
 ## ✨ Features
 
-1. **Smart Landmark Search** - AI-powered search with Exa API, automatically cached in Convex for fast retrieval
-2. **Interactive Map Explorer** - Multiple map styles (satellite, streets, dark, light) with smooth flyTo animations and 3D buildings toggle
-3. **Real-time Bicycle Parking** - Live data from LTA DataMall showing nearby bicycle parking with shelter indicators, save favorites locally
-4. **Real-time Rainfall Overlay** - 2-hour rainfall nowcast with heat map visualization showing rain intensity across Singapore (live + mock modes)
-5. **Location Discovery** - GPS location finder, random coordinates generator, saved locations cycling, and manual search
-6. **Theme Support** - Dark/light mode with persistent theme preference across the app
+1. **Cross-Border Navigation** - Seamless travel between Singapore and Jakarta with intelligent city detection, smooth flyTo animations (6.5s cross-border, 2.5s local), and URL updates without page reloads
+2. **City Toggle** - Quick toggle between Singapore and Jakarta with plane animation during transition, maintaining map state and supporting browser back/forward navigation
+3. **Smart Landmark Search** - AI-powered search with Exa API, automatically cached in Convex for fast retrieval
+4. **Interactive Map Explorer** - Multiple map styles (satellite, streets, dark, light) with smooth flyTo animations and 3D buildings toggle
+5. **Real-time Bicycle Parking** - Live data from LTA DataMall showing nearby bicycle parking with shelter indicators, save favorites locally
+6. **Real-time Rainfall Overlay** - 2-hour rainfall nowcast with heat map visualization showing rain intensity across Singapore (live + mock modes)
+7. **Location Discovery** - GPS location finder, random coordinates generator, saved locations cycling, and manual search
+8. **Theme Support** - Dark/light mode with persistent theme preference across the app
 
 ## 🛠️ Getting Started
 
@@ -138,6 +140,8 @@ ServerLayer (Server-only) = BaseLayer +
 ClientLayer (Client-only) = BaseLayer +
 ├─ GeolocationService: Browser GPS
 ├─ MapReadinessService: Map state
+├─ MapNavigationService: Map flyTo animations
+├─ CrossBorderNavigationService: City detection & navigation
 └─ ThemeSyncService: Theme management
 ```
 
@@ -151,7 +155,7 @@ See [docs/RUNTIME_ARCHITECTURE.md](docs/RUNTIME_ARCHITECTURE.md) for details.
 
 ### Key Services
 
-**13 Effect-TS Services:** ExaSearchService, DatabaseSearchService, ConvexService, MapboxService, BicycleParkingService, RainfallService, SearchStateService, GeolocationService, RandomCoordinatesService, ToastService, ThemeSyncService, MapReadinessService, ConfigService
+**15 Effect-TS Services:** ExaSearchService, DatabaseSearchService, ConvexService, MapboxService, BicycleParkingService, RainfallService, SearchStateService, GeolocationService, RandomCoordinatesService, ToastService, ThemeSyncService, MapReadinessService, ConfigService, MapNavigationService, CrossBorderNavigationService
 
 **Convex Schema:** 3 tables (locations, bicycleParking, rainfall) with caching and indexing
 
@@ -173,8 +177,8 @@ tests/               # Playwright e2e tests
 
 ## 🧪 Testing
 
-- **Unit Tests**: Vitest for testing Effect-TS services (43 tests in ~1s)
-- **E2E Tests**: Playwright for browser testing across Chromium, Firefox, WebKit (36 tests in ~40s)
+- **Unit Tests**: Vitest for testing Effect-TS services (63 tests in ~1s)
+- **E2E Tests**: Playwright for browser testing across Chromium, Firefox, WebKit (21 tests in ~40s)
 - **Quality Checks**: Pre-push hook runs full test suite automatically
 
 ## 🎨 Visual Regression Testing
