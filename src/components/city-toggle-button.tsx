@@ -43,7 +43,7 @@ const CITY_FLAGS = {
 /**
  * City labels for display
  */
-const CITY_LABELS = {
+const _CITY_LABELS = {
   singapore: "Singapore",
   jakarta: "Jakarta",
 } as const;
@@ -151,6 +151,7 @@ export function CityToggleButton({
           variant="outline"
           size="icon"
           disabled={isTransitioning}
+          data-testid="city-toggle-button"
           className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm hover:bg-white dark:hover:bg-gray-800 transition-all duration-200 shadow-lg hover:shadow-xl w-10 h-10 p-0"
           aria-label={`Currently in ${cityLabel}. Click to view city options`}
           title={`City selector: ${cityLabel}`}
