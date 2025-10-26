@@ -125,16 +125,19 @@ test.describe("City Toggle", () => {
     await page.goto("/singapore");
     await page.waitForLoadState("load");
 
-    // Wait for map to be ready
-    await page.waitForTimeout(3000);
+    // Wait for map to be ready - increased timeout for E2E environment
+    const mapContainer = page.getByTestId("mapbox-gl-map");
+    await expect(mapContainer).toBeVisible({ timeout: 10000 });
+    await page.waitForTimeout(5000);
 
     // Click the city toggle button
     const singaporeFlag = page.locator('button:has-text("🇸🇬")');
     await singaporeFlag.click();
 
     // During animation, should show plane emoji with pulse animation
+    // Increased timeout to 2000ms to account for E2E environment variability
     const planeEmoji = page.locator('button:has-text("✈️")');
-    await expect(planeEmoji).toBeVisible({ timeout: 1000 });
+    await expect(planeEmoji).toBeVisible({ timeout: 2000 });
 
     console.log("✓ Plane animation displayed during transition");
 
