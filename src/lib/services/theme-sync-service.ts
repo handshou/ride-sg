@@ -258,3 +258,31 @@ export function getTimeBasedMapStyle(): "light" | "dark" {
   const isDaytime = hour >= 6 && hour < 18;
   return isDaytime ? "light" : "dark";
 }
+
+/**
+ * Sync helper - get map style for a given theme without Effect wrapper
+ * Returns the appropriate map style mode for the given theme
+ *
+ * @param theme - The theme mode (light, dark, or system)
+ * @returns The corresponding map style mode
+ */
+export function getMapStyleForTheme(theme: ThemeMode): MapStyleMode {
+  switch (theme) {
+    case "dark":
+      return "dark";
+    case "light":
+      return "light";
+    case "system": {
+      // Check system preference
+      if (typeof window !== "undefined") {
+        const prefersDark = window.matchMedia(
+          "(prefers-color-scheme: dark)",
+        ).matches;
+        return prefersDark ? "dark" : "light";
+      }
+      return "dark"; // Default to dark if window not available
+    }
+    default:
+      return "dark";
+  }
+}

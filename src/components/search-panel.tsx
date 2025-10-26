@@ -315,11 +315,23 @@ export function SearchPanel({
           : "top-20 left-4 w-96"
       }`}
     >
-      {/* City Toggle Button - Top Right Corner of Search Panel */}
+      {/* City Toggle Button - Responsive Positioning */}
       {mapInstance && (
-        <div className="absolute -top-12 right-0">
-          <CityToggleButton mapInstance={mapInstance} isMobile={isMobile} />
-        </div>
+        <>
+          {/* Mobile: Above search panel */}
+          {isMobile && (
+            <div className="absolute -top-12 right-0">
+              <CityToggleButton mapInstance={mapInstance} isMobile={isMobile} />
+            </div>
+          )}
+
+          {/* Desktop: To the right of search window with top padding */}
+          {!isMobile && (
+            <div className="absolute top-4 -right-14">
+              <CityToggleButton mapInstance={mapInstance} isMobile={isMobile} />
+            </div>
+          )}
+        </>
       )}
 
       {/* Search Input */}

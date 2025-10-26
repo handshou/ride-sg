@@ -2,6 +2,7 @@
 
 import { useQuery } from "convex/react";
 import { Effect, Schema } from "effect";
+import { useTheme } from "next-themes";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -33,7 +34,10 @@ import { CrossBorderNavigationServiceTag } from "@/lib/services/cross-border-nav
 import { mapNavigation } from "@/lib/services/map-navigation-service";
 import type { GeocodeResult } from "@/lib/services/mapbox-service";
 import type { SearchResult } from "@/lib/services/search-state-service";
-import { getTimeBasedMapStyle } from "@/lib/services/theme-sync-service";
+import {
+  getMapStyleForTheme,
+  getTimeBasedMapStyle,
+} from "@/lib/services/theme-sync-service";
 import { useCityContext } from "@/providers/city-provider";
 import { api } from "../../convex/_generated/api";
 
@@ -56,6 +60,9 @@ export function JakartaMapExplorer({
 
   // Get current city from context (reacts to URL changes)
   const { city } = useCityContext();
+
+  // Get theme from next-themes for synchronization
+  const { theme, resolvedTheme } = useTheme();
 
   const [randomCoords, setRandomCoords] = useState(initialRandomCoords);
   const [staticMapUrlState, setStaticMapUrlState] = useState(staticMapUrl);
@@ -85,6 +92,30 @@ export function JakartaMapExplorer({
     const timeBasedStyle = getTimeBasedMapStyle();
     return MAPBOX_STYLES[timeBasedStyle];
   });
+
+  // Sync map style with theme on initialization and theme changes
+  useEffect(() => {
+    // Only sync if theme is available (after mount)
+    const currentTheme = (resolvedTheme || theme) as
+      | "light"
+      | "dark"
+      | "system"
+      | undefined;
+
+    if (!currentTheme) {
+      logger.debug("Theme not yet available, skipping sync");
+      return;
+    }
+
+    // Use theme sync service to get the correct map style for the current theme
+    const mapStyleMode = getMapStyleForTheme(currentTheme);
+    const newMapStyle = MAPBOX_STYLES[mapStyleMode];
+    setMapStyle(newMapStyle);
+
+    logger.info(
+      `🗺️  Map style synced with theme: ${currentTheme} → ${mapStyleMode}`,
+    );
+  }, [theme, resolvedTheme]);
 
   // 3D Buildings visualization state
   const [show3DBuildings, setShow3DBuildings] = useState(false);
