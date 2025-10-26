@@ -163,7 +163,8 @@ test.describe("Cross-Border Navigation", () => {
     await expect(mapContainer).toBeVisible({ timeout: 10000 });
 
     // Additional wait to ensure map is fully loaded and style is ready
-    await page.waitForTimeout(2000);
+    // In E2E tests, map.isStyleLoaded() may take longer than expected
+    await page.waitForTimeout(5000);
 
     // Mock geolocation to return Jakarta coordinates
     await page.evaluate(() => {
@@ -218,7 +219,8 @@ test.describe("Cross-Border Navigation", () => {
     await expect(mapContainer).toBeVisible({ timeout: 10000 });
 
     // Additional wait to ensure map is fully loaded and style is ready
-    await page.waitForTimeout(2000);
+    // In E2E tests, map.isStyleLoaded() may take longer than expected
+    await page.waitForTimeout(5000);
 
     // Mock geolocation to return Singapore coordinates
     await page.evaluate(() => {

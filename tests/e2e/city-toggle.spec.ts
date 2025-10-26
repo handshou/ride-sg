@@ -165,7 +165,6 @@ test.describe("City Toggle", () => {
 
     // Go back using browser back button
     await page.goBack();
-    await page.waitForTimeout(1000);
 
     // Should be back on Singapore
     await page.waitForFunction(
@@ -173,8 +172,12 @@ test.describe("City Toggle", () => {
       { timeout: 5000 },
     );
 
-    // Singapore flag should be visible
-    await expect(singaporeFlag).toBeVisible();
+    // Wait for city context to update and button to re-render
+    await page.waitForTimeout(2000);
+
+    // Singapore flag should be visible (recreate locator after state change)
+    const singaporeFlagAfterBack = page.locator('button:has-text("🇸🇬")');
+    await expect(singaporeFlagAfterBack).toBeVisible();
 
     console.log("✓ Browser back navigation works correctly");
 
