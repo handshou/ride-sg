@@ -75,7 +75,9 @@ test.describe("City Toggle", () => {
     await cityToggleTrigger.click();
 
     // Wait for dropdown menu to appear and click Jakarta menu item
-    const jakartaMenuItem = page.locator('div[role="menuitem"]:has-text("Jakarta")');
+    const jakartaMenuItem = page.locator(
+      'div[role="menuitem"]:has-text("Jakarta")',
+    );
     await expect(jakartaMenuItem).toBeVisible({ timeout: 2000 });
     await jakartaMenuItem.click();
 
@@ -110,7 +112,9 @@ test.describe("City Toggle", () => {
     await cityToggleAfterSwitch.click();
 
     // Wait for dropdown and click Singapore menu item
-    const singaporeMenuItem = page.locator('div[role="menuitem"]:has-text("Singapore")');
+    const singaporeMenuItem = page.locator(
+      'div[role="menuitem"]:has-text("Singapore")',
+    );
     await expect(singaporeMenuItem).toBeVisible({ timeout: 2000 });
     await singaporeMenuItem.click();
     await page.waitForTimeout(7000);
@@ -146,7 +150,9 @@ test.describe("City Toggle", () => {
     await cityToggleTrigger.click();
 
     // Click Jakarta menu item from dropdown
-    const jakartaMenuItem = page.locator('div[role="menuitem"]:has-text("Jakarta")');
+    const jakartaMenuItem = page.locator(
+      'div[role="menuitem"]:has-text("Jakarta")',
+    );
     await expect(jakartaMenuItem).toBeVisible({ timeout: 2000 });
     await jakartaMenuItem.click();
 
@@ -182,7 +188,9 @@ test.describe("City Toggle", () => {
     await cityToggleTrigger.click();
 
     // Click Jakarta menu item from dropdown
-    const jakartaMenuItem = page.locator('div[role="menuitem"]:has-text("Jakarta")');
+    const jakartaMenuItem = page.locator(
+      'div[role="menuitem"]:has-text("Jakarta")',
+    );
     await expect(jakartaMenuItem).toBeVisible({ timeout: 2000 });
     await jakartaMenuItem.click();
     await page.waitForTimeout(7000);
@@ -321,7 +329,9 @@ test.describe("City Toggle", () => {
     await cityToggleTrigger.click();
 
     // Click Jakarta menu item from dropdown
-    const jakartaMenuItem = page.locator('div[role="menuitem"]:has-text("Jakarta")');
+    const jakartaMenuItem = page.locator(
+      'div[role="menuitem"]:has-text("Jakarta")',
+    );
     await expect(jakartaMenuItem).toBeVisible({ timeout: 2000 });
     await jakartaMenuItem.click();
 

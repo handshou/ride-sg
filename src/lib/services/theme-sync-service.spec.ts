@@ -10,14 +10,22 @@ import {
 
 describe("ThemeSyncService", () => {
   describe("getDefaultState", () => {
-    it("should return dark theme and dark map style as defaults", async () => {
+    it("should return time-based theme (light 6AM-6PM, dark otherwise)", async () => {
       const result = await Effect.runPromise(
         getDefaultStateEffect().pipe(Effect.provide(ThemeSyncServiceLive)),
       );
 
+      // Check that both theme and mapStyle are consistent
+      expect(result.theme).toMatch(/^(light|dark)$/);
+      expect(result.mapStyle).toBe(result.theme);
+
+      // Verify time-based logic: light during 6AM-6PM, dark otherwise
+      const hour = new Date().getHours();
+      const expectedTheme = hour >= 6 && hour < 18 ? "light" : "dark";
+
       expect(result).toEqual({
-        theme: "dark",
-        mapStyle: "dark",
+        theme: expectedTheme,
+        mapStyle: expectedTheme,
       });
     });
   });
@@ -138,16 +146,24 @@ describe("ThemeSyncService", () => {
       });
     });
 
-    it("should return defaults when neither provided", async () => {
+    it("should return time-based defaults when neither provided", async () => {
       const result = await Effect.runPromise(
         syncThemeAndMapStyleEffect({}).pipe(
           Effect.provide(ThemeSyncServiceLive),
         ),
       );
 
+      // Check that both theme and mapStyle are consistent
+      expect(result.theme).toMatch(/^(light|dark)$/);
+      expect(result.mapStyle).toBe(result.theme);
+
+      // Verify time-based logic: light during 6AM-6PM, dark otherwise
+      const hour = new Date().getHours();
+      const expectedTheme = hour >= 6 && hour < 18 ? "light" : "dark";
+
       expect(result).toEqual({
-        theme: "dark",
-        mapStyle: "dark",
+        theme: expectedTheme,
+        mapStyle: expectedTheme,
       });
     });
   });
