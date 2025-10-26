@@ -1,5 +1,5 @@
 import { Effect, Layer } from "effect";
-import type { City } from "@/hooks/use-city-context";
+import type { City } from "@/providers/city-provider";
 import { ConvexService } from "./services/convex-service";
 import { DatabaseSearchService } from "./services/database-search-service";
 import { ExaSearchService } from "./services/exa-search-service";

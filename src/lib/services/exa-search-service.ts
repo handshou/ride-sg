@@ -1,5 +1,5 @@
 import { Context, Effect, Schema } from "effect";
-import type { City } from "@/hooks/use-city-context";
+import type { City } from "@/providers/city-provider";
 import {
   type ExaAnswerResponse,
   type ExtractedLocationEntry,

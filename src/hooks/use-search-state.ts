@@ -2,7 +2,6 @@
 
 import { Effect } from "effect";
 import { useCallback, useState } from "react";
-import type { City } from "@/hooks/use-city-context";
 import { searchLandmarksAction } from "@/lib/actions/search-actions";
 import { logger } from "@/lib/client-logger";
 import { runSelectResult } from "@/lib/search-orchestrator";
@@ -10,6 +9,7 @@ import type {
   SearchResult,
   SearchState,
 } from "@/lib/services/search-state-service";
+import type { City } from "@/providers/city-provider";
 
 /**
  * React Hook to interact with server-side search

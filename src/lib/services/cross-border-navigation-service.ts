@@ -241,7 +241,14 @@ export class CrossBorderNavigationServiceImpl
         const targetPath = `/${targetCity}`;
         // Use pushState to maintain browser back button support
         window.history.pushState({}, "", targetPath);
-        return Effect.logInfo(`URL updated to ${targetPath} (no rerender)`);
+        // Dispatch citychange event to notify CityProvider and trigger component updates
+        // Only dispatch if window is available (browser environment)
+        if (typeof window !== "undefined" && window.dispatchEvent) {
+          window.dispatchEvent(new Event("citychange"));
+        }
+        return Effect.logInfo(
+          `URL updated to ${targetPath} and city context updated`,
+        );
       },
       catch: (error) =>
         new CrossBorderNavigationError(

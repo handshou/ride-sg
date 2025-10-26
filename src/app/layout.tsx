@@ -4,6 +4,7 @@ import { ConvexClientProvider } from "@/components/convex-client-provider";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ToastProvider } from "@/components/toast-provider";
+import { CityProvider } from "@/providers/city-provider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -65,8 +66,10 @@ export default function RootLayout({
               defaultTheme="dark"
               disableTransitionOnChange
             >
-              {children}
-              <ToastProvider />
+              <CityProvider>
+                {children}
+                <ToastProvider />
+              </CityProvider>
             </ThemeProvider>
           </ConvexClientProvider>
         </ErrorBoundary>

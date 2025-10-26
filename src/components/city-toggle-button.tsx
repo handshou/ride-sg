@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { logger } from "@/lib/client-logger";
-import { useCityContext } from "@/hooks/use-city-context";
+import { mapNavigation } from "@/lib/services/map-navigation-service";
+import { useCityContext } from "@/providers/city-provider";
 
 export type City = "singapore" | "jakarta";
 
@@ -31,18 +32,18 @@ const CITY_FLAGS = {
 /**
  * City Toggle Button Component
  *
- * Displays a button with the current city's flag in the bottom right corner.
- * Shows which city you're currently viewing.
+ * Displays a button with the current city's flag.
+ * Positioned in the top-right corner above the search bar for mobile visibility.
  * When clicked:
  * 1. Flies to the center of the opposite city
- * 2. Updates the URL using window.history.pushState (no page reload)
+ * 2. Updates city context (triggers re-render of all city-aware components)
  */
 export function CityToggleButton({
   mapInstance,
   isMobile,
 }: CityToggleButtonProps) {
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const { city: currentCity, cityLabel } = useCityContext();
+  const { city: currentCity, cityLabel, setCity } = useCityContext();
 
   const targetCity = currentCity === "singapore" ? "jakarta" : "singapore";
   const targetCityLabel = targetCity === "singapore" ? "Singapore" : "Jakarta";
@@ -59,31 +60,30 @@ export function CityToggleButton({
     logger.info(`Switching from ${currentCity} to ${targetCity}`);
 
     try {
-      // Stop any ongoing animations
-      mapInstance.stop();
+      // Fly to target city center with dramatic cross-border animation
+      await mapNavigation.flyTo(
+        mapInstance,
+        {
+          coordinates: {
+            latitude: targetCenter.latitude,
+            longitude: targetCenter.longitude,
+          },
+          zoom: isMobile ? 9 : targetCenter.zoom,
+          pitch: 60,
+          bearing: 0,
+          duration: 6500, // 6.5 seconds for cross-border travel (matches CrossBorderNavigationService)
+          curve: 1.8, // High arc for dramatic effect
+          easing: (t) => t * (2 - t),
+          isMobile,
+        },
+        (error) => {
+          logger.error("Failed to fly to target city", error);
+        },
+      );
 
-      // Fly to target city center with dramatic animation
-      await new Promise<void>((resolve) => {
-        requestAnimationFrame(() => {
-          mapInstance.flyTo({
-            center: [targetCenter.longitude, targetCenter.latitude],
-            zoom: isMobile ? 9 : targetCenter.zoom,
-            pitch: 60,
-            bearing: 0,
-            duration: 3500, // 3.5 seconds for cross-border travel
-            essential: true,
-            curve: 1.8, // High arc for dramatic effect
-            easing: (t) => t * (2 - t),
-          });
-
-          // Wait for animation to complete
-          setTimeout(resolve, 3500);
-        });
-      });
-
-      // Update URL using window.history.pushState (no page reload, no rerender)
-      logger.info(`Updating URL to /${targetCity} (no rerender)`);
-      window.history.pushState({}, "", `/${targetCity}`);
+      // Update city context (triggers re-render and navigation)
+      logger.info(`Updating city context to ${targetCity}`);
+      setCity(targetCity);
 
       logger.success(`Successfully switched to ${targetCity}`);
     } catch (error) {
@@ -96,10 +96,10 @@ export function CityToggleButton({
   return (
     <Button
       variant="outline"
-      size="lg"
+      size="sm"
       onClick={handleToggle}
       disabled={isTransitioning}
-      className="fixed bottom-4 right-4 z-10 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm hover:bg-white dark:hover:bg-gray-800 transition-all duration-200 shadow-lg hover:shadow-xl text-2xl sm:text-3xl px-3 sm:px-4 py-2 sm:py-3 h-auto"
+      className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm hover:bg-white dark:hover:bg-gray-800 transition-all duration-200 shadow-lg hover:shadow-xl text-xl sm:text-2xl px-2 sm:px-3 py-1 sm:py-2 h-auto"
       aria-label={`Currently in ${cityLabel}, click to switch to ${targetCityLabel}`}
       title={`Currently viewing ${cityLabel}. Click to switch to ${targetCityLabel}`}
     >

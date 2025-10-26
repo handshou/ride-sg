@@ -15,11 +15,12 @@ import {
   Search,
   X,
 } from "lucide-react";
+import type mapboxgl from "mapbox-gl";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { CityToggleButton } from "@/components/city-toggle-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useCityContext } from "@/hooks/use-city-context";
 import { useMobile } from "@/hooks/use-mobile";
 import { useSearchState } from "@/hooks/use-search-state";
 import { deleteLocationFromConvexAction } from "@/lib/actions/delete-location-action";
@@ -28,11 +29,13 @@ import { logger } from "@/lib/client-logger";
 import { getCurrentPositionEffect } from "@/lib/services/geolocation-service";
 import type { SearchResult } from "@/lib/services/search-state-service";
 import { cleanAndTruncateDescription } from "@/lib/text-utils";
+import { useCityContext } from "@/providers/city-provider";
 
 interface SearchPanelProps {
   onResultSelect: (result: SearchResult) => void;
   onSearchStateReady?: (addResult: (result: SearchResult) => void) => void;
   onGetMapCenter?: () => { lat: number; lng: number } | undefined;
+  mapInstance?: mapboxgl.Map | null;
 }
 
 /**
@@ -59,6 +62,7 @@ export function SearchPanel({
   onResultSelect,
   onSearchStateReady,
   onGetMapCenter,
+  mapInstance,
 }: SearchPanelProps) {
   const isMobile = useMobile();
   const { city, countryLabel } = useCityContext();
@@ -311,6 +315,13 @@ export function SearchPanel({
           : "top-20 left-4 w-96"
       }`}
     >
+      {/* City Toggle Button - Top Right Corner of Search Panel */}
+      {mapInstance && (
+        <div className="absolute -top-12 right-0">
+          <CityToggleButton mapInstance={mapInstance} isMobile={isMobile} />
+        </div>
+      )}
+
       {/* Search Input */}
       <div className="p-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex gap-2 items-stretch">

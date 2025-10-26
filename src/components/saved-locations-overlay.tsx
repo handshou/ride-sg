@@ -4,7 +4,7 @@ import { useQuery } from "convex/react";
 import mapboxgl from "mapbox-gl";
 import { useEffect, useRef } from "react";
 import { logger } from "@/lib/client-logger";
-import { useCityContext } from "@/hooks/use-city-context";
+import { useCityContext } from "@/providers/city-provider";
 import { api } from "../../convex/_generated/api";
 
 interface SavedLocationsOverlayProps {

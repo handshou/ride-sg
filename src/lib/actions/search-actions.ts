@@ -1,6 +1,6 @@
 "use server";
 
-import type { City } from "@/hooks/use-city-context";
+import type { City } from "@/providers/city-provider";
 import { runCoordinatedSearch } from "../search-orchestrator";
 import { runServerEffectAsync } from "../server-runtime";
 import type { SearchResult } from "../services/search-state-service";

@@ -10,7 +10,6 @@ import { BicycleParkingOverlay } from "@/components/bicycle-parking-overlay";
 import { BicycleParkingPanel } from "@/components/bicycle-parking-panel";
 import { Buildings3DToggleButton } from "@/components/buildings-3d-toggle-button";
 import { CameraCaptureButton } from "@/components/camera-capture-button";
-import { CityToggleButton } from "@/components/city-toggle-button";
 import { ErrorToastHandler } from "@/components/error-toast-handler";
 import { HowToButton } from "@/components/how-to-button";
 import { ImageAnalysisOverlay } from "@/components/image-analysis-overlay";
@@ -43,6 +42,7 @@ import {
   getThemeForMapStyleEffect,
   ThemeSyncServiceLive,
 } from "@/lib/services/theme-sync-service";
+import { useCityContext } from "@/providers/city-provider";
 import { api } from "../../convex/_generated/api";
 
 interface SingaporeMapExplorerProps {
@@ -73,6 +73,9 @@ export function SingaporeMapExplorer({
   const _router = useRouter();
   const searchParams = useSearchParams();
 
+  // Get current city from context (reacts to URL changes)
+  const { city } = useCityContext();
+
   const [randomCoords, setRandomCoords] = useState(initialRandomCoords);
   const [staticMapUrlState, setStaticMapUrlState] = useState(staticMapUrl);
   const mapInstanceRef = useRef<mapboxgl.Map | null>(null);
@@ -99,8 +102,8 @@ export function SingaporeMapExplorer({
   // Use dark theme as default map style
   const [mapStyle, setMapStyle] = useState(MAPBOX_STYLES.dark);
 
-  // Rainfall visualization state - auto-enabled on load
-  const [showRainfall, setShowRainfall] = useState(true);
+  // Rainfall visualization state - auto-enabled on load (Singapore only)
+  const [showRainfall, setShowRainfall] = useState(city === "singapore");
   const [useMockRainfall, setUseMockRainfall] = useState(false);
 
   // 3D Buildings visualization state
@@ -109,8 +112,9 @@ export function SingaporeMapExplorer({
 
   // Saved locations for random navigation - using Convex reactive query
   // Returns undefined during SSR or when ConvexProvider is not available
+  // Uses dynamic city from context - automatically refetches when city changes!
   const convexLocations = useQuery(api.locations.getRandomizableLocations, {
-    city: "singapore",
+    city,
   });
   const [savedLocations, setSavedLocations] = useState<
     Array<{
@@ -123,12 +127,14 @@ export function SingaporeMapExplorer({
   >([]);
   const [currentLocationIndex, setCurrentLocationIndex] = useState(0);
 
-  // Reactively update saved locations when Convex data changes
+  // Reactively update saved locations when Convex data changes or city changes
   useEffect(() => {
+    logger.info(`🏙️  City context: ${city}, updating saved locations`);
+
     if (!convexLocations || convexLocations.length === 0) {
       if (convexLocations !== undefined) {
         logger.warn(
-          "No saved locations found with isRandomizable=true. Make sure Convex schema is deployed with 'pnpm run dev:convex'",
+          `No saved locations found with isRandomizable=true for ${city}. Make sure Convex schema is deployed with 'pnpm run dev:convex'`,
         );
       }
       setSavedLocations([]);
@@ -136,7 +142,7 @@ export function SingaporeMapExplorer({
     }
 
     logger.info(
-      `🔄 Convex update: ${convexLocations.length} saved locations for sequential navigation`,
+      `🔄 Convex update: ${convexLocations.length} saved locations for ${city}`,
     );
 
     // Shuffle the locations array
@@ -144,7 +150,7 @@ export function SingaporeMapExplorer({
 
     // Log the shuffled order
     logger.info(
-      "🔀 Shuffled order:",
+      `🔀 Shuffled order for ${city}:`,
       shuffled.map((loc, idx) => `${idx + 1}. ${loc.title}`).join(", "),
     );
 
@@ -159,7 +165,7 @@ export function SingaporeMapExplorer({
 
     setSavedLocations(mappedLocations);
     setCurrentLocationIndex(0); // Reset to start of shuffled list
-  }, [convexLocations]); // This will re-run whenever Convex data changes!
+  }, [convexLocations, city]); // Re-run when Convex data or city changes!
 
   // Automatically add saved locations as search results
   useEffect(() => {
@@ -451,7 +457,7 @@ export function SingaporeMapExplorer({
               const navigationResult =
                 yield* crossBorderService.handleLocationFound({
                   coordinates: result.location,
-                  currentCity: "singapore",
+                  currentCity: city,
                   map,
                   mapboxToken: mapboxPublicToken,
                   isMobile,
@@ -483,7 +489,7 @@ export function SingaporeMapExplorer({
         logger.warn("Map instance not ready yet");
       }
     },
-    [isMobile, mapboxPublicToken],
+    [isMobile, mapboxPublicToken, city],
   );
 
   const handleCoordinatesGenerated = useCallback(
@@ -572,7 +578,7 @@ export function SingaporeMapExplorer({
             const service = yield* CrossBorderNavigationServiceTag;
             return yield* service.handleLocationFound({
               coordinates: coords,
-              currentCity: "singapore",
+              currentCity: city,
               map: mapInstance,
               mapboxToken: mapboxPublicToken,
               isMobile,
@@ -589,7 +595,7 @@ export function SingaporeMapExplorer({
         );
       }
     },
-    [mapboxPublicToken, isMobile],
+    [mapboxPublicToken, isMobile, city],
   );
 
   // Handle location from URL params (when routed from another city)
@@ -698,20 +704,25 @@ export function SingaporeMapExplorer({
         />
         <LocateMeButton onLocationFound={handleLocationFound} />
         <CameraCaptureButton currentLocation={mapLocation || undefined} />
-        <RainfallToggleButton
-          isActive={showRainfall}
-          onClick={() => setShowRainfall(!showRainfall)}
-        />
-        {showRainfall && (
-          <RainfallMockToggleButton
-            isMockMode={useMockRainfall}
-            onClick={() => setUseMockRainfall(!useMockRainfall)}
-          />
+        {/* Rainfall is only available for Singapore */}
+        {city === "singapore" && (
+          <>
+            <RainfallToggleButton
+              isActive={showRainfall}
+              onClick={() => setShowRainfall(!showRainfall)}
+            />
+            {showRainfall && (
+              <RainfallMockToggleButton
+                isMockMode={useMockRainfall}
+                onClick={() => setUseMockRainfall(!useMockRainfall)}
+              />
+            )}
+          </>
         )}
         {/* <ThemeToggle /> */}
       </div>
 
-      {/* Search Panel */}
+      {/* Search Panel with integrated City Toggle */}
       <SearchPanel
         onResultSelect={handleSearchResultSelect}
         onSearchStateReady={(addResult) => setAddSearchResult(() => addResult)}
@@ -722,6 +733,7 @@ export function SingaporeMapExplorer({
           }
           return undefined;
         }}
+        mapInstance={mapInstanceRef.current}
       />
 
       {/* Bicycle Parking Panel - Hide on Mobile */}
@@ -734,8 +746,8 @@ export function SingaporeMapExplorer({
         />
       )}
 
-      {/* Rainfall Panel - Hide on Mobile, Show when rainfall is active */}
-      {!isMobile && showRainfall && (
+      {/* Rainfall Panel - Hide on Mobile, Show when rainfall is active, Singapore only */}
+      {!isMobile && showRainfall && city === "singapore" && (
         <RainfallPanel
           initialRainfallData={initialRainfallData}
           useMockData={useMockRainfall}
@@ -783,7 +795,7 @@ export function SingaporeMapExplorer({
               map={mapInstanceRef.current}
               currentLocation={mapLocation}
             />
-            {showRainfall && (
+            {showRainfall && city === "singapore" && (
               <RainfallHeatMapOverlay
                 map={mapInstanceRef.current}
                 initialRainfallData={initialRainfallData}
@@ -794,14 +806,6 @@ export function SingaporeMapExplorer({
           </>
         )}
       </div>
-
-      {/* City Toggle Button */}
-      {isMapReady && mapInstanceRef.current && (
-        <CityToggleButton
-          mapInstance={mapInstanceRef.current}
-          isMobile={isMobile}
-        />
-      )}
     </div>
   );
 }

@@ -10,7 +10,6 @@ import { BicycleParkingOverlay } from "@/components/bicycle-parking-overlay";
 import { BicycleParkingPanel } from "@/components/bicycle-parking-panel";
 import { Buildings3DToggleButton } from "@/components/buildings-3d-toggle-button";
 import { CameraCaptureButton } from "@/components/camera-capture-button";
-import { CityToggleButton } from "@/components/city-toggle-button";
 import { ErrorToastHandler } from "@/components/error-toast-handler";
 import { HowToButton } from "@/components/how-to-button";
 import { ImageAnalysisOverlay } from "@/components/image-analysis-overlay";
@@ -39,6 +38,7 @@ import {
   getThemeForMapStyleEffect,
   ThemeSyncServiceLive,
 } from "@/lib/services/theme-sync-service";
+import { useCityContext } from "@/providers/city-provider";
 import { api } from "../../convex/_generated/api";
 
 interface JakartaMapExplorerProps {
@@ -58,6 +58,9 @@ export function JakartaMapExplorer({
   const { setTheme } = useTheme();
   const _router = useRouter();
   const searchParams = useSearchParams();
+
+  // Get current city from context (reacts to URL changes)
+  const { city } = useCityContext();
 
   const [randomCoords, setRandomCoords] = useState(initialRandomCoords);
   const [staticMapUrlState, setStaticMapUrlState] = useState(staticMapUrl);
@@ -90,8 +93,9 @@ export function JakartaMapExplorer({
   const [currentStyleSupports3D, setCurrentStyleSupports3D] = useState(true);
 
   // Saved locations for random navigation - using Convex reactive query
+  // Uses dynamic city from context - automatically refetches when city changes!
   const convexLocations = useQuery(api.locations.getRandomizableLocations, {
-    city: "jakarta",
+    city,
   });
   const [savedLocations, setSavedLocations] = useState<
     Array<{
@@ -104,12 +108,14 @@ export function JakartaMapExplorer({
   >([]);
   const [currentLocationIndex, setCurrentLocationIndex] = useState(0);
 
-  // Reactively update saved locations when Convex data changes
+  // Reactively update saved locations when Convex data changes or city changes
   useEffect(() => {
+    logger.info(`🏙️  City context: ${city}, updating saved locations`);
+
     if (!convexLocations || convexLocations.length === 0) {
       if (convexLocations !== undefined) {
         logger.warn(
-          "No saved locations found with isRandomizable=true. Make sure Convex schema is deployed with 'pnpm run dev:convex'",
+          `No saved locations found with isRandomizable=true for ${city}. Make sure Convex schema is deployed with 'pnpm run dev:convex'`,
         );
       }
       setSavedLocations([]);
@@ -117,14 +123,14 @@ export function JakartaMapExplorer({
     }
 
     logger.info(
-      `🔄 Convex update: ${convexLocations.length} saved locations for sequential navigation`,
+      `🔄 Convex update: ${convexLocations.length} saved locations for ${city}`,
     );
 
     // Shuffle the locations array
     const shuffled = [...convexLocations].sort(() => Math.random() - 0.5);
 
     logger.info(
-      "🔀 Shuffled order:",
+      `🔀 Shuffled order for ${city}:`,
       shuffled.map((loc, idx) => `${idx + 1}. ${loc.title}`).join(", "),
     );
 
@@ -138,7 +144,7 @@ export function JakartaMapExplorer({
 
     setSavedLocations(mappedLocations);
     setCurrentLocationIndex(0);
-  }, [convexLocations]);
+  }, [convexLocations, city]); // Re-run when Convex data or city changes!
 
   // Automatically add saved locations as search results
   useEffect(() => {
@@ -418,7 +424,7 @@ export function JakartaMapExplorer({
               const navigationResult =
                 yield* crossBorderService.handleLocationFound({
                   coordinates: result.location,
-                  currentCity: "jakarta",
+                  currentCity: city,
                   map,
                   mapboxToken: mapboxPublicToken,
                   isMobile,
@@ -448,7 +454,7 @@ export function JakartaMapExplorer({
         logger.warn("Map instance not ready yet");
       }
     },
-    [isMobile, mapboxPublicToken],
+    [isMobile, mapboxPublicToken, city],
   );
 
   const handleCoordinatesGenerated = useCallback(
@@ -529,7 +535,7 @@ export function JakartaMapExplorer({
             const service = yield* CrossBorderNavigationServiceTag;
             return yield* service.handleLocationFound({
               coordinates: coords,
-              currentCity: "jakarta",
+              currentCity: city,
               map: mapInstance,
               mapboxToken: mapboxPublicToken,
               isMobile,
@@ -546,7 +552,7 @@ export function JakartaMapExplorer({
         );
       }
     },
-    [mapboxPublicToken, isMobile],
+    [mapboxPublicToken, isMobile, city],
   );
 
   // Handle location from URL params (when routed from another city)
@@ -656,7 +662,7 @@ export function JakartaMapExplorer({
         <CameraCaptureButton currentLocation={mapLocation || undefined} />
       </div>
 
-      {/* Search Panel */}
+      {/* Search Panel with integrated City Toggle */}
       <SearchPanel
         onResultSelect={handleSearchResultSelect}
         onSearchStateReady={(addResult) => setAddSearchResult(() => addResult)}
@@ -667,6 +673,7 @@ export function JakartaMapExplorer({
           }
           return undefined;
         }}
+        mapInstance={mapInstanceRef.current}
       />
 
       {/* Bicycle Parking Panel - Hide on Mobile */}
@@ -712,14 +719,6 @@ export function JakartaMapExplorer({
           </>
         )}
       </div>
-
-      {/* City Toggle Button */}
-      {isMapReady && mapInstanceRef.current && (
-        <CityToggleButton
-          mapInstance={mapInstanceRef.current}
-          isMobile={isMobile}
-        />
-      )}
     </div>
   );
 }
