@@ -4,6 +4,7 @@ import { ConvexHttpClient } from "convex/browser";
 import { Effect } from "effect";
 import { api } from "../../../convex/_generated/api";
 import { runServerEffectAsync } from "../server-runtime";
+import { mapboxPublicTokenConfig } from "../services/config-service";
 import type { SearchResult } from "../services/search-state-service";
 import { detectCityFromCoords } from "../utils/detect-location";
 
@@ -45,14 +46,7 @@ const saveLocationEffect = (result: SearchResult) =>
     yield* Effect.log(
       `Detecting city for: [${result.location.latitude}, ${result.location.longitude}]`,
     );
-    const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-    if (!mapboxToken) {
-      yield* Effect.logError("NEXT_PUBLIC_MAPBOX_TOKEN not configured");
-      return {
-        success: false,
-        error: "Mapbox token not configured",
-      };
-    }
+    const mapboxToken = yield* mapboxPublicTokenConfig;
 
     const detectedCity = yield* Effect.tryPromise({
       try: () =>

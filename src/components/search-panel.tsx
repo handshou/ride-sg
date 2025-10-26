@@ -65,7 +65,7 @@ export function SearchPanel({
   mapInstance,
 }: SearchPanelProps) {
   const isMobile = useMobile();
-  const { city, countryLabel } = useCityContext();
+  const { city, cityLabel } = useCityContext();
   const {
     search,
     results,
@@ -167,8 +167,8 @@ export function SearchPanel({
 
     // If locationName is still not set, use city context from hook
     if (!locationName) {
-      locationName = countryLabel;
-      logger.info(`Using ${countryLabel} as location context from city hook`);
+      locationName = cityLabel;
+      logger.info(`Using ${cityLabel} as location context from city hook`);
     }
 
     // Perform search with location and city context

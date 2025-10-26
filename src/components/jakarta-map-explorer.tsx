@@ -3,7 +3,6 @@
 import { useQuery } from "convex/react";
 import { Effect, Schema } from "effect";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useTheme } from "next-themes";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { BicycleParkingOverlay } from "@/components/bicycle-parking-overlay";
@@ -34,10 +33,7 @@ import { CrossBorderNavigationServiceTag } from "@/lib/services/cross-border-nav
 import { mapNavigation } from "@/lib/services/map-navigation-service";
 import type { GeocodeResult } from "@/lib/services/mapbox-service";
 import type { SearchResult } from "@/lib/services/search-state-service";
-import {
-  getThemeForMapStyleEffect,
-  ThemeSyncServiceLive,
-} from "@/lib/services/theme-sync-service";
+import { getTimeBasedMapStyle } from "@/lib/services/theme-sync-service";
 import { useCityContext } from "@/providers/city-provider";
 import { api } from "../../convex/_generated/api";
 
@@ -55,7 +51,6 @@ export function JakartaMapExplorer({
   mapboxPublicToken,
 }: JakartaMapExplorerProps) {
   const isMobile = useMobile();
-  const { setTheme } = useTheme();
   const _router = useRouter();
   const searchParams = useSearchParams();
 
@@ -85,8 +80,11 @@ export function JakartaMapExplorer({
     ((result: SearchResult) => void) | null
   >(null);
 
-  // Use dark theme as default map style
-  const [mapStyle, setMapStyle] = useState(MAPBOX_STYLES.dark);
+  // Use time-based map style (light during day 6 AM - 6 PM, dark otherwise)
+  const [mapStyle, setMapStyle] = useState(() => {
+    const timeBasedStyle = getTimeBasedMapStyle();
+    return MAPBOX_STYLES[timeBasedStyle];
+  });
 
   // 3D Buildings visualization state
   const [show3DBuildings, setShow3DBuildings] = useState(false);
@@ -360,19 +358,6 @@ export function JakartaMapExplorer({
       mapInstanceRef.current = map;
       setIsMapReady(true);
 
-      // Sync UI theme with map style on initial load
-      try {
-        const theme = await Effect.runPromise(
-          getThemeForMapStyleEffect("dark").pipe(
-            Effect.provide(ThemeSyncServiceLive),
-          ),
-        );
-        setTheme(theme);
-        logger.success(`Initial theme synced to ${theme} (map style: dark)`);
-      } catch (error) {
-        logger.error("Failed to sync initial theme:", error);
-      }
-
       // Mobile-responsive zoom
       const targetZoom = isMobile ? 9 : 12;
       logger.debug(
@@ -393,7 +378,7 @@ export function JakartaMapExplorer({
         });
       });
     },
-    [initialRandomCoords, isMobile, setTheme],
+    [initialRandomCoords, isMobile],
   );
 
   // Handle search result selection

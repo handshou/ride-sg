@@ -3,7 +3,6 @@
 import { useQuery } from "convex/react";
 import { Effect, Schema } from "effect";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useTheme } from "next-themes";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { BicycleParkingOverlay } from "@/components/bicycle-parking-overlay";
@@ -38,10 +37,7 @@ import { CrossBorderNavigationServiceTag } from "@/lib/services/cross-border-nav
 import { mapNavigation } from "@/lib/services/map-navigation-service";
 import type { GeocodeResult } from "@/lib/services/mapbox-service";
 import type { SearchResult } from "@/lib/services/search-state-service";
-import {
-  getThemeForMapStyleEffect,
-  ThemeSyncServiceLive,
-} from "@/lib/services/theme-sync-service";
+import { getTimeBasedMapStyle } from "@/lib/services/theme-sync-service";
 import { useCityContext } from "@/providers/city-provider";
 import { api } from "../../convex/_generated/api";
 
@@ -69,7 +65,6 @@ export function SingaporeMapExplorer({
   initialRainfallData,
 }: SingaporeMapExplorerProps) {
   const isMobile = useMobile();
-  const { setTheme } = useTheme();
   const _router = useRouter();
   const searchParams = useSearchParams();
 
@@ -99,8 +94,11 @@ export function SingaporeMapExplorer({
     ((result: SearchResult) => void) | null
   >(null);
 
-  // Use dark theme as default map style
-  const [mapStyle, setMapStyle] = useState(MAPBOX_STYLES.dark);
+  // Use time-based map style (light during day 6 AM - 6 PM, dark otherwise)
+  const [mapStyle, setMapStyle] = useState(() => {
+    const timeBasedStyle = getTimeBasedMapStyle();
+    return MAPBOX_STYLES[timeBasedStyle];
+  });
 
   // Rainfall visualization state - auto-enabled on load (Singapore only)
   const [showRainfall, setShowRainfall] = useState(city === "singapore");
@@ -390,19 +388,6 @@ export function SingaporeMapExplorer({
       mapInstanceRef.current = map;
       setIsMapReady(true);
 
-      // Sync UI theme with map style on initial load
-      try {
-        const theme = await Effect.runPromise(
-          getThemeForMapStyleEffect("dark").pipe(
-            Effect.provide(ThemeSyncServiceLive),
-          ),
-        );
-        setTheme(theme);
-        logger.success(`Initial theme synced to ${theme} (map style: dark)`);
-      } catch (error) {
-        logger.error("Failed to sync initial theme:", error);
-      }
-
       // Mobile-responsive zoom: start more zoomed in on desktop for better detail
       const targetZoom = isMobile ? 9 : 12; // Desktop: 12 (closer), Mobile: 9
       logger.debug(
@@ -424,7 +409,7 @@ export function SingaporeMapExplorer({
         });
       });
     },
-    [initialRandomCoords, isMobile, setTheme],
+    [initialRandomCoords, isMobile],
   );
 
   // Handle search result selection - flyTo the selected location (moved before handleCoordinatesGenerated)

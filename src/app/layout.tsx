@@ -63,7 +63,8 @@ export default function RootLayout({
           <ConvexClientProvider>
             <ThemeProvider
               attribute="class"
-              defaultTheme="dark"
+              defaultTheme="light"
+              enableSystem={false}
               disableTransitionOnChange
             >
               <CityProvider>

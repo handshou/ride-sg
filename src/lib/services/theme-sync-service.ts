@@ -119,8 +119,16 @@ class ThemeSyncServiceImpl implements IThemeSyncService {
         return { theme, mapStyle: input.mapStyle };
       }
 
-      // If neither provided, return default
-      return { theme: "dark" as ThemeMode, mapStyle: "dark" as MapStyleMode };
+      // If neither provided, return time-based default
+      const now = new Date();
+      const hour = now.getHours();
+      const isDaytime = hour >= 6 && hour < 18;
+      return {
+        theme: isDaytime ? ("light" as ThemeMode) : ("dark" as ThemeMode),
+        mapStyle: isDaytime
+          ? ("light" as MapStyleMode)
+          : ("dark" as MapStyleMode),
+      };
     });
   }
 
@@ -158,9 +166,21 @@ class ThemeSyncServiceImpl implements IThemeSyncService {
   }
 
   getDefaultState(): Effect.Effect<ThemeSyncState, never> {
-    return Effect.succeed({
-      theme: "dark" as ThemeMode,
-      mapStyle: "dark" as MapStyleMode,
+    return Effect.gen(function* () {
+      // Auto-detect theme based on time (6 AM - 6 PM = light, else dark)
+      const now = new Date();
+      const hour = now.getHours();
+      const isDaytime = hour >= 6 && hour < 18;
+      const theme = isDaytime ? ("light" as ThemeMode) : ("dark" as ThemeMode);
+      const mapStyle = isDaytime
+        ? ("light" as MapStyleMode)
+        : ("dark" as MapStyleMode);
+
+      yield* Effect.logDebug(
+        `🎨 Time-based theme: ${theme} (hour: ${hour}, isDaytime: ${isDaytime})`,
+      );
+
+      return { theme, mapStyle };
     });
   }
 }
@@ -211,3 +231,30 @@ export const getDefaultStateEffect = () =>
     const service = yield* ThemeSyncService;
     return yield* service.getDefaultState();
   });
+
+/**
+ * Sync helper - get time-based theme without Effect wrapper
+ * Returns "light" for daytime (6 AM - 6 PM), "dark" otherwise
+ *
+ * Note: For logging, use this from React components with client logger.
+ * For Effect-based code, use getDefaultStateEffect() which includes Effect.logDebug.
+ */
+export function getTimeBasedTheme(): "light" | "dark" {
+  const now = new Date();
+  const hour = now.getHours();
+  const isDaytime = hour >= 6 && hour < 18;
+  return isDaytime ? "light" : "dark";
+}
+
+/**
+ * Sync helper - get time-based map style without Effect wrapper
+ * Returns "light" for daytime (6 AM - 6 PM), "dark" otherwise
+ *
+ * This keeps map style in sync with theme based on time of day.
+ */
+export function getTimeBasedMapStyle(): "light" | "dark" {
+  const now = new Date();
+  const hour = now.getHours();
+  const isDaytime = hour >= 6 && hour < 18;
+  return isDaytime ? "light" : "dark";
+}
