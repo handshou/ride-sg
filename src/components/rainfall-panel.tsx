@@ -110,13 +110,11 @@ export function RainfallPanel({
             </p>
           </div>
         </div>
-        <Button variant="ghost" size="icon" className="h-8 w-8">
-          {isExpanded ? (
-            <ChevronDown className="h-4 w-4" />
-          ) : (
-            <ChevronUp className="h-4 w-4" />
-          )}
-        </Button>
+        {isExpanded ? (
+          <ChevronDown className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+        ) : (
+          <ChevronUp className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+        )}
       </button>
 
       {/* Expandable Content */}
