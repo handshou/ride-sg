@@ -223,24 +223,26 @@ export class CrossBorderNavigationServiceImpl
         // Use injected mapNavigationService with retry logic
         // Retry up to 3 times with 500ms delay between attempts
         // This handles cases where the map is not fully loaded yet
-        this.mapNavigationService.flyTo(map, {
-          coordinates,
-          zoom,
-          duration,
-          curve,
-          easing: (t) => t * (2 - t),
-          isMobile,
-        }).pipe(
-          Effect.retry({
-            times: 3,
-            schedule: Schedule.spaced("500 millis"),
-          }),
-          Effect.tapError((error) =>
-            Effect.logWarning(
-              `FlyTo attempt failed (will retry): ${error._tag}`,
+        this.mapNavigationService
+          .flyTo(map, {
+            coordinates,
+            zoom,
+            duration,
+            curve,
+            easing: (t) => t * (2 - t),
+            isMobile,
+          })
+          .pipe(
+            Effect.retry({
+              times: 3,
+              schedule: Schedule.spaced("500 millis"),
+            }),
+            Effect.tapError((error) =>
+              Effect.logWarning(
+                `FlyTo attempt failed (will retry): ${error._tag}`,
+              ),
             ),
           ),
-        ),
       ),
     );
   }

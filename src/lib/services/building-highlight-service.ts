@@ -91,9 +91,7 @@ export interface BuildingHighlightService {
 /**
  * Implementation of Building Highlight Service
  */
-export class BuildingHighlightServiceImpl
-  implements BuildingHighlightService
-{
+export class BuildingHighlightServiceImpl implements BuildingHighlightService {
   private config: BuildingHighlightConfig = {
     highlightColor: "#9333ea", // purple-600
     defaultColor: "#aaa",
@@ -115,7 +113,10 @@ export class BuildingHighlightServiceImpl
     return Effect.try({
       try: () => {
         // Convert lat/lng to screen coordinates
-        const point = map.project([coordinates.longitude, coordinates.latitude]);
+        const point = map.project([
+          coordinates.longitude,
+          coordinates.latitude,
+        ]);
 
         // Query rendered features at this point
         // Try multiple building layer IDs (different Mapbox styles use different IDs)
@@ -194,9 +195,7 @@ export class BuildingHighlightServiceImpl
       // Step 2: Log attempt
       yield* Effect.logInfo(
         `Highlighting building at ${coordinates.latitude}, ${coordinates.longitude}` +
-          (address
-            ? ` (${address.streetNumber} ${address.streetName})`
-            : ""),
+          (address ? ` (${address.streetNumber} ${address.streetName})` : ""),
       );
 
       // Step 3: Query building at coordinates
@@ -227,9 +226,7 @@ export class BuildingHighlightServiceImpl
           );
         },
         catch: (error) =>
-          new MapLayerNotReadyError(
-            `Failed to set feature-state: ${error}`,
-          ),
+          new MapLayerNotReadyError(`Failed to set feature-state: ${error}`),
       }).pipe(Effect.flatten);
 
       // Step 5: Update layer paint properties if not already set
@@ -301,15 +298,10 @@ export class BuildingHighlightServiceImpl
             ]);
 
             Effect.runSync(
-              Effect.logDebug(
-                `Applied highlight styling to layer: ${layerId}`,
-              ),
+              Effect.logDebug(`Applied highlight styling to layer: ${layerId}`),
             );
           }
-        } catch (error) {
-          // Layer doesn't exist or doesn't support this property, continue
-          continue;
-        }
+        } catch (error) {}
       }
     });
   }
@@ -328,9 +320,7 @@ export const BuildingHighlightServiceLive = Layer.succeed(
   BuildingHighlightServiceTag,
   new BuildingHighlightServiceImpl(),
 ).pipe(
-  Layer.tap(() =>
-    Effect.logDebug("🏢 BuildingHighlightService initialized"),
-  ),
+  Layer.tap(() => Effect.logDebug("🏢 BuildingHighlightService initialized")),
 );
 
 /**
@@ -340,7 +330,11 @@ export const highlightBuildingEffect = (
   map: mapboxgl.Map,
   coordinates: { latitude: number; longitude: number },
   address?: StructuredAddress,
-): Effect.Effect<void, BuildingNotFoundError | MapLayerNotReadyError, never> => {
+): Effect.Effect<
+  void,
+  BuildingNotFoundError | MapLayerNotReadyError,
+  never
+> => {
   return Effect.gen(function* () {
     const service = yield* BuildingHighlightServiceTag;
     return yield* service.highlightBuilding(map, coordinates, address);

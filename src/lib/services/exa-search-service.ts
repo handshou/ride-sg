@@ -373,7 +373,9 @@ class ExaSearchServiceImpl {
           const description = self.cleanDescription(rawDescription);
 
           // Use name + address for better geocoding
-          const cityFallback = locationContext?.includes("Jakarta") ? "Jakarta" : "Singapore";
+          const cityFallback = locationContext?.includes("Jakarta")
+            ? "Jakarta"
+            : "Singapore";
           const address = addressMatch ? addressMatch[1].trim() : cityFallback;
           const searchQuery = `${name}, ${address}`;
 

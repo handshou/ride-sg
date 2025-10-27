@@ -11,11 +11,11 @@ import {
 } from "../services/content-moderation-service";
 import { ExaSearchService } from "../services/exa-search-service";
 import { VisionService } from "../services/vision-service";
+import { detectCityFromCoords } from "../utils/detect-location";
 import {
   geocodeFirstAvailable,
   reverseGeocode,
 } from "../utils/geocoding-utils";
-import { detectCityFromCoords } from "../utils/detect-location";
 
 /**
  * Effect program for moderating and analyzing an image
