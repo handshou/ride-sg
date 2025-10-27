@@ -373,8 +373,9 @@ class ExaSearchServiceImpl {
           const description = self.cleanDescription(rawDescription);
 
           // Use name + address for better geocoding
-          const address = addressMatch ? addressMatch[1].trim() : "Singapore";
-          const searchQuery = `${name}, ${address}, Singapore`;
+          const cityFallback = locationContext?.includes("Jakarta") ? "Jakarta" : "Singapore";
+          const address = addressMatch ? addressMatch[1].trim() : cityFallback;
+          const searchQuery = `${name}, ${address}`;
 
           const confidence = self.calculateConfidence(
             {
@@ -605,7 +606,7 @@ Example format:
             const description =
               entry.description ||
               cleanedSourceDesc ||
-              "Singapore location (via Exa Answer API)";
+              `${cityName} location (via Exa Answer API)`;
 
             // Extract URL from sources if available
             const url = firstSource?.url ?? "";
@@ -663,6 +664,7 @@ Example format:
     locationClues: string[],
     latitude: number,
     longitude: number,
+    city?: City,
   ): Effect.Effect<string[], ExaError> {
     return Effect.gen(
       function* (this: ExaSearchServiceImpl) {
@@ -686,7 +688,8 @@ Example format:
 
         // Build query from location clues + GPS
         const cluesText = locationClues.join(", ");
-        const query = `What landmark building or location is at coordinates ${latitude}, ${longitude} in Singapore with these features: ${cluesText}? Give me the specific landmark name.`;
+        const cityName = city === "jakarta" ? "Jakarta" : "Singapore";
+        const query = `What landmark building or location is at coordinates ${latitude}, ${longitude} in ${cityName} with these features: ${cluesText}? Give me the specific landmark name.`;
 
         yield* Effect.log("Exa landmark query", { query });
 

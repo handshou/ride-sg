@@ -1,4 +1,4 @@
-import { Context, Effect, Layer } from "effect";
+import { Context, Effect, Layer, Schedule } from "effect";
 import type mapboxgl from "mapbox-gl";
 import {
   type DetectedCity,
@@ -220,7 +220,9 @@ export class CrossBorderNavigationServiceImpl
       return yield* Effect.void;
     }).pipe(
       Effect.flatMap(() =>
-        // Use injected mapNavigationService directly (no yield needed)
+        // Use injected mapNavigationService with retry logic
+        // Retry up to 3 times with 500ms delay between attempts
+        // This handles cases where the map is not fully loaded yet
         this.mapNavigationService.flyTo(map, {
           coordinates,
           zoom,
@@ -228,7 +230,17 @@ export class CrossBorderNavigationServiceImpl
           curve,
           easing: (t) => t * (2 - t),
           isMobile,
-        }),
+        }).pipe(
+          Effect.retry({
+            times: 3,
+            schedule: Schedule.spaced("500 millis"),
+          }),
+          Effect.tapError((error) =>
+            Effect.logWarning(
+              `FlyTo attempt failed (will retry): ${error._tag}`,
+            ),
+          ),
+        ),
       ),
     );
   }

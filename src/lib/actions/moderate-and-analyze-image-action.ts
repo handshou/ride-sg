@@ -15,6 +15,7 @@ import {
   geocodeFirstAvailable,
   reverseGeocode,
 } from "../utils/geocoding-utils";
+import { detectCityFromCoords } from "../utils/detect-location";
 
 /**
  * Effect program for moderating and analyzing an image
@@ -136,12 +137,38 @@ const moderateAndAnalyzeImageEffect = (
         },
       );
 
+      // Detect city from coordinates for city-aware search
+      const detectedCity = mapboxToken
+        ? yield* Effect.tryPromise({
+            try: () => detectCityFromCoords(latitude, longitude, mapboxToken),
+            catch: (error) => ({
+              _tag: "DetectionError" as const,
+              message: `Failed to detect city: ${error}`,
+            }),
+          }).pipe(
+            Effect.catchAll((error) =>
+              Effect.gen(function* () {
+                yield* Effect.logWarning(
+                  "Failed to detect city, defaulting to Singapore",
+                  error,
+                );
+                return "singapore" as const;
+              }),
+            ),
+          )
+        : ("singapore" as const);
+
+      yield* Effect.log("Detected city for landmark search", {
+        detectedCity,
+      });
+
       const exaService = yield* ExaSearchService;
       const exaLandmarks = yield* exaService
         .identifyLandmarkFromClues(
           [...analysisResult.locationClues], // Convert readonly to mutable array
           latitude,
           longitude,
+          detectedCity === "unknown" ? undefined : detectedCity,
         )
         .pipe(
           Effect.catchAll((error) =>
