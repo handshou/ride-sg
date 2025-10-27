@@ -1,4 +1,4 @@
-import { Effect, Layer } from "effect";
+import { Config, Effect, Layer } from "effect";
 import type { City } from "@/providers/city-provider";
 import { ConvexService } from "./services/convex-service";
 import { DatabaseSearchService } from "./services/database-search-service";
@@ -7,6 +7,11 @@ import {
   type SearchResult,
   SearchStateService,
 } from "./services/search-state-service";
+import {
+  geocodeStructuredAddress,
+  parseAddressString,
+  type StructuredAddress,
+} from "./utils/geocoding-utils";
 
 /**
  * Search Orchestrator
@@ -246,6 +251,98 @@ export const selectResultEffect = (result: SearchResult | null) =>
   });
 
 /**
+ * Select a result with structured geocoding for precise building-level coordinates
+ *
+ * This effect enhances result selection by:
+ * 1. Parsing the result's address into structured components
+ * 2. Geocoding the structured address for precise building coordinates
+ * 3. Updating the result with precise coordinates if geocoding succeeds
+ * 4. Selecting the enhanced result for map display
+ *
+ * This provides better accuracy for building highlighting and map navigation.
+ *
+ * @param result - Search result to select
+ * @param city - Current city context for country code inference
+ * @returns Effect with the enhanced search result or original if geocoding fails
+ */
+export const selectResultWithGeocodingEffect = (
+  result: SearchResult | null,
+  city?: City,
+) =>
+  Effect.gen(function* () {
+    if (!result) {
+      // Deselect if null
+      return yield* selectResultEffect(null);
+    }
+
+    // Get Mapbox token from config
+    const mapboxToken = yield* Config.string("MAPBOX_ACCESS_TOKEN").pipe(
+      Config.withDefault(""),
+    );
+
+    // If no address or no token, use original coordinates
+    if (!result.address || !mapboxToken) {
+      yield* Effect.log(
+        "No address or Mapbox token available, using original coordinates",
+      );
+      return yield* selectResultEffect(result);
+    }
+
+    // Parse address into structured components
+    const countryCode = city === "jakarta" ? "ID" : "SG";
+    const structuredAddress: StructuredAddress = parseAddressString(
+      result.address,
+      countryCode,
+    );
+
+    yield* Effect.log("Parsed structured address", { structuredAddress });
+
+    // Try to geocode structured address for precise coordinates
+    const geocoded = yield* geocodeStructuredAddress(
+      structuredAddress,
+      mapboxToken,
+    ).pipe(
+      Effect.catchAll((error) =>
+        Effect.gen(function* () {
+          yield* Effect.logWarning(
+            "Structured geocoding failed, using original coordinates",
+            error,
+          );
+          return null;
+        }),
+      ),
+    );
+
+    // If geocoding succeeded, create enhanced result with precise coordinates
+    if (geocoded) {
+      const enhancedResult: SearchResult = {
+        ...result,
+        location: {
+          latitude: geocoded.latitude,
+          longitude: geocoded.longitude,
+        },
+        // Store original coordinates as metadata for comparison
+        _originalLocation: result.location,
+      } as SearchResult & { _originalLocation?: typeof result.location };
+
+      yield* Effect.log(
+        `Enhanced result with precise coordinates: ${result.title}`,
+        {
+          original: result.location,
+          precise: geocoded,
+        },
+      );
+
+      // Select the enhanced result
+      return yield* selectResultEffect(enhancedResult);
+    }
+
+    // Fall back to original coordinates if geocoding failed
+    yield* Effect.log("Using original coordinates for result selection");
+    return yield* selectResultEffect(result);
+  });
+
+/**
  * Watch for selected result changes (for map rendering)
  *
  * This is where the magic happens - when a result is selected,
@@ -287,3 +384,20 @@ export const runGetSearchResults = () =>
  */
 export const runSelectResult = (result: SearchResult | null) =>
   selectResultEffect(result).pipe(Effect.provide(SearchLayer));
+
+/**
+ * Helper to select a result with structured geocoding and all dependencies provided
+ *
+ * Use this instead of runSelectResult when you want precise building-level coordinates
+ * for better map navigation and building highlighting.
+ *
+ * @param result - Search result to select
+ * @param city - Current city context for country code inference
+ */
+export const runSelectResultWithGeocoding = (
+  result: SearchResult | null,
+  city?: City,
+) =>
+  selectResultWithGeocodingEffect(result, city).pipe(
+    Effect.provide(SearchLayer),
+  );
