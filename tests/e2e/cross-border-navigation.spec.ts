@@ -104,7 +104,7 @@ test.describe("Cross-Border Navigation", () => {
   }) => {
     // Navigate directly to Singapore page
     await page.goto("/singapore");
-    await page.waitForLoadState("load");
+    await page.waitForLoadState("networkidle");
     await page.waitForTimeout(3000);
 
     // Mock geolocation to return Singapore coordinates
@@ -156,7 +156,7 @@ test.describe("Cross-Border Navigation", () => {
 
     // Navigate directly to Singapore page
     await page.goto("/singapore");
-    await page.waitForLoadState("load");
+    await page.waitForLoadState("networkidle");
 
     // Wait for map to be ready (mapbox container should be visible)
     const mapContainer = page.getByTestId("mapbox-gl-map");
@@ -164,7 +164,7 @@ test.describe("Cross-Border Navigation", () => {
 
     // Additional wait to ensure map is fully loaded and style is ready
     // In E2E tests, map.isStyleLoaded() may take longer than expected
-    await page.waitForTimeout(5000);
+    await page.waitForTimeout(8000);
 
     // Mock geolocation to return Jakarta coordinates
     await page.evaluate(() => {
@@ -196,7 +196,7 @@ test.describe("Cross-Border Navigation", () => {
     // Uses waitForFunction since we're using history.replaceState (no navigation event)
     await page.waitForFunction(
       () => window.location.pathname.includes("/jakarta"),
-      { timeout: 10000 },
+      { timeout: 15000 },
     );
 
     console.log("✓ URL updated to /jakarta after animation");
@@ -212,7 +212,7 @@ test.describe("Cross-Border Navigation", () => {
   }) => {
     // Navigate directly to Jakarta page
     await page.goto("/jakarta");
-    await page.waitForLoadState("load");
+    await page.waitForLoadState("networkidle");
 
     // Wait for map to be ready (mapbox container should be visible)
     const mapContainer = page.getByTestId("mapbox-gl-map");
@@ -220,7 +220,7 @@ test.describe("Cross-Border Navigation", () => {
 
     // Additional wait to ensure map is fully loaded and style is ready
     // In E2E tests, map.isStyleLoaded() may take longer than expected
-    await page.waitForTimeout(5000);
+    await page.waitForTimeout(8000);
 
     // Mock geolocation to return Singapore coordinates
     await page.evaluate(() => {
@@ -252,7 +252,7 @@ test.describe("Cross-Border Navigation", () => {
     // Uses waitForFunction since we're using history.replaceState (no navigation event)
     await page.waitForFunction(
       () => window.location.pathname.includes("/singapore"),
-      { timeout: 10000 },
+      { timeout: 15000 },
     );
 
     console.log("✓ URL updated to /singapore after animation");
@@ -268,7 +268,7 @@ test.describe("Cross-Border Navigation", () => {
   }) => {
     // Navigate directly to Singapore page
     await page.goto("/singapore");
-    await page.waitForLoadState("load");
+    await page.waitForLoadState("networkidle");
     await page.waitForTimeout(3000);
 
     // Mock geolocation to fail with permission denied
@@ -305,7 +305,7 @@ test.describe("Cross-Border Navigation", () => {
   test("should handle unknown location gracefully", async ({ page }) => {
     // Navigate directly to Singapore page
     await page.goto("/singapore");
-    await page.waitForLoadState("load");
+    await page.waitForLoadState("networkidle");
     await page.waitForTimeout(3000);
 
     // Mock geolocation to return coordinates outside Singapore/Jakarta

@@ -30,7 +30,9 @@ async function waitForCityToggleButton(page: any, timeout = 15000) {
       await page.waitForTimeout(500);
     }
   }
-  throw new Error(`City toggle button did not become visible within ${timeout}ms`);
+  throw new Error(
+    `City toggle button did not become visible within ${timeout}ms`,
+  );
 }
 
 test.describe("City Toggle", () => {
@@ -47,7 +49,7 @@ test.describe("City Toggle", () => {
   }) => {
     // Navigate to Singapore page
     await page.goto("/singapore");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("load");
 
     // Wait for map to be ready
     const mapContainer = page.getByTestId("mapbox-gl-map");
@@ -78,7 +80,7 @@ test.describe("City Toggle", () => {
   }) => {
     // Navigate to Singapore page
     await page.goto("/singapore");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("load");
 
     // Wait for map to be ready
     const mapContainer = page.getByTestId("mapbox-gl-map");
@@ -157,7 +159,7 @@ test.describe("City Toggle", () => {
   test("should show plane animation during transition", async ({ page }) => {
     // Navigate to Singapore page
     await page.goto("/singapore");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("load");
 
     // Wait for map to be ready - increased timeout for E2E environment
     const mapContainer = page.getByTestId("mapbox-gl-map");
@@ -200,7 +202,7 @@ test.describe("City Toggle", () => {
   test("should handle browser back/forward navigation", async ({ page }) => {
     // Navigate to Singapore page
     await page.goto("/singapore");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("load");
 
     // Wait for city toggle button with retry logic
     const cityToggleTrigger = await waitForCityToggleButton(page);
