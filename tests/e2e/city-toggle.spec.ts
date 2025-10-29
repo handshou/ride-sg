@@ -1,4 +1,11 @@
 import { expect, test } from "@playwright/test";
+import {
+  navigateToCityPage,
+  selectCityFromToggle,
+  waitForCityToggleButton,
+  waitForMapReady,
+  waitForUrlPath,
+} from "./helpers";
 
 /**
  * City Toggle E2E Tests
@@ -9,31 +16,6 @@ import { expect, test } from "@playwright/test";
  * - Saved locations refresh when city changes
  * - Only top row icons re-render on city change
  */
-
-/**
- * Helper: Wait for city toggle button to be ready
- * More robust waiting strategy with retries
- */
-async function waitForCityToggleButton(page: any, timeout = 15000) {
-  const startTime = Date.now();
-  while (Date.now() - startTime < timeout) {
-    try {
-      const button = page.getByTestId("city-toggle-button");
-      await button.waitFor({ state: "visible", timeout: 2000 });
-      // Extra check that it's actually interactable
-      const isVisible = await button.isVisible();
-      if (isVisible) {
-        return button;
-      }
-    } catch (e) {
-      // Button not ready yet, wait and retry
-      await page.waitForTimeout(500);
-    }
-  }
-  throw new Error(
-    `City toggle button did not become visible within ${timeout}ms`,
-  );
-}
 
 test.describe("City Toggle", () => {
   test.beforeEach(async ({ page }) => {
@@ -47,13 +29,8 @@ test.describe("City Toggle", () => {
   test("should display city toggle button anchored to search panel", async ({
     page,
   }) => {
-    // Navigate to Singapore page
-    await page.goto("/singapore");
-    await page.waitForLoadState("load");
-
-    // Wait for map to be ready
-    const mapContainer = page.getByTestId("mapbox-gl-map");
-    await expect(mapContainer).toBeVisible({ timeout: 15000 });
+    // Navigate to Singapore page and wait for map ready
+    await navigateToCityPage(page, "singapore");
 
     // Search panel should be visible
     const searchPanel = page.locator('[placeholder="Search locations..."]');
@@ -78,165 +55,68 @@ test.describe("City Toggle", () => {
   test("should toggle between Singapore and Jakarta without page reload", async ({
     page,
   }) => {
-    // Navigate to Singapore page
-    await page.goto("/singapore");
-    await page.waitForLoadState("load");
-
-    // Wait for map to be ready
+    // Navigate to Singapore page and wait for map ready
+    await navigateToCityPage(page, "singapore");
     const mapContainer = page.getByTestId("mapbox-gl-map");
-    await expect(mapContainer).toBeVisible({ timeout: 15000 });
 
     // Initial URL should be /singapore
     expect(page.url()).toContain("/singapore");
 
-    // Wait for city toggle button with retry logic
-    const cityToggleTrigger = await waitForCityToggleButton(page);
+    // Switch to Jakarta
+    await selectCityFromToggle(page, "Jakarta");
 
-    // Click dropdown trigger to open menu
-    await cityToggleTrigger.click();
-
-    // Wait for dropdown menu to appear and click Jakarta menu item
-    const jakartaMenuItem = page.locator(
-      'div[role="menuitem"]:has-text("Jakarta")',
-    );
-    await expect(jakartaMenuItem).toBeVisible({ timeout: 5000 });
-    await jakartaMenuItem.click();
-
-    // Wait for flyTo animation (6.5 seconds for cross-border) + buffer
-    await page.waitForTimeout(8000);
-
-    // URL should change to /jakarta (using pushState, no reload)
-    // Use a more robust wait with extended timeout
-    await page.waitForFunction(
-      () => window.location.pathname.includes("/jakarta"),
-      { timeout: 10000 },
-    );
+    // Wait for URL to change to Jakarta (using pushState, no reload)
+    await waitForUrlPath(page, "/jakarta");
 
     // Map should still be visible (no page reload)
     await expect(mapContainer).toBeVisible();
-
-    // Wait for city toggle button to be ready again after state change
-    const cityToggleAfterSwitch = await waitForCityToggleButton(page);
-
-    // Verify saved locations updated (top dashboard should show Jakarta locations)
-    // Look for console logs indicating city change
-    const cityChangeLogs = [];
-    page.on("console", (msg) => {
-      if (msg.text().includes("City context: jakarta")) {
-        cityChangeLogs.push(msg.text());
-      }
-    });
 
     console.log("✓ Toggled to Jakarta without page reload");
 
-    // Click dropdown trigger again to go back to Singapore
-    await cityToggleAfterSwitch.click();
+    // Switch back to Singapore
+    await selectCityFromToggle(page, "Singapore");
 
-    // Wait for dropdown and click Singapore menu item
-    const singaporeMenuItem = page.locator(
-      'div[role="menuitem"]:has-text("Singapore")',
-    );
-    await expect(singaporeMenuItem).toBeVisible({ timeout: 5000 });
-    await singaporeMenuItem.click();
-    await page.waitForTimeout(8000);
-
-    // URL should change back to /singapore
-    await page.waitForFunction(
-      () => window.location.pathname.includes("/singapore"),
-      { timeout: 10000 },
-    );
+    // Wait for URL to change back to Singapore
+    await waitForUrlPath(page, "/singapore");
 
     // Map should still be visible (no page reload)
     await expect(mapContainer).toBeVisible();
-
-    // Wait for city toggle button to be ready again
-    const cityToggleBackToSingapore = await waitForCityToggleButton(page);
-    await expect(cityToggleBackToSingapore).toBeVisible();
 
     console.log("✓ Toggled back to Singapore without page reload");
   });
 
   test("should show plane animation during transition", async ({ page }) => {
-    // Navigate to Singapore page
-    await page.goto("/singapore");
-    await page.waitForLoadState("load");
+    // Navigate to Singapore page and wait for map ready
+    await navigateToCityPage(page, "singapore");
 
-    // Wait for map to be ready - increased timeout for E2E environment
-    const mapContainer = page.getByTestId("mapbox-gl-map");
-    await expect(mapContainer).toBeVisible({ timeout: 15000 });
-
-    // Wait for city toggle button with retry logic
-    const cityToggleTrigger = await waitForCityToggleButton(page);
-
-    // Click dropdown trigger to open menu
-    await cityToggleTrigger.click();
-
-    // Click Jakarta menu item from dropdown
-    const jakartaMenuItem = page.locator(
-      'div[role="menuitem"]:has-text("Jakarta")',
-    );
-    await expect(jakartaMenuItem).toBeVisible({ timeout: 5000 });
-    await jakartaMenuItem.click();
-
-    // During animation, wait for transition to start
-    await page.waitForTimeout(1000);
+    // Switch to Jakarta
+    await selectCityFromToggle(page, "Jakarta");
 
     console.log("✓ Plane animation triggered (city switch initiated)");
 
-    // Wait for animation to complete (6.5s cross-border) + buffer
-    await page.waitForTimeout(8000);
+    // Wait for URL to change (animation completes)
+    await waitForUrlPath(page, "/jakarta");
 
-    // Verify transition completed by checking URL changed to Jakarta
-    await page.waitForFunction(
-      () => window.location.pathname.includes("/jakarta"),
-      { timeout: 10000 },
-    );
-
-    // Wait for button to be ready again and check it's enabled
-    const cityToggleEnabled = await waitForCityToggleButton(page);
-    await expect(cityToggleEnabled).toBeEnabled();
+    // Button should be enabled again after transition
+    const cityToggle = await waitForCityToggleButton(page);
+    await expect(cityToggle).toBeEnabled();
 
     console.log("✓ Transition animation completed");
   });
 
   test("should handle browser back/forward navigation", async ({ page }) => {
-    // Navigate to Singapore page
-    await page.goto("/singapore");
-    await page.waitForLoadState("load");
+    // Navigate to Singapore page and wait for map ready
+    await navigateToCityPage(page, "singapore");
 
-    // Wait for city toggle button with retry logic
-    const cityToggleTrigger = await waitForCityToggleButton(page);
-
-    // Click dropdown trigger to open menu
-    await cityToggleTrigger.click();
-
-    // Click Jakarta menu item from dropdown
-    const jakartaMenuItem = page.locator(
-      'div[role="menuitem"]:has-text("Jakarta")',
-    );
-    await expect(jakartaMenuItem).toBeVisible({ timeout: 5000 });
-    await jakartaMenuItem.click();
-    await page.waitForTimeout(8000);
-
-    // Verify we're on Jakarta with robust wait
-    await page.waitForFunction(
-      () => window.location.pathname.includes("/jakarta"),
-      { timeout: 10000 },
-    );
+    // Switch to Jakarta
+    await selectCityFromToggle(page, "Jakarta");
+    await waitForUrlPath(page, "/jakarta");
 
     // Go back using browser back button
     await page.goBack();
+    await waitForUrlPath(page, "/singapore");
 
-    // Should be back on Singapore with extended timeout
-    await page.waitForFunction(
-      () => window.location.pathname.includes("/singapore"),
-      { timeout: 10000 },
-    );
-
-    // Wait for city context to update and button to re-render
-    await page.waitForTimeout(2000);
-
-    // Wait for city toggle button with retry logic
+    // City toggle button should still be visible
     const cityToggleAfterBack = await waitForCityToggleButton(page);
     await expect(cityToggleAfterBack).toBeVisible();
 
@@ -244,15 +124,9 @@ test.describe("City Toggle", () => {
 
     // Go forward
     await page.goForward();
-    await page.waitForTimeout(2000);
+    await waitForUrlPath(page, "/jakarta");
 
-    // Should be on Jakarta again with extended timeout
-    await page.waitForFunction(
-      () => window.location.pathname.includes("/jakarta"),
-      { timeout: 10000 },
-    );
-
-    // Wait for city toggle button with retry logic
+    // City toggle button should still be visible
     const cityToggleAfterForward = await waitForCityToggleButton(page);
     await expect(cityToggleAfterForward).toBeVisible();
 
@@ -262,13 +136,11 @@ test.describe("City Toggle", () => {
   test("should move with search panel when it expands/collapses", async ({
     page,
   }) => {
-    // Navigate to Singapore page
-    await page.goto("/singapore");
-    await page.waitForLoadState("load");
-    await page.waitForTimeout(3000);
+    // Navigate to Singapore page and wait for map ready
+    await navigateToCityPage(page, "singapore");
 
     // Get initial position of city toggle
-    const cityToggle = page.getByTestId("city-toggle-button");
+    const cityToggle = await waitForCityToggleButton(page);
     const initialBox = await cityToggle.boundingBox();
     expect(initialBox).toBeTruthy();
 
@@ -277,8 +149,11 @@ test.describe("City Toggle", () => {
     await searchInput.fill("Marina Bay");
     await searchInput.press("Enter");
 
-    // Wait for search results
-    await page.waitForTimeout(2000);
+    // Wait for search results to appear
+    await page.waitForSelector('[role="option"]', {
+      state: "visible",
+      timeout: 5000,
+    });
 
     // Get new position of city toggle
     const expandedBox = await cityToggle.boundingBox();
@@ -294,10 +169,8 @@ test.describe("City Toggle", () => {
   test("should not reload entire page (map instance persists)", async ({
     page,
   }) => {
-    // Navigate to Singapore page
-    await page.goto("/singapore");
-    await page.waitForLoadState("load");
-    await page.waitForTimeout(3000);
+    // Navigate to Singapore page and wait for map ready
+    await navigateToCityPage(page, "singapore");
 
     // Add a marker to the page using the browser console
     await page.evaluate(() => {
@@ -309,10 +182,9 @@ test.describe("City Toggle", () => {
     let marker = await page.evaluate(() => (window as any).testMarker);
     expect(marker).toBe("initial-load");
 
-    // Toggle to Jakarta - note: no dropdown interaction needed for this test
-    // The test is just checking that the page doesn't reload, not the dropdown itself
-    const cityToggle = page.getByTestId("city-toggle-button");
-    await expect(cityToggle).toBeVisible();
+    // Toggle to Jakarta
+    await selectCityFromToggle(page, "Jakarta");
+    await waitForUrlPath(page, "/jakarta");
 
     // Verify marker still exists (page wasn't reloaded)
     marker = await page.evaluate(() => (window as any).testMarker);
@@ -325,13 +197,11 @@ test.describe("City Toggle", () => {
     // Set mobile viewport
     await page.setViewportSize({ width: 375, height: 667 });
 
-    // Navigate to Singapore page
-    await page.goto("/singapore");
-    await page.waitForLoadState("load");
-    await page.waitForTimeout(3000);
+    // Navigate to Singapore page and wait for map ready
+    await navigateToCityPage(page, "singapore");
 
     // City toggle button should be visible on mobile
-    const cityToggle = page.getByTestId("city-toggle-button");
+    const cityToggle = await waitForCityToggleButton(page);
     await expect(cityToggle).toBeVisible();
 
     // Get position
@@ -345,39 +215,20 @@ test.describe("City Toggle", () => {
   });
 
   test("should disable button during transition", async ({ page }) => {
-    // Navigate to Singapore page
-    await page.goto("/singapore");
-    await page.waitForLoadState("load");
-    await page.waitForTimeout(3000);
+    // Navigate to Singapore page and wait for map ready
+    await navigateToCityPage(page, "singapore");
 
-    // Click dropdown trigger to open menu
-    const cityToggleTrigger = page.getByTestId("city-toggle-button");
-    await cityToggleTrigger.click();
-
-    // Click Jakarta menu item from dropdown
-    const jakartaMenuItem = page.locator(
-      'div[role="menuitem"]:has-text("Jakarta")',
-    );
-    await expect(jakartaMenuItem).toBeVisible({ timeout: 2000 });
-    await jakartaMenuItem.click();
-
-    // Wait for transition to start
-    await page.waitForTimeout(500);
+    // Switch to Jakarta
+    await selectCityFromToggle(page, "Jakarta");
 
     console.log("✓ Transition initiated");
 
-    // Wait for animation to complete
-    await page.waitForTimeout(7000);
-
-    // Verify transition completed by checking URL changed to Jakarta
-    await page.waitForFunction(
-      () => window.location.pathname.includes("/jakarta"),
-      { timeout: 5000 },
-    );
+    // Wait for transition to complete
+    await waitForUrlPath(page, "/jakarta");
 
     // Button should be enabled again after transition
-    const cityToggleEnabled = page.getByTestId("city-toggle-button");
-    await expect(cityToggleEnabled).toBeEnabled();
+    const cityToggle = await waitForCityToggleButton(page);
+    await expect(cityToggle).toBeEnabled();
 
     console.log("✓ Button re-enabled after transition");
   });

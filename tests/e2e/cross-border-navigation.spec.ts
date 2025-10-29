@@ -1,4 +1,10 @@
 import { expect, test } from "@playwright/test";
+import {
+  mockGeolocation,
+  mockGeolocationDenied,
+  navigateToCityPage,
+  waitForUrlPath,
+} from "./helpers";
 
 /**
  * Cross-Border Navigation E2E Tests
@@ -102,36 +108,17 @@ test.describe("Cross-Border Navigation", () => {
   test("should stay on same page for local navigation (Singapore)", async ({
     page,
   }) => {
-    // Navigate directly to Singapore page
-    await page.goto("/singapore");
-    await page.waitForLoadState("networkidle");
-    await page.waitForTimeout(3000);
+    // Navigate to Singapore page and wait for map ready
+    await navigateToCityPage(page, "singapore");
 
     // Mock geolocation to return Singapore coordinates
-    await page.evaluate(() => {
-      navigator.geolocation.getCurrentPosition = (success) => {
-        success({
-          coords: {
-            latitude: 1.3521,
-            longitude: 103.8198,
-            accuracy: 10,
-            altitude: null,
-            altitudeAccuracy: null,
-            heading: null,
-            speed: null,
-            toJSON: () => ({}),
-          },
-          timestamp: Date.now(),
-          toJSON: () => ({}),
-        });
-      };
-    });
+    await mockGeolocation(page, 1.3521, 103.8198);
 
     // Click "Locate Me" button
     const locateButton = page.getByTestId("locate-me-button");
     await locateButton.click();
 
-    // Wait for animation (1.8s local flyTo)
+    // Wait for animation to complete - should stay on Singapore
     await page.waitForTimeout(2500);
 
     // Should still be on /singapore
@@ -154,37 +141,12 @@ test.describe("Cross-Border Navigation", () => {
       }
     });
 
-    // Navigate directly to Singapore page
-    await page.goto("/singapore");
-    await page.waitForLoadState("networkidle");
-
-    // Wait for map to be ready (mapbox container should be visible)
+    // Navigate to Singapore page and wait for map ready
+    await navigateToCityPage(page, "singapore");
     const mapContainer = page.getByTestId("mapbox-gl-map");
-    await expect(mapContainer).toBeVisible({ timeout: 10000 });
-
-    // Additional wait to ensure map is fully loaded and style is ready
-    // In E2E tests, map.isStyleLoaded() may take longer than expected
-    await page.waitForTimeout(8000);
 
     // Mock geolocation to return Jakarta coordinates
-    await page.evaluate(() => {
-      navigator.geolocation.getCurrentPosition = (success) => {
-        success({
-          coords: {
-            latitude: -6.2088,
-            longitude: 106.8456,
-            accuracy: 10,
-            altitude: null,
-            altitudeAccuracy: null,
-            heading: null,
-            speed: null,
-            toJSON: () => ({}),
-          },
-          timestamp: Date.now(),
-          toJSON: () => ({}),
-        });
-      };
-    });
+    await mockGeolocation(page, -6.2088, 106.8456);
 
     // Click "Locate Me" button
     const locateButton = page.getByTestId("locate-me-button");
@@ -193,11 +155,7 @@ test.describe("Cross-Border Navigation", () => {
     console.log("✓ Cross-border flyTo animation started");
 
     // Wait for URL to change to /jakarta
-    // Uses waitForFunction since we're using history.replaceState (no navigation event)
-    await page.waitForFunction(
-      () => window.location.pathname.includes("/jakarta"),
-      { timeout: 15000 },
-    );
+    await waitForUrlPath(page, "/jakarta", 20000);
 
     console.log("✓ URL updated to /jakarta after animation");
 
@@ -210,37 +168,12 @@ test.describe("Cross-Border Navigation", () => {
   test("should navigate to Singapore page when location is in Singapore (from Jakarta)", async ({
     page,
   }) => {
-    // Navigate directly to Jakarta page
-    await page.goto("/jakarta");
-    await page.waitForLoadState("networkidle");
-
-    // Wait for map to be ready (mapbox container should be visible)
+    // Navigate to Jakarta page and wait for map ready
+    await navigateToCityPage(page, "jakarta");
     const mapContainer = page.getByTestId("mapbox-gl-map");
-    await expect(mapContainer).toBeVisible({ timeout: 10000 });
-
-    // Additional wait to ensure map is fully loaded and style is ready
-    // In E2E tests, map.isStyleLoaded() may take longer than expected
-    await page.waitForTimeout(8000);
 
     // Mock geolocation to return Singapore coordinates
-    await page.evaluate(() => {
-      navigator.geolocation.getCurrentPosition = (success) => {
-        success({
-          coords: {
-            latitude: 1.3521,
-            longitude: 103.8198,
-            accuracy: 10,
-            altitude: null,
-            altitudeAccuracy: null,
-            heading: null,
-            speed: null,
-            toJSON: () => ({}),
-          },
-          timestamp: Date.now(),
-          toJSON: () => ({}),
-        });
-      };
-    });
+    await mockGeolocation(page, 1.3521, 103.8198);
 
     // Click "Locate Me" button
     const locateButton = page.getByTestId("locate-me-button");
@@ -249,11 +182,7 @@ test.describe("Cross-Border Navigation", () => {
     console.log("✓ Cross-border flyTo animation started");
 
     // Wait for URL to change to /singapore
-    // Uses waitForFunction since we're using history.replaceState (no navigation event)
-    await page.waitForFunction(
-      () => window.location.pathname.includes("/singapore"),
-      { timeout: 15000 },
-    );
+    await waitForUrlPath(page, "/singapore", 20000);
 
     console.log("✓ URL updated to /singapore after animation");
 
@@ -266,32 +195,15 @@ test.describe("Cross-Border Navigation", () => {
   test("should handle geolocation permission denied gracefully", async ({
     page,
   }) => {
-    // Navigate directly to Singapore page
-    await page.goto("/singapore");
-    await page.waitForLoadState("networkidle");
-    await page.waitForTimeout(3000);
+    // Navigate to Singapore page and wait for map ready
+    await navigateToCityPage(page, "singapore");
 
     // Mock geolocation to fail with permission denied
-    await page.evaluate(() => {
-      navigator.geolocation.getCurrentPosition = (_success, error) => {
-        if (error) {
-          error({
-            code: 1, // PERMISSION_DENIED
-            message: "User denied Geolocation",
-            PERMISSION_DENIED: 1,
-            POSITION_UNAVAILABLE: 2,
-            TIMEOUT: 3,
-          });
-        }
-      };
-    });
+    await mockGeolocationDenied(page);
 
     // Click "Locate Me" button
     const locateButton = page.getByTestId("locate-me-button");
     await locateButton.click();
-
-    // Wait for error handling
-    await page.waitForTimeout(2000);
 
     // Should show error toast with the actual message
     const errorToast = page.locator(
@@ -303,30 +215,11 @@ test.describe("Cross-Border Navigation", () => {
   });
 
   test("should handle unknown location gracefully", async ({ page }) => {
-    // Navigate directly to Singapore page
-    await page.goto("/singapore");
-    await page.waitForLoadState("networkidle");
-    await page.waitForTimeout(3000);
+    // Navigate to Singapore page and wait for map ready
+    await navigateToCityPage(page, "singapore");
 
     // Mock geolocation to return coordinates outside Singapore/Jakarta
-    await page.evaluate(() => {
-      navigator.geolocation.getCurrentPosition = (success) => {
-        success({
-          coords: {
-            latitude: 0, // Somewhere in the ocean
-            longitude: 0,
-            accuracy: 10,
-            altitude: null,
-            altitudeAccuracy: null,
-            heading: null,
-            speed: null,
-            toJSON: () => ({}),
-          },
-          timestamp: Date.now(),
-          toJSON: () => ({}),
-        });
-      };
-    });
+    await mockGeolocation(page, 0, 0);
 
     // Click "Locate Me" button
     const locateButton = page.getByTestId("locate-me-button");
