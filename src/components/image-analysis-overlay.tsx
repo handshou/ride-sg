@@ -175,15 +175,35 @@ export function ImageAnalysisOverlay({
             padding: 0 !important;
             border-radius: 12px;
             overflow: hidden;
-            max-width: 300px;
+            max-width: min(280px, 85vw) !important;
+            max-height: 70vh;
           }
           .popup-image {
             width: 100%;
-            height: 150px;
+            height: 120px;
             object-fit: cover;
           }
           .popup-content {
             padding: 12px;
+            max-height: calc(70vh - 120px);
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+          }
+          @media (min-width: 640px) {
+            .popup-image {
+              height: 150px;
+            }
+            .popup-content {
+              max-height: calc(70vh - 150px);
+            }
+          }
+          .mobile-hidden {
+            display: none;
+          }
+          @media (min-width: 640px) {
+            .mobile-hidden {
+              display: block;
+            }
           }
         `;
         document.head.appendChild(style);
@@ -385,7 +405,7 @@ export function ImageAnalysisOverlay({
             ${
               image.analyzedObjects && image.analyzedObjects.length > 0
                 ? `
-              <div class="mt-2 pt-2 border-t border-gray-200">
+              <div class="mt-2 pt-2 border-t border-gray-200 mobile-hidden">
                 <div class="text-xs font-medium text-gray-700 mb-1">Detected Objects:</div>
                 <div class="flex flex-wrap gap-1">
                   ${image.analyzedObjects
@@ -415,12 +435,13 @@ export function ImageAnalysisOverlay({
         </div>
       `;
 
-      // Create popup
+      // Create popup with responsive settings
+      const isMobileDevice = window.innerWidth < 640;
       const popup = new mapboxgl.Popup({
-        offset: 25,
+        offset: isMobileDevice ? 15 : 25,
         closeButton: true,
         closeOnClick: false,
-        maxWidth: "300px",
+        maxWidth: "none", // Let CSS handle responsive max-width
       }).setHTML(popupContent);
 
       // Add event listener for analyze button after popup opens
@@ -445,16 +466,25 @@ export function ImageAnalysisOverlay({
         if (onImageSelect) {
           onImageSelect(image);
         }
-        // Fly to image location using mapNavigation client API (default error logging)
+        // Conditionally fly to image location - only zoom if:
+        // 1. Screen is large (desktop) OR
+        // 2. Popup content is compact (no analysis)
         if (image.longitude && image.latitude) {
-          mapNavigation.flyTo(map, {
-            coordinates: {
-              latitude: image.latitude,
-              longitude: image.longitude,
-            },
-            zoom: 17,
-            duration: 1500,
-          });
+          const isMobile = window.innerWidth < 640;
+          const hasLargeContent =
+            image.analysisStatus === "completed" && parsedAnalysis;
+
+          // Only zoom in if we're on desktop or the popup is compact
+          if (!isMobile || !hasLargeContent) {
+            mapNavigation.flyTo(map, {
+              coordinates: {
+                latitude: image.latitude,
+                longitude: image.longitude,
+              },
+              zoom: 17,
+              duration: 1500,
+            });
+          }
         }
       });
 
