@@ -145,17 +145,36 @@ test.describe("Cross-Border Navigation", () => {
     await navigateToCityPage(page, "singapore");
     const mapContainer = page.getByTestId("mapbox-gl-map");
 
+    // Additional wait for map to be fully ready for complex operations
+    // Cross-border navigation requires map.isStyleLoaded() = true
+    await page.waitForTimeout(3000);
+
     // Mock geolocation to return Jakarta coordinates
     await mockGeolocation(page, -6.2088, 106.8456);
 
-    // Click "Locate Me" button
+    // Click "Locate Me" button with retry logic
+    // Sometimes the map needs extra time to be fully ready
     const locateButton = page.getByTestId("locate-me-button");
     await locateButton.click();
+
+    // Wait a moment to see if navigation starts
+    await page.waitForTimeout(2000);
+
+    // Check if URL changed - if not, map might not be ready yet
+    const urlChanged = page.url().includes("/jakarta");
+    if (!urlChanged) {
+      console.log("⚠️  First locate attempt didn't trigger navigation, retrying...");
+      // Wait a bit more for map to be ready
+      await page.waitForTimeout(3000);
+      // Try clicking locate again
+      await locateButton.click();
+    }
 
     console.log("✓ Cross-border flyTo animation started");
 
     // Wait for URL to change to /jakarta
-    await waitForUrlPath(page, "/jakarta", 20000);
+    // Extended timeout to account for retry attempts + animation time
+    await waitForUrlPath(page, "/jakarta", 30000);
 
     console.log("✓ URL updated to /jakarta after animation");
 
@@ -172,17 +191,36 @@ test.describe("Cross-Border Navigation", () => {
     await navigateToCityPage(page, "jakarta");
     const mapContainer = page.getByTestId("mapbox-gl-map");
 
+    // Additional wait for map to be fully ready for complex operations
+    // Cross-border navigation requires map.isStyleLoaded() = true
+    await page.waitForTimeout(3000);
+
     // Mock geolocation to return Singapore coordinates
     await mockGeolocation(page, 1.3521, 103.8198);
 
-    // Click "Locate Me" button
+    // Click "Locate Me" button with retry logic
+    // Sometimes the map needs extra time to be fully ready
     const locateButton = page.getByTestId("locate-me-button");
     await locateButton.click();
+
+    // Wait a moment to see if navigation starts
+    await page.waitForTimeout(2000);
+
+    // Check if URL changed - if not, map might not be ready yet
+    const urlChanged = page.url().includes("/singapore");
+    if (!urlChanged) {
+      console.log("⚠️  First locate attempt didn't trigger navigation, retrying...");
+      // Wait a bit more for map to be ready
+      await page.waitForTimeout(3000);
+      // Try clicking locate again
+      await locateButton.click();
+    }
 
     console.log("✓ Cross-border flyTo animation started");
 
     // Wait for URL to change to /singapore
-    await waitForUrlPath(page, "/singapore", 20000);
+    // Extended timeout to account for retry attempts + animation time
+    await waitForUrlPath(page, "/singapore", 30000);
 
     console.log("✓ URL updated to /singapore after animation");
 

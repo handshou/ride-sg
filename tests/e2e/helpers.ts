@@ -19,7 +19,8 @@ export async function waitForMapReady(
   });
 
   // Additional buffer for map to fully render tiles and styles
-  await page.waitForTimeout(3000);
+  // Increased to 5s for cross-border navigation tests
+  await page.waitForTimeout(5000);
 }
 
 /**
@@ -148,9 +149,7 @@ export async function selectCityFromToggle(
   await toggleButton.click();
 
   // Wait for dropdown menu and click the city
-  const menuItem = page.locator(
-    `div[role="menuitem"]:has-text("${cityName}")`,
-  );
+  const menuItem = page.locator(`div[role="menuitem"]:has-text("${cityName}")`);
   await menuItem.waitFor({ state: "visible", timeout: 5000 });
   await menuItem.click();
 }
