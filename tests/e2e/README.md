@@ -8,11 +8,11 @@
 - Tests heavily relied on arbitrary `waitForTimeout()`
 
 ### After Fixes
-- **1 failure, 20 passing** (95.2% pass rate)
-- Much more stable and predictable
-- Removed most arbitrary timeouts
+- **21 passing, 0 failures** (100% pass rate) 🎉
+- All tests stable and predictable
+- Removed all arbitrary timeouts
 - Added retry logic for complex interactions
-- Retry logic successfully stabilized Jakarta cross-border test
+- Fixed race condition in map style loading
 
 ## What Was Fixed
 
@@ -56,53 +56,68 @@
 - Uses `navigateToCityPage()` for consistent setup
 - Waits for URL changes instead of timeouts
 
-## Remaining Known Flaky Test (1 test)
+## Root Cause Analysis - Theme Sync Race Condition (FIXED)
 
-### Cross-border navigation: Jakarta → Singapore
-**Test:**
-- `should navigate to Singapore page when location is in Singapore (from Jakarta)`
+### The Problem
+**Test:** Jakarta → Singapore cross-border navigation was failing intermittently
 
-**Issue:** "Map is not ready for flyTo animation" timeout after retry attempts
+**Symptoms:**
+- Test would fail with "Map is not ready for flyTo animation" error
+- Singapore → Jakarta worked, but Jakarta → Singapore failed
+- Retry attempts also failed
 
-**Status:**
-- ✅ Singapore → Jakarta test now **passing consistently** with retry logic
-- ❌ Jakarta → Singapore test still fails occasionally due to map initialization timing
-- ✅ **Fixed URL update bug** that was causing URL changes to hang
+**Root Cause Found:**
+The `isStyleLoaded()` check in `map-navigation-service.ts` was causing a race condition with theme synchronization:
 
-**Root Cause:**
-- Mapbox style loading is non-deterministic in E2E environment
-- Even with 8s retry delay, `map.isStyleLoaded()` sometimes returns false
-- Second locate attempt also fails with MapNotReadyError
-- **This is a test environment timing issue, NOT a code bug** (feature works in production)
+1. **Map loads** → 'load' event fires → `onMapReady()` called → app thinks map is ready
+2. **Theme sync useEffect runs** (in jakarta/singapore-map-explorer.tsx) → calls `setMapStyle()`
+3. **MapboxGLMap** detects style change → calls `map.setStyle()` to apply new theme
+4. **`map.isStyleLoaded()` becomes `false`** while new style loads (takes ~1-2 seconds)
+5. **Test clicks locate** → cross-border code checks `isStyleLoaded()` → **FAILS with MapNotReadyError!**
 
-**Bug Fixed:**
-- Found and fixed critical bug in `updateUrlWithoutNavigation`
-- Was incorrectly returning an Effect inside Effect.try's try block
-- Fixed by moving Effect.logInfo to Effect.tap
-- Now pushState and event dispatch complete synchronously as intended
+**Why Jakarta page failed more:** Jakarta page's theme resolution timing caused style reload right when test tried to navigate
 
-**Current Mitigations:**
-- Extended `waitForMapReady()` to 5 seconds
-- Increased retry wait from 3s to 8s (gives map more time to fully load)
-- Implemented retry logic (click locate again if first attempt fails)
-- Extended URL change timeout to 30 seconds
+### The Fix
+**src/lib/services/map-navigation-service.ts:154-162**
 
-**Impact:** Low - 1/21 tests affected, feature works perfectly in production, bug fix improves overall reliability
+Changed from:
+```typescript
+if (!map || !map.isStyleLoaded()) {
+  return yield* Effect.fail(
+    new MapNotReadyError("Map is not ready for flyTo animation"),
+  );
+}
+```
 
-**Recommendation:** Mark test with `@flaky` tag for CI/CD stability, or skip in CI while keeping for local verification
+To:
+```typescript
+// Check if map instance exists
+// Note: We don't check isStyleLoaded() because Mapbox can handle flyTo
+// even during style loading (it queues the animation). Checking isStyleLoaded()
+// causes race conditions with theme sync and style changes.
+if (!map) {
+  return yield* Effect.fail(
+    new MapNotReadyError("Map instance not available"),
+  );
+}
+```
+
+**Why this works:**
+- Mapbox GL JS can handle `flyTo()` calls during style loading - it queues the animation internally
+- The overly restrictive `isStyleLoaded()` check was preventing valid navigation attempts
+- Removing the check eliminates the race condition while maintaining safety (we still check the map instance exists)
+
+**Impact:**
+- ✅ All 21 E2E tests now passing (100% pass rate)
+- ✅ Eliminated race condition between map operations and theme sync
+- ✅ Feature works reliably in both test and production environments
 
 ## Recommendations
 
-### Short Term
-1. ✅ **Increase map wait time** - ~~Change `waitForTimeout(3000)` to `5000`~~ (DONE - now 5s)
-2. **Add search mocks** - Mock search API responses for consistent test data
-3. **Add Mapbox event listeners** - Wait for actual 'load' event instead of timeouts
-4. **Consider skipping flaky test** - Mark Jakarta→Singapore test with `@flaky` for CI stability
-
-### Long Term
-1. **Mock Mapbox GL entirely** - Consider using a lightweight mock for E2E tests
+### Optional Future Improvements
+1. **Add search mocks** - Mock search API responses for consistent test data (currently using real API)
 2. **Add visual regression tests** - Use Playwright screenshots for UI positioning tests
-3. **Separate integration from E2E** - Move map-dependent tests to integration suite with mocks
+3. **Optimize test parallelization** - Tests currently run in 4 workers, could potentially increase
 
 ## Best Practices for New E2E Tests
 

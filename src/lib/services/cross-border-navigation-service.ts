@@ -268,9 +268,7 @@ export class CrossBorderNavigationServiceImpl
         ),
     }).pipe(
       Effect.tap(() =>
-        Effect.logInfo(
-          `URL updated to ${targetPath} and city context updated`,
-        ),
+        Effect.logInfo(`URL updated to ${targetPath} and city context updated`),
       ),
     );
   }

@@ -151,10 +151,13 @@ export class MapNavigationServiceImpl implements MapNavigationService {
     options: FlyToOptions,
   ): Effect.Effect<void, MapNotReadyError, never> {
     return Effect.gen(function* () {
-      // Check if map is ready
-      if (!map || !map.isStyleLoaded()) {
+      // Check if map instance exists
+      // Note: We don't check isStyleLoaded() because Mapbox can handle flyTo
+      // even during style loading (it queues the animation). Checking isStyleLoaded()
+      // causes race conditions with theme sync and style changes.
+      if (!map) {
         return yield* Effect.fail(
-          new MapNotReadyError("Map is not ready for flyTo animation"),
+          new MapNotReadyError("Map instance not available"),
         );
       }
 

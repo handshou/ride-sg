@@ -43,9 +43,10 @@ describe("CrossBorderNavigationService", () => {
     // This is needed because tests verify the service properly checks map readiness
     mockMapNavigationService = {
       flyTo: vi.fn().mockImplementation((map, options) => {
-        // Check if map is ready (same logic as real implementation)
-        if (!map || !map.isStyleLoaded()) {
-          return Effect.fail(new Error("Map is not ready for flyTo animation"));
+        // Check if map instance exists (same logic as real implementation)
+        // Note: We don't check isStyleLoaded() to avoid race conditions with style changes
+        if (!map) {
+          return Effect.fail(new Error("Map instance not available"));
         }
 
         // Simulate successful flyTo
@@ -247,22 +248,6 @@ describe("CrossBorderNavigationService", () => {
       );
     });
 
-    it("should fail with MapNotReadyError if map is not loaded", async () => {
-      mockMap.isStyleLoaded = vi.fn().mockReturnValue(false);
-
-      const effect = service.executeFlyTo(
-        mockMap as mapboxgl.Map,
-        { latitude: 1.3521, longitude: 103.8198 },
-        1800,
-        false,
-        false,
-      );
-
-      await expect(Effect.runPromise(effect)).rejects.toThrow(
-        /Map is not ready for flyTo animation/,
-      );
-    });
-
     it("should fail with MapNotReadyError if map is null", async () => {
       const effect = service.executeFlyTo(
         // biome-ignore lint/suspicious/noExplicitAny: Testing null map input
@@ -274,7 +259,7 @@ describe("CrossBorderNavigationService", () => {
       );
 
       await expect(Effect.runPromise(effect)).rejects.toThrow(
-        /Map is not ready for flyTo animation/,
+        /Map instance not available/,
       );
     });
   });
@@ -389,23 +374,6 @@ describe("CrossBorderNavigationService", () => {
 
       await expect(Effect.runPromise(effect)).rejects.toThrow(
         /Failed to detect city from coordinates/,
-      );
-    });
-
-    it("should handle MapNotReadyError gracefully", async () => {
-      vi.mocked(detectCityFromCoords).mockResolvedValue("singapore");
-      mockMap.isStyleLoaded = vi.fn().mockReturnValue(false);
-
-      const effect = service.handleLocationFound({
-        coordinates: { latitude: 1.3521, longitude: 103.8198 },
-        currentCity: "singapore",
-        map: mockMap as mapboxgl.Map,
-        mapboxToken: "test-token",
-        isMobile: false,
-      });
-
-      await expect(Effect.runPromise(effect)).rejects.toThrow(
-        /Map is not ready for flyTo animation/,
       );
     });
   });
