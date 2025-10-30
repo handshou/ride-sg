@@ -250,9 +250,9 @@ export class CrossBorderNavigationServiceImpl
   updateUrlWithoutNavigation(
     targetCity: SupportedCity,
   ): Effect.Effect<void, CrossBorderNavigationError, never> {
+    const targetPath = `/${targetCity}`;
     return Effect.try({
       try: () => {
-        const targetPath = `/${targetCity}`;
         // Use pushState to maintain browser back button support
         window.history.pushState({}, "", targetPath);
         // Dispatch citychange event to notify CityProvider and trigger component updates
@@ -260,16 +260,19 @@ export class CrossBorderNavigationServiceImpl
         if (typeof window !== "undefined" && window.dispatchEvent) {
           window.dispatchEvent(new Event("citychange"));
         }
-        return Effect.logInfo(
-          `URL updated to ${targetPath} and city context updated`,
-        );
       },
       catch: (error) =>
         new CrossBorderNavigationError(
           `Failed to update URL to ${targetCity}`,
           error,
         ),
-    }).pipe(Effect.flatten);
+    }).pipe(
+      Effect.tap(() =>
+        Effect.logInfo(
+          `URL updated to ${targetPath} and city context updated`,
+        ),
+      ),
+    );
   }
 
   handleLocationFound(

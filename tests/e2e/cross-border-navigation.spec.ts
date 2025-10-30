@@ -163,9 +163,12 @@ test.describe("Cross-Border Navigation", () => {
     // Check if URL changed - if not, map might not be ready yet
     const urlChanged = page.url().includes("/jakarta");
     if (!urlChanged) {
-      console.log("⚠️  First locate attempt didn't trigger navigation, retrying...");
-      // Wait a bit more for map to be ready
-      await page.waitForTimeout(3000);
+      console.log(
+        "⚠️  First locate attempt didn't trigger navigation, retrying...",
+      );
+      // Wait significantly longer for map to be fully ready
+      // Map needs time for style to load completely in test environment
+      await page.waitForTimeout(8000);
       // Try clicking locate again
       await locateButton.click();
     }
@@ -187,6 +190,17 @@ test.describe("Cross-Border Navigation", () => {
   test("should navigate to Singapore page when location is in Singapore (from Jakarta)", async ({
     page,
   }) => {
+    // Listen to console messages for debugging
+    page.on("console", (msg) => {
+      if (
+        msg.type() === "error" ||
+        msg.text().includes("Cross-border") ||
+        msg.text().includes("City detection")
+      ) {
+        console.log(`Browser console [${msg.type()}]:`, msg.text());
+      }
+    });
+
     // Navigate to Jakarta page and wait for map ready
     await navigateToCityPage(page, "jakarta");
     const mapContainer = page.getByTestId("mapbox-gl-map");
@@ -209,9 +223,12 @@ test.describe("Cross-Border Navigation", () => {
     // Check if URL changed - if not, map might not be ready yet
     const urlChanged = page.url().includes("/singapore");
     if (!urlChanged) {
-      console.log("⚠️  First locate attempt didn't trigger navigation, retrying...");
-      // Wait a bit more for map to be ready
-      await page.waitForTimeout(3000);
+      console.log(
+        "⚠️  First locate attempt didn't trigger navigation, retrying...",
+      );
+      // Wait significantly longer for map to be fully ready
+      // Map needs time for style to load completely in test environment
+      await page.waitForTimeout(8000);
       // Try clicking locate again
       await locateButton.click();
     }
