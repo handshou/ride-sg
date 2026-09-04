@@ -5,7 +5,9 @@
   "packageManager": "pnpm@9.0.0",
   "scripts": {
     "dev": "next dev",
-    "dev:convex": "npx convex dev",
+    "dev:all": "convex dev --local --local-backend-version precompiled-2026-08-25-7cce8fb --run-sh 'pnpm run dev'",
+    "dev:convex": "convex dev --local --local-backend-version precompiled-2026-08-25-7cce8fb",
+    "convex:health": "node --env-file=.env.local scripts/check-convex-health.mjs",
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "biome check",
