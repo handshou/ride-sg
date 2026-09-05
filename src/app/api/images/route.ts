@@ -4,8 +4,11 @@ import { CapturedImageOrientationSchema } from "@/lib/repositories/captured-imag
 import { runServerEffectAsync } from "@/lib/server-runtime";
 import { CapturedImageService } from "@/lib/services/captured-image-service";
 
-/** Largest upload accepted, in bytes. Phone captures are usually under 3 MB. */
-const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+/**
+ * Largest upload accepted, in bytes. Phone captures are usually under 3 MB.
+ * Kept under the 4.5 MB request body limit of Vercel serverless functions.
+ */
+const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
 
 const OptionalNumberField = Schema.optional(Schema.NumberFromString);
 

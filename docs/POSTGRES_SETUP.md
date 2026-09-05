@@ -63,12 +63,15 @@ Override it with the server-only `DATABASE_URL` environment variable.
 
 Client components never hold a database client. They call the JSON routes under `src/app/api/` through hooks (`use-randomizable-locations.ts`, `use-captured-images.ts`) that refresh on a change event and a slow poll.
 
-## Plug in a hosted provider later
+## Hosted database
 
-The adapters accept a standard PostgreSQL connection URL. Set `DATABASE_URL` to a URL from Supabase, Neon, Railway, RDS, Cloud SQL, or another compatible provider, then run:
+Production uses Supabase PostgreSQL through its transaction pooler. See [DEPLOYMENT.md](./DEPLOYMENT.md) for endpoints, provisioning, and Vercel variables. Remote commands read `.env.remote`:
 
 ```bash
-pnpm run db:migrate
+pnpm run db:provision:remote  # one-off: role + schema + search_path
+pnpm run db:migrate:remote    # apply migrations to the remote schema
 ```
+
+Any other PostgreSQL provider works the same way: set `DATABASE_URL` and run the migrator. Pooler URLs (port 6543, `pooler.supabase.com`, `-pooler.` hosts, `pgbouncer=true`) automatically disable prepared statements. `DATABASE_POOL_MAX` sizes the per-instance pool.
 
 To move image bytes to object storage, implement `ImageBlobStore` with a new adapter and swap it in `PersistenceLayer`. Nothing else changes.

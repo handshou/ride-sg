@@ -23,6 +23,8 @@ export interface AppConfig {
   };
   database: {
     url: string;
+    /** Pool size per runtime instance. Keep small on serverless hosts. */
+    maxConnections: number;
   };
   urls: {
     mapboxGeocoding: string;
@@ -94,6 +96,12 @@ export class ConfigService extends Effect.Service<ConfigService>()(
             ),
             Config.withDescription(
               "PostgreSQL connection URL - server-side only, never expose to client",
+            ),
+          ),
+          maxConnections: yield* Config.integer("DATABASE_POOL_MAX").pipe(
+            Config.withDefault(10),
+            Config.withDescription(
+              "PostgreSQL connections per runtime instance. Use 2-3 on serverless hosts behind a pooler.",
             ),
           ),
         },

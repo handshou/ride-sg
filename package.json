@@ -9,6 +9,8 @@
     "db:start": "docker compose up -d --wait postgres",
     "db:stop": "docker compose stop postgres",
     "db:migrate": "tsx --env-file=.env.local scripts/migrate-postgres.ts",
+    "db:migrate:remote": "tsx --env-file=.env.remote scripts/migrate-postgres.ts",
+    "db:provision:remote": "tsx --env-file=.env.remote scripts/provision-postgres-tenant.ts",
     "test:postgres": "pnpm run db:start && pnpm run db:migrate && vitest run src/lib/repositories/*.integration.spec.ts",
     "build": "next build --turbopack",
     "start": "next start",
