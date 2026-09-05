@@ -133,13 +133,13 @@ test.describe("User Journeys", () => {
       await searchInput.fill(searchTerm);
       await searchInput.press("Enter");
 
-      // Wait for search results with Convex data
+      // Wait for search results with saved database data
       await page.waitForTimeout(5000);
 
-      // STEP 4: User sees the location marked as saved (Convex badge)
-      const convexBadge = page.locator('text="Convex"').first();
+      // STEP 4: User sees the location marked as saved (database badge)
+      const savedBadge = page.locator('text="PostgreSQL"').first();
 
-      if (await convexBadge.isVisible()) {
+      if (await savedBadge.isVisible()) {
         console.log("✓ User sees location marked as saved");
 
         // Percy snapshot: Saved location with badge
@@ -147,7 +147,7 @@ test.describe("User Journeys", () => {
 
         // STEP 5: User decides to remove the location later
         const deleteButton = page
-          .locator('button[title="Delete from Convex"]')
+          .locator('button[title="Delete from database"]')
           .first();
 
         if (await deleteButton.isVisible()) {
@@ -166,8 +166,10 @@ test.describe("User Journeys", () => {
 
           await page.waitForTimeout(5000);
 
-          // Count remaining Convex badges (should be less)
-          const remainingBadges = await page.locator('text="Convex"').count();
+          // Count remaining database badges (should be less)
+          const remainingBadges = await page
+            .locator('text="PostgreSQL"')
+            .count();
           console.log(`✓ Remaining saved locations: ${remainingBadges}`);
 
           expect(remainingBadges).toBeGreaterThanOrEqual(0);
@@ -179,7 +181,7 @@ test.describe("User Journeys", () => {
           console.log("⚠️ Delete button not visible, journey incomplete");
         }
       } else {
-        console.log("⚠️ Location not saved to Convex, may be API/cache issue");
+        console.log("⚠️ Location not saved to database, may be API/cache issue");
       }
     } else {
       console.log(

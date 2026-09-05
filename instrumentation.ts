@@ -20,6 +20,7 @@ import { ServerLayer } from "./src/lib/runtime/server-layer";
 
 // biome-ignore lint/suspicious/noExplicitAny: Runtime type is complex, using any for now
 let serverRuntime: any | undefined;
+let serverRuntimeReady: Promise<void> | undefined;
 
 /**
  * Register function called by Next.js on server startup
@@ -31,27 +32,39 @@ let serverRuntime: any | undefined;
  * We check NEXT_RUNTIME to ensure we only initialize on Node.js runtime,
  * not Edge runtime (which has different constraints).
  *
- * Note: This function is synchronous even though it's declared async.
- * ManagedRuntime.make() is synchronous, so we can initialize immediately.
+ * ManagedRuntime.make() is synchronous, but ServerLayer contains adapters
+ * that connect asynchronously (the PostgreSQL pool). Next.js awaits this
+ * function, so we build the layer here. Without this the first runSync call
+ * would fail with "Fiber cannot be resolved synchronously".
  */
-export function register() {
+export async function register() {
   // Only initialize on Node.js runtime (not Edge)
   if (process.env.NEXT_RUNTIME === "nodejs" || !process.env.NEXT_RUNTIME) {
     if (!serverRuntime) {
       try {
         serverRuntime = ManagedRuntime.make(ServerLayer);
-        console.log("✅ Server runtime initialized");
+        console.log("✅ Server runtime created");
       } catch (error) {
         console.error("❌ Server runtime initialization failed:", error);
         throw error;
       }
     }
+
+    if (!serverRuntimeReady) {
+      serverRuntimeReady = serverRuntime.runtime().then(() => {
+        console.log("✅ Server runtime layer built");
+      });
+    }
+
+    await serverRuntimeReady;
   }
 }
 
 // Ensure runtime is initialized on module load (backup for production)
 if (typeof window === "undefined") {
-  register();
+  void register().catch((error) => {
+    console.error("❌ Server runtime layer build failed:", error);
+  });
 }
 
 /**
@@ -81,7 +94,9 @@ export function getServerRuntime() {
   if (!serverRuntime) {
     // Lazy initialization as fallback (handles race conditions in production)
     console.warn("⚠️ Runtime not initialized, initializing now (lazy init)");
-    register();
+    void register().catch((error) => {
+      console.error("❌ Server runtime layer build failed:", error);
+    });
   }
 
   if (!serverRuntime) {

@@ -9,16 +9,16 @@ import {
 } from "./search-orchestrator";
 import type { SearchResult } from "./services/search-state-service";
 
-describe("Search Orchestrator - Convex-First Search Strategy", () => {
+describe("Search Orchestrator - Repository and Exa Strategy", () => {
   describe("Coordinated Search", () => {
-    it("should search Convex first, fallback to Exa if empty, and save results", async () => {
+    it("searches the repository and Exa in parallel", async () => {
       const program = coordinatedSearchEffect("marina").pipe(
         Effect.provide(SearchLayer),
       );
 
       const results = await Effect.runPromise(program);
 
-      // Should have results from either Convex or Exa (fallback)
+      // Should have results from either the repository or Exa
       expect(results.length).toBeGreaterThan(0);
 
       // Verify at least one source returned results
@@ -117,12 +117,12 @@ describe("Search Orchestrator - Convex-First Search Strategy", () => {
   });
 
   describe("State Sharing Between Services", () => {
-    it("should implement Convex-first strategy with Exa fallback", async () => {
+    it("combines repository and Exa results", async () => {
       const program = Effect.gen(function* () {
         // Start a search
         yield* coordinatedSearchEffect("test");
 
-        // Get results (from Convex first, or Exa if Convex empty)
+        // Get results from the repository and Exa
         const results = yield* getSearchResultsEffect();
 
         // Verify we got results from at least one source
@@ -174,10 +174,8 @@ describe("Search Orchestrator - Convex-First Search Strategy", () => {
   });
 
   describe("Error Handling", () => {
-    it("should handle search errors gracefully with Convex-first fallback", async () => {
-      // This test demonstrates the fallback strategy:
-      // If Convex fails → try Exa
-      // If Exa fails → return empty array
+    it("handles search source errors gracefully", async () => {
+      // Either source can fail without failing the overall search.
       const program = coordinatedSearchEffect("error-trigger").pipe(
         Effect.provide(SearchLayer),
       );

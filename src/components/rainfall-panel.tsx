@@ -1,21 +1,13 @@
 "use client";
 
-import { useQuery } from "convex/react";
 import { ChevronDown, ChevronUp, Droplets } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Spinner } from "@/components/ui/spinner";
-import { api } from "../../convex/_generated/api";
+import { getMockRainfallData } from "@/lib/rainfall-mock-data";
+import type { RainfallReadingRecord } from "@/lib/repositories/rainfall-repository";
 
 interface RainfallPanelProps {
-  initialRainfallData: Array<{
-    stationId: string;
-    stationName: string;
-    latitude: number;
-    longitude: number;
-    value: number;
-    timestamp: string;
-    fetchedAt: number;
-  }>;
+  initialRainfallData: ReadonlyArray<RainfallReadingRecord>;
   onStationClick?: (latitude: number, longitude: number) => void;
   useMockData?: boolean;
 }
@@ -31,22 +23,20 @@ interface RainfallPanelProps {
  * - Loading/empty states
  *
  * Data source:
- * - Uses initialRainfallData from server (NEA API → Convex fallback)
- * - Only queries Convex when useMockData is true for testing/demo
+ * - Uses initialRainfallData from server (NEA API, repository fallback)
+ * - Generates local mock data when useMockData is true for testing/demo
  */
 export function RainfallPanel({
   initialRainfallData,
   onStationClick,
   useMockData,
 }: RainfallPanelProps) {
-  // Only query Convex when using mock data (for testing/demo)
-  const mockDataFromConvex = useQuery(
-    api.rainfall.getLatestRainfall,
-    useMockData ? { useMockData: true } : "skip",
+  // Use generated mock data when requested (testing/demo), otherwise server data
+  const mockRainfallData = useMemo(
+    () => (useMockData ? getMockRainfallData() : undefined),
+    [useMockData],
   );
-
-  // Use mock data from Convex if requested, otherwise use server-fetched data
-  const rainfallData = useMockData ? mockDataFromConvex : initialRainfallData;
+  const rainfallData = useMockData ? mockRainfallData : initialRainfallData;
 
   const [isExpanded, setIsExpanded] = useState(false);
 

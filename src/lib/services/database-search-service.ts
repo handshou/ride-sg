@@ -1,189 +1,126 @@
 import { Context, Effect } from "effect";
-import { ConvexService } from "./convex-service";
+import {
+  type LocationCity,
+  LocationRepository,
+  LocationRepositoryError,
+} from "../repositories/location-repository";
 import type { SearchResult } from "./search-state-service";
 import { SearchStateService } from "./search-state-service";
 
-/**
- * Database Error
- */
+/** Failure raised by the application-facing database search service. */
 export class DatabaseError {
   readonly _tag = "DatabaseError";
   constructor(readonly message: string) {}
 }
 
-/**
- * Database Search Service Interface (for legacy compatibility)
- */
+/** Application-facing database operations used by search orchestration. */
 export interface IDatabaseSearchService {
   search: (
     query: string,
+    city?: LocationCity,
   ) => Effect.Effect<
     SearchResult[],
     DatabaseError,
-    SearchStateService | ConvexService
+    SearchStateService | LocationRepository
   >;
-
   saveLocation: (
     result: SearchResult,
-  ) => Effect.Effect<void, DatabaseError, ConvexService>;
+    city?: LocationCity,
+  ) => Effect.Effect<void, DatabaseError, LocationRepository>;
 }
 
-/**
- * Implementation of Database Search Service
- */
 class DatabaseSearchServiceImpl {
-  search(query: string) {
+  search(query: string, city?: LocationCity) {
     return Effect.gen(function* () {
       const searchState = yield* SearchStateService;
-      const convexService = yield* ConvexService;
+      const repository = yield* LocationRepository;
+      const locations = yield* repository.searchLocations(query, city);
+      const databaseResults: SearchResult[] = locations.map((location) => ({
+        id: location.id,
+        title: location.title,
+        description: location.description,
+        location: {
+          latitude: location.latitude,
+          longitude: location.longitude,
+        },
+        source: "database",
+        timestamp: location.timestamp,
+        address: location.postalCode
+          ? `${location.city === "singapore" ? "Singapore" : "Jakarta"} ${location.postalCode}`
+          : "",
+        url: "",
+        distance: 0,
+      }));
 
-      // Check if Convex is configured
-      const isConvexConfigured = yield* convexService.isConfigured();
-
-      let dbResults: SearchResult[];
-
-      if (isConvexConfigured) {
-        // Use Convex for search
-        dbResults = yield* convexService.searchLocations(query);
-        yield* Effect.log(
-          `Convex search completed: ${dbResults.length} results`,
-        );
-      } else {
-        // Fall back to mock data when Convex not configured
-        yield* Effect.logWarning(
-          "Convex not configured, using mock database results",
-        );
-
-        const mockResults: SearchResult[] = yield* Effect.sync(() => [
-          {
-            id: `db-${Date.now()}-1`,
-            title: "Saved: Orchard Road",
-            description: "Shopping district - saved by user (mock data)",
-            location: {
-              latitude: 1.3048,
-              longitude: 103.8318,
-            },
-            source: "database" as const,
-            timestamp: Date.now() - 86400000, // 1 day ago
-          },
-          {
-            id: `db-${Date.now()}-2`,
-            title: "Saved: Sentosa Island",
-            description: "Resort island - frequently visited (mock data)",
-            location: {
-              latitude: 1.2494,
-              longitude: 103.8303,
-            },
-            source: "database" as const,
-            timestamp: Date.now() - 172800000, // 2 days ago
-          },
-        ]);
-
-        // Filter results based on query (simple mock filter)
-        dbResults = mockResults.filter(
-          (result) =>
-            result.title.toLowerCase().includes(query.toLowerCase()) ||
-            result.description.toLowerCase().includes(query.toLowerCase()),
-        );
-      }
-
-      // Get current results and append database results
       const currentResults = yield* searchState.getResults();
-      yield* searchState.setResults([...currentResults, ...dbResults]);
-
+      yield* searchState.setResults([...currentResults, ...databaseResults]);
       yield* Effect.log(
-        `Database search completed: ${dbResults.length} results`,
+        `Database search completed: ${databaseResults.length} results`,
       );
 
-      return dbResults;
+      return databaseResults;
     }).pipe(
-      Effect.catchAll((error) =>
-        Effect.gen(function* () {
-          const searchState = yield* SearchStateService;
-          const errorMessage =
-            error && typeof error === "object" && "message" in error
-              ? String((error as { message: unknown }).message)
-              : "Database search failed";
-
-          yield* searchState.setError(errorMessage);
-          yield* Effect.logError("Database search error", error);
-
-          return yield* Effect.fail(new DatabaseError(errorMessage));
-        }),
-      ),
+      Effect.mapError((error) => {
+        const message =
+          error instanceof LocationRepositoryError
+            ? `${error.operation} failed`
+            : "Database search failed";
+        return new DatabaseError(message);
+      }),
     );
   }
 
-  saveLocation(result: SearchResult) {
+  saveLocation(result: SearchResult, city: LocationCity = "singapore") {
     return Effect.gen(function* () {
-      const convexService = yield* ConvexService;
-
-      // Check if Convex is configured
-      const isConvexConfigured = yield* convexService.isConfigured();
-
-      if (isConvexConfigured) {
-        // Save to Convex
-        yield* convexService.saveLocation(result);
-        yield* Effect.log(`Saved location to Convex: ${result.title}`);
-      } else {
-        // Fall back to mock localStorage save
-        yield* Effect.logWarning(
-          "Convex not configured, skipping database save",
-        );
-        yield* Effect.log(
-          `Mock save location: ${result.title} (Convex not configured)`,
-        );
-      }
+      const repository = yield* LocationRepository;
+      yield* repository.saveLocation({
+        title: result.title,
+        description: result.description,
+        latitude: result.location.latitude,
+        longitude: result.location.longitude,
+        source: result.source,
+        timestamp: result.timestamp,
+        city,
+        isRandomizable: false,
+        postalCode: result.address?.match(/\b\d{6}\b/)?.[0],
+      });
+      yield* Effect.log(`Saved location to database: ${result.title}`);
     }).pipe(
-      Effect.catchAll((error) =>
-        Effect.gen(function* () {
-          const errorMessage =
-            error && typeof error === "object" && "message" in error
-              ? String((error as { message: unknown }).message)
-              : "Failed to save location";
-
-          yield* Effect.logError("Database save error", error);
-
-          return yield* Effect.fail(new DatabaseError(errorMessage));
-        }),
+      Effect.mapError(
+        (error) =>
+          new DatabaseError(
+            error instanceof LocationRepositoryError
+              ? `${error.operation} failed`
+              : "Failed to save location",
+          ),
       ),
     );
   }
 }
 
-/**
- * DatabaseSearchService as Effect.Service
- * Provides auto-generated accessors and cleaner DI
- */
+/** Effect service that coordinates search state with LocationRepository. */
 export class DatabaseSearchService extends Effect.Service<DatabaseSearchService>()(
   "DatabaseSearchService",
   {
     effect: Effect.succeed(new DatabaseSearchServiceImpl()),
-    dependencies: [SearchStateService.Default, ConvexService.Default],
+    dependencies: [SearchStateService.Default],
   },
 ) {}
 
-/**
- * Helper effects
- */
-
-// Search database
-export const searchDatabaseEffect = (query: string) =>
+/** Searches the configured database repository. */
+export const searchDatabaseEffect = (query: string, city?: LocationCity) =>
   Effect.gen(function* () {
-    const dbService = yield* DatabaseSearchService;
-    return yield* dbService.search(query);
+    const databaseService = yield* DatabaseSearchService;
+    return yield* databaseService.search(query, city);
   });
 
-// Save location to database
-export const saveLocationEffect = (result: SearchResult) =>
+/** Saves a location through the configured database repository. */
+export const saveLocationEffect = (result: SearchResult, city?: LocationCity) =>
   Effect.gen(function* () {
-    const dbService = yield* DatabaseSearchService;
-    yield* dbService.saveLocation(result);
+    const databaseService = yield* DatabaseSearchService;
+    yield* databaseService.saveLocation(result, city);
   });
 
-/**
- * Legacy export for DatabaseSearchServiceTag (for backwards compatibility during migration)
- * This will be removed once all services are migrated
- */
+/** Legacy service tag retained while old call sites migrate. */
 export const DatabaseSearchServiceTag =
   Context.GenericTag<IDatabaseSearchService>("DatabaseSearchService");

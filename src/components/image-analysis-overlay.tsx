@@ -1,42 +1,22 @@
 "use client";
 
-import { useQuery } from "convex/react";
 import mapboxgl from "mapbox-gl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import {
+  notifyCapturedImagesChanged,
+  useCapturedImages,
+} from "@/hooks/use-captured-images";
 import { moderateAndAnalyzeImageAction } from "@/lib/actions/moderate-and-analyze-image-action";
+import type { CapturedImageRecord } from "@/lib/repositories/captured-image-repository";
 import { mapNavigation } from "@/lib/services/map-navigation-service";
 import {
   calculateBearing,
   calculateDistance,
   getDirectionalDescription,
 } from "@/lib/utils/direction-utils";
-import { api } from "../../convex/_generated/api";
 
-interface CapturedImage {
-  _id: string;
-  imageUrl: string;
-  latitude?: number;
-  longitude?: number;
-  cameraGpsLatitude?: number;
-  cameraGpsLongitude?: number;
-  deviceHeading?: number;
-  analysis?: string;
-  analysisStatus:
-    | "not_analyzed"
-    | "pending" // Legacy status for backward compatibility
-    | "processing"
-    | "completed"
-    | "failed";
-  analyzedObjects?: Array<{
-    name: string;
-    confidence?: number;
-    bearing?: number;
-    distance?: number;
-    description?: string;
-  }>;
-  capturedAt: number;
-}
+type CapturedImage = CapturedImageRecord;
 
 interface ImageAnalysisOverlayProps {
   map: mapboxgl.Map;
@@ -55,20 +35,20 @@ export function ImageAnalysisOverlay({
     new Set(),
   );
 
-  // Get all captured images with analysis
-  const capturedImages = useQuery(api.capturedImages.getAllImages);
+  // Captured images from the images API (polls and refreshes on change events)
+  const capturedImages = useCapturedImages();
 
   // Handler for analyze button
   const handleAnalyzeImage = useCallback(async (image: CapturedImage) => {
-    setAnalyzingImages((prev) => new Set(prev).add(image._id));
+    setAnalyzingImages((prev) => new Set(prev).add(image.id));
 
     try {
       const result = await moderateAndAnalyzeImageAction(
-        image._id,
-        image.imageUrl,
+        image.id,
         image.cameraGpsLatitude ?? image.latitude,
         image.cameraGpsLongitude ?? image.longitude,
       );
+      notifyCapturedImagesChanged();
 
       if (result.deleted) {
         toast.warning("Image was removed due to inappropriate content");
@@ -82,7 +62,7 @@ export function ImageAnalysisOverlay({
     } finally {
       setAnalyzingImages((prev) => {
         const next = new Set(prev);
-        next.delete(image._id);
+        next.delete(image.id);
         return next;
       });
     }
@@ -260,7 +240,7 @@ export function ImageAnalysisOverlay({
       const parsedAnalysis = parseAnalysis(image.analysis);
 
       // Create popup content with analyze button
-      const isAnalyzing = analyzingImages.has(image._id);
+      const isAnalyzing = analyzingImages.has(image.id);
       const thirtyMinutesAgo = Date.now() - 30 * 60 * 1000;
       const isStuckProcessing =
         image.analysisStatus === "processing" &&
@@ -346,7 +326,7 @@ export function ImageAnalysisOverlay({
                 image.analysisStatus === "completed"
                   ? `
               <button
-                id="analyze-btn-${image._id}"
+                id="analyze-btn-${image.id}"
                 class="mt-2 w-full px-3 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors ${isAnalyzing ? "opacity-50 cursor-not-allowed" : ""}"
                 ${isAnalyzing ? "disabled" : ""}
               >
@@ -356,11 +336,10 @@ export function ImageAnalysisOverlay({
                   : ""
               }
             `
-                : image.analysisStatus === "not_analyzed" ||
-                    image.analysisStatus === "pending"
+                : image.analysisStatus === "not_analyzed"
                   ? `
               <button
-                id="analyze-btn-${image._id}"
+                id="analyze-btn-${image.id}"
                 class="w-full px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors ${isAnalyzing ? "opacity-50 cursor-not-allowed" : ""}"
                 ${isAnalyzing ? "disabled" : ""}
               >
@@ -375,7 +354,7 @@ export function ImageAnalysisOverlay({
                   ⚠️ Analysis seems stuck
                 </div>
                 <button
-                  id="analyze-btn-${image._id}"
+                  id="analyze-btn-${image.id}"
                   class="w-full px-3 py-2 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700 transition-colors"
                 >
                   🔄 Retry Analysis
@@ -393,7 +372,7 @@ export function ImageAnalysisOverlay({
               <div class="space-y-2">
                 <div class="text-xs text-red-600">Analysis failed</div>
                 <button
-                  id="analyze-btn-${image._id}"
+                  id="analyze-btn-${image.id}"
                   class="w-full px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
                 >
                   🔄 Retry Analysis
@@ -446,7 +425,7 @@ export function ImageAnalysisOverlay({
 
       // Add event listener for analyze button after popup opens
       popup.on("open", () => {
-        const analyzeBtn = document.getElementById(`analyze-btn-${image._id}`);
+        const analyzeBtn = document.getElementById(`analyze-btn-${image.id}`);
         if (analyzeBtn) {
           analyzeBtn.addEventListener("click", () => handleAnalyzeImage(image));
         }

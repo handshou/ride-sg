@@ -1,7 +1,7 @@
-import { Effect, Layer } from "effect";
+import { Effect } from "effect";
 import { NextResponse } from "next/server";
+import { runServerEffectAsync } from "@/lib/server-runtime";
 import { BicycleParkingService } from "@/lib/services/bicycle-parking-service";
-import { ConfigService } from "@/lib/services/config-service";
 
 /**
  * GET /api/bicycle-parking
@@ -58,15 +58,9 @@ export async function GET(request: Request) {
       return results;
     });
 
-    // Provide all required dependencies
-    const BicycleParkingLayer = Layer.mergeAll(
-      ConfigService.Default,
-      BicycleParkingService.Default,
-    );
-
-    const results = await Effect.runPromise(
-      program.pipe(Effect.provide(BicycleParkingLayer)),
-    );
+    // Run on the shared server runtime so the cache repository and
+    // connection pool are reused across requests
+    const results = await runServerEffectAsync(program);
 
     return NextResponse.json({
       results,

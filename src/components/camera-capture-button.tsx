@@ -1,6 +1,5 @@
 "use client";
 
-import { useMutation, useQuery } from "convex/react";
 import { Effect, Layer } from "effect";
 import {
   Camera,
@@ -14,6 +13,12 @@ import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+  deleteCapturedImage,
+  notifyCapturedImagesChanged,
+  uploadCapturedImage,
+  useCapturedImages,
+} from "@/hooks/use-captured-images";
 import { moderateAndAnalyzeImageAction } from "@/lib/actions/moderate-and-analyze-image-action";
 import { ClientLayer } from "@/lib/runtime/client-layer";
 import {
@@ -26,8 +31,6 @@ import {
 } from "@/lib/services/device-orientation-service";
 import { getCurrentPositionEffect } from "@/lib/services/geolocation-service";
 import { ImageCaptureServiceTag } from "@/lib/services/image-capture-service";
-import { api } from "../../convex/_generated/api";
-import type { Id } from "../../convex/_generated/dataModel";
 
 interface CameraCaptureButtonProps {
   currentLocation?: { latitude: number; longitude: number };
@@ -91,13 +94,8 @@ export function CameraCaptureButton({
   );
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Convex mutations
-  const generateUploadUrl = useMutation(api.capturedImages.generateUploadUrl);
-  const saveCapturedImage = useMutation(api.capturedImages.saveCapturedImage);
-  const deleteCapturedImage = useMutation(
-    api.capturedImages.deleteCapturedImage,
-  );
-  const capturedImages = useQuery(api.capturedImages.getAllImages);
+  // Captured images from the images API (polls and refreshes on change events)
+  const capturedImages = useCapturedImages();
 
   // Start camera stream
   const startCamera = useCallback(async () => {
@@ -185,25 +183,8 @@ export function CameraCaptureButton({
             ).catch(() => null),
           ]);
 
-          // Upload to Convex storage
-          const uploadUrl = await generateUploadUrl();
-          const blob = captured.blob;
-
-          const uploadResponse = await fetch(uploadUrl, {
-            method: "POST",
-            headers: { "Content-Type": blob.type },
-            body: blob,
-          });
-
-          if (!uploadResponse.ok) {
-            throw new Error("Failed to upload image");
-          }
-
-          const { storageId } = await uploadResponse.json();
-
-          // Save metadata to Convex with both map location and camera GPS
-          await saveCapturedImage({
-            storageId,
+          // Upload bytes and metadata with both map location and camera GPS
+          await uploadCapturedImage(captured.blob, {
             width: captured.width,
             height: captured.height,
             orientation,
@@ -225,13 +206,7 @@ export function CameraCaptureButton({
       setIsCapturing(false);
       toast.error(`Failed to capture image: ${error}`);
     }
-  }, [
-    stream,
-    orientation,
-    currentLocation,
-    generateUploadUrl,
-    saveCapturedImage,
-  ]);
+  }, [stream, orientation, currentLocation]);
 
   // Toggle orientation
   const toggleOrientation = () => {
@@ -265,39 +240,31 @@ export function CameraCaptureButton({
   }, [stream]);
 
   // Delete image handler
-  const handleDeleteImage = useCallback(
-    async (imageId: string) => {
-      if (!confirm("Are you sure you want to delete this image?")) {
-        return;
-      }
+  const handleDeleteImage = useCallback(async (imageId: string) => {
+    if (!confirm("Are you sure you want to delete this image?")) {
+      return;
+    }
 
-      try {
-        await deleteCapturedImage({ id: imageId as Id<"capturedImages"> });
-        toast.success("Image deleted successfully");
-      } catch (error) {
-        toast.error(`Failed to delete image: ${error}`);
-      }
-    },
-    [deleteCapturedImage],
-  );
+    try {
+      await deleteCapturedImage(imageId);
+      toast.success("Image deleted successfully");
+    } catch (error) {
+      toast.error(`Failed to delete image: ${error}`);
+    }
+  }, []);
 
   // Analyze image handler
   const handleAnalyzeImage = useCallback(
-    async (
-      imageId: string,
-      imageUrl: string,
-      latitude?: number,
-      longitude?: number,
-    ) => {
+    async (imageId: string, latitude?: number, longitude?: number) => {
       setAnalyzingImages((prev) => new Set(prev).add(imageId));
 
       try {
         const result = await moderateAndAnalyzeImageAction(
           imageId,
-          imageUrl,
           latitude,
           longitude,
         );
+        notifyCapturedImagesChanged();
 
         if (result.deleted) {
           toast.warning("Image was removed due to inappropriate content");
@@ -440,7 +407,7 @@ export function CameraCaptureButton({
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {capturedImages.map((image) => (
                     <div
-                      key={image._id}
+                      key={image.id}
                       className="relative group rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-shadow"
                     >
                       <Image
@@ -457,7 +424,7 @@ export function CameraCaptureButton({
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleDeleteImage(image._id);
+                              handleDeleteImage(image.id);
                             }}
                             className="bg-red-500/80 hover:bg-red-600 text-white p-2 rounded-lg transition-colors"
                             title="Delete image"
@@ -489,7 +456,7 @@ export function CameraCaptureButton({
                                         .slice(0, 2)
                                         .map((landmark, idx) => (
                                           <span
-                                            key={`${image._id}-landmark-${idx}`}
+                                            key={`${image.id}-landmark-${idx}`}
                                             className="inline-block px-1 py-0.5 text-[10px] bg-purple-500/30 text-purple-200 rounded"
                                           >
                                             {landmark}
@@ -513,7 +480,7 @@ export function CameraCaptureButton({
                                         .slice(0, 2)
                                         .map((clue, idx) => (
                                           <span
-                                            key={`${image._id}-clue-${idx}`}
+                                            key={`${image.id}-clue-${idx}`}
                                             className="inline-block px-1 py-0.5 text-[10px] bg-green-500/30 text-green-200 rounded"
                                           >
                                             {clue}
@@ -541,7 +508,7 @@ export function CameraCaptureButton({
                                     .slice(0, 3)
                                     .map((obj, idx) => (
                                       <span
-                                        key={`${image._id}-obj-${idx}`}
+                                        key={`${image.id}-obj-${idx}`}
                                         className="inline-block px-1 py-0.5 text-[10px] bg-blue-500/30 text-blue-200 rounded"
                                         title={obj.description}
                                       >
@@ -556,23 +523,21 @@ export function CameraCaptureButton({
                                 </div>
                               </div>
                             )}
-                          {(image.analysisStatus === "not_analyzed" ||
-                            image.analysisStatus === "pending") && (
+                          {image.analysisStatus === "not_analyzed" && (
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleAnalyzeImage(
-                                  image._id,
-                                  image.imageUrl,
+                                  image.id,
                                   image.cameraGpsLatitude ?? image.latitude,
                                   image.cameraGpsLongitude ?? image.longitude,
                                 );
                               }}
-                              disabled={analyzingImages.has(image._id)}
+                              disabled={analyzingImages.has(image.id)}
                               className="mt-2 w-full px-2 py-1 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                              {analyzingImages.has(image._id)
+                              {analyzingImages.has(image.id)
                                 ? "Analyzing..."
                                 : "🤖 Analyze with AI"}
                             </button>
@@ -590,17 +555,16 @@ export function CameraCaptureButton({
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleAnalyzeImage(
-                                      image._id,
-                                      image.imageUrl,
+                                      image.id,
                                       image.cameraGpsLatitude ?? image.latitude,
                                       image.cameraGpsLongitude ??
                                         image.longitude,
                                     );
                                   }}
-                                  disabled={analyzingImages.has(image._id)}
+                                  disabled={analyzingImages.has(image.id)}
                                   className="mt-2 w-full px-2 py-1 text-xs font-medium text-white bg-yellow-600 hover:bg-yellow-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                  {analyzingImages.has(image._id)
+                                  {analyzingImages.has(image.id)
                                     ? "Analyzing..."
                                     : "⚠️ Retry (Stuck?)"}
                                 </button>
@@ -616,16 +580,15 @@ export function CameraCaptureButton({
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleAnalyzeImage(
-                                  image._id,
-                                  image.imageUrl,
+                                  image.id,
                                   image.cameraGpsLatitude ?? image.latitude,
                                   image.cameraGpsLongitude ?? image.longitude,
                                 );
                               }}
-                              disabled={analyzingImages.has(image._id)}
+                              disabled={analyzingImages.has(image.id)}
                               className="mt-2 w-full px-2 py-1 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                              {analyzingImages.has(image._id)
+                              {analyzingImages.has(image.id)
                                 ? "Analyzing..."
                                 : "🔄 Reanalyze"}
                             </button>
@@ -636,13 +599,12 @@ export function CameraCaptureButton({
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleAnalyzeImage(
-                                  image._id,
-                                  image.imageUrl,
+                                  image.id,
                                   image.cameraGpsLatitude ?? image.latitude,
                                   image.cameraGpsLongitude ?? image.longitude,
                                 );
                               }}
-                              disabled={analyzingImages.has(image._id)}
+                              disabled={analyzingImages.has(image.id)}
                               className="mt-2 w-full px-2 py-1 text-xs font-medium text-white bg-orange-600 hover:bg-orange-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               🔄 Retry Analysis

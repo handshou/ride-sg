@@ -1,6 +1,6 @@
 import { Config, Effect, Layer } from "effect";
 import type { City } from "@/providers/city-provider";
-import { ConvexService } from "./services/convex-service";
+import { InMemoryLocationRepositoryLayer } from "./repositories/in-memory-location-repository";
 import { DatabaseSearchService } from "./services/database-search-service";
 import { ExaSearchService } from "./services/exa-search-service";
 import {
@@ -27,9 +27,9 @@ import {
 // Note: Logger configuration removed to allow all logs in production for debugging
 export const SearchLayer = Layer.mergeAll(
   SearchStateService.Default,
-  ConvexService.Default,
   ExaSearchService.Default,
   DatabaseSearchService.Default,
+  InMemoryLocationRepositoryLayer,
 );
 
 /**
@@ -81,18 +81,18 @@ function calculateDistance(
 
 /**
  * Deduplicate search results by title similarity and coordinate proximity
- * Prioritizes Convex results (cached) over Exa results (fresh API data)
+ * Prioritizes database results (cached) over Exa results (fresh API data)
  */
 function deduplicateResults(
-  convexResults: SearchResult[],
+  databaseResults: SearchResult[],
   exaResults: SearchResult[],
 ): SearchResult[] {
-  const merged: SearchResult[] = [...convexResults];
+  const merged: SearchResult[] = [...databaseResults];
   const SIMILARITY_THRESHOLD = 0.7; // 70% title similarity
   const DISTANCE_THRESHOLD = 100; // 100 meters
 
   for (const exaResult of exaResults) {
-    // Check if this Exa result is similar to any existing Convex result
+    // Check if this Exa result is similar to any existing database result
     const isDuplicate = merged.some((existing) => {
       const titleSimilarity = calculateTitleSimilarity(
         existing.title,
@@ -124,12 +124,12 @@ function deduplicateResults(
  * Perform a coordinated search with parallel execution strategy
  *
  * This effect implements the following search flow:
- * 1. Search Convex database AND Exa API in parallel
+ * 1. Search the configured database AND Exa API in parallel
  * 2. Merge results from both sources
  * 3. Deduplicate based on title similarity and coordinate proximity
  * 4. Calculate distances if reference location provided
  * 5. Sort results by distance (if applicable)
- * 6. Return merged results (NO automatic saving to Convex)
+ * 6. Return merged results without automatic persistence
  *
  * This strategy ensures:
  * - Comprehensive results from both cached and fresh data
@@ -160,13 +160,13 @@ export const coordinatedSearchEffect = (
     yield* searchState.startSearch(query);
     yield* Effect.log(`Starting parallel search for: "${query}"`);
 
-    // Search both Convex and Exa in parallel
-    const [convexResults, exaResults] = yield* Effect.all(
+    // Search both the database and Exa in parallel
+    const [databaseResults, exaResults] = yield* Effect.all(
       [
-        dbService.search(query).pipe(
+        dbService.search(query, city).pipe(
           Effect.catchAll((error) =>
             Effect.gen(function* () {
-              yield* Effect.logError("Convex search failed", error);
+              yield* Effect.logError("Database search failed", error);
               return [];
             }),
           ),
@@ -184,11 +184,11 @@ export const coordinatedSearchEffect = (
     );
 
     yield* Effect.log(
-      `Parallel search results: ${convexResults.length} from Convex, ${exaResults.length} from Exa`,
+      `Parallel search results: ${databaseResults.length} from database, ${exaResults.length} from Exa`,
     );
 
     // Deduplicate and merge results
-    let mergedResults = deduplicateResults(convexResults, exaResults);
+    let mergedResults = deduplicateResults(databaseResults, exaResults);
 
     // Calculate distances if reference location provided
     if (referenceLocation) {

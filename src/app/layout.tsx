@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { ConvexClientProvider } from "@/components/convex-client-provider";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ToastProvider } from "@/components/toast-provider";
@@ -60,19 +59,17 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ErrorBoundary>
-          <ConvexClientProvider>
-            <ThemeProvider
-              attribute="class"
-              defaultTheme="light"
-              enableSystem={false}
-              disableTransitionOnChange
-            >
-              <CityProvider>
-                {children}
-                <ToastProvider />
-              </CityProvider>
-            </ThemeProvider>
-          </ConvexClientProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="light"
+            enableSystem={false}
+            disableTransitionOnChange
+          >
+            <CityProvider>
+              {children}
+              <ToastProvider />
+            </CityProvider>
+          </ThemeProvider>
         </ErrorBoundary>
       </body>
     </html>

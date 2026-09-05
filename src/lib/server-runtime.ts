@@ -1,7 +1,10 @@
 import { Effect } from "effect";
 import { getServerRuntime } from "../../instrumentation";
+import {
+  type RainfallReadingRecord,
+  RainfallRepository,
+} from "./repositories/rainfall-repository";
 import { ConfigService } from "./services/config-service";
-import { ConvexService } from "./services/convex-service";
 import {
   type GeocodeResult,
   getCurrentLocationEffect,
@@ -34,6 +37,11 @@ import { showErrorToast, showWarningToast } from "./services/toast-service";
  *
  * Type-safe: Accepts any Effect program. The runtime will provide required services
  * or fail at runtime if a service is missing from ServerLayer.
+ *
+ * Only safe once the runtime layer has been built (instrumentation.ts awaits
+ * this on startup). The PostgreSQL adapter connects asynchronously, so in
+ * development the first request can reach here before the layer is ready.
+ * Server components should prefer runServerEffectAsync.
  *
  * @param program - The Effect program to run
  * @returns The result of the Effect program
@@ -237,30 +245,27 @@ export const getMapboxPublicToken = () => {
 /**
  * Rainfall reading data structure
  */
-export type RainfallReading = {
-  stationId: string;
-  stationName: string;
-  latitude: number;
-  longitude: number;
-  value: number;
-  timestamp: string;
-  fetchedAt: number;
-};
+export type RainfallReading = RainfallReadingRecord;
+
+/** Rainfall readings fetched before this age are purged on each write. */
+const RAINFALL_RETENTION_MS = 2 * 24 * 60 * 60 * 1000;
 
 /**
- * Helper function to get rainfall data with NEA API → Convex fallback
+ * Helper function to get rainfall data with NEA API first and the
+ * RainfallRepository as fallback.
  *
  * Strategy:
- * 1. First, try to fetch fresh data from NEA API using RainfallService
- * 2. If NEA API fails, fallback to cached data in Convex database
- * 3. Return empty array if both fail
+ * 1. Fetch fresh data from NEA API using RainfallService
+ * 2. On success, write the batch through to RainfallRepository (non-fatal)
+ * 3. If NEA API fails, read the most recent batch from RainfallRepository
+ * 4. Return empty array if both fail
  *
- * This ensures the user always gets the freshest data available,
- * with Convex as a reliable fallback when the API is unavailable.
+ * The write-through replaces the old scheduled fetch job: every page render
+ * refreshes the fallback store, so no separate scheduler is required.
  */
 export const getRainfallData = () => {
   return Effect.gen(function* () {
-    yield* Effect.log("Fetching rainfall data (NEA API → Convex fallback)");
+    yield* Effect.log("Fetching rainfall data (NEA API, repository fallback)");
 
     // Try NEA API first
     const rainfallService = yield* RainfallService;
@@ -317,13 +322,27 @@ export const getRainfallData = () => {
             `Successfully fetched ${processedReadings.length} readings from NEA API`,
           );
 
+          // Write through to the fallback store; never fail the request on it
+          const repository = yield* RainfallRepository;
+          yield* repository.saveReadings(processedReadings).pipe(
+            Effect.andThen(() =>
+              repository.deleteOlderThan(fetchedAt - RAINFALL_RETENTION_MS),
+            ),
+            Effect.catchAll((error) =>
+              Effect.logWarning(
+                "Failed to persist rainfall readings to repository",
+                error,
+              ).pipe(Effect.as(0)),
+            ),
+          );
+
           return processedReadings;
         }),
       ),
       Effect.catchAll((error) =>
         Effect.gen(function* () {
           yield* Effect.logWarning(
-            "NEA API fetch failed, trying Convex fallback",
+            "NEA API fetch failed, trying repository fallback",
             error,
           );
           return yield* Effect.fail(error);
@@ -335,27 +354,27 @@ export const getRainfallData = () => {
   }).pipe(
     Effect.catchAll(() =>
       Effect.gen(function* () {
-        // Fallback to Convex database
-        yield* Effect.log("Falling back to Convex database for rainfall data");
-
-        const convexService = yield* ConvexService;
-        const convexData = yield* convexService.getLatestRainfall(false).pipe(
-          Effect.catchAll((error) =>
-            Effect.gen(function* () {
-              yield* Effect.logError(
-                "Convex fallback also failed, returning empty array",
-                error,
-              );
-              return [];
-            }),
-          ),
+        yield* Effect.log(
+          "Falling back to RainfallRepository for rainfall data",
         );
+
+        const repository = yield* RainfallRepository;
+        const fallbackData = yield* repository
+          .getLatestReadings()
+          .pipe(
+            Effect.catchAll((error) =>
+              Effect.logError(
+                "Rainfall repository fallback also failed, returning empty array",
+                error,
+              ).pipe(Effect.as([] as ReadonlyArray<RainfallReading>)),
+            ),
+          );
 
         yield* Effect.log(
-          `Retrieved ${convexData.length} readings from Convex (fallback)`,
+          `Retrieved ${fallbackData.length} readings from repository (fallback)`,
         );
 
-        return convexData;
+        return [...fallbackData];
       }),
     ),
   );

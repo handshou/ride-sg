@@ -14,7 +14,7 @@ A modern Singapore and Jakarta map explorer with intelligent landmark search, cr
 - **[Next.js 15](https://nextjs.org)** - React framework with App Router and Turbopack
 - **[React 19](https://react.dev)** - Modern UI library with latest features
 - **[Effect-TS](https://effect.website/)** - Functional programming library for TypeScript
-- **[Convex](https://convex.dev)** - Real-time backend database with caching
+- **[PostgreSQL](https://www.postgresql.org)** via `@effect/sql-pg` - Persistence behind Effect repository ports
 - **[TypeScript](https://www.typescriptlang.org)** - Type-safe development
 
 ### APIs & Data Sources
@@ -39,7 +39,7 @@ A modern Singapore and Jakarta map explorer with intelligent landmark search, cr
 
 1. **Cross-Border Navigation** - Seamless travel between Singapore and Jakarta with intelligent city detection, smooth flyTo animations (6.5s cross-border, 2.5s local), and URL updates without page reloads
 2. **City Toggle** - Quick toggle between Singapore and Jakarta with plane animation during transition, maintaining map state and supporting browser back/forward navigation
-3. **Smart Landmark Search** - AI-powered search with Exa API, automatically cached in Convex for fast retrieval
+3. **Smart Landmark Search** - AI-powered search with Exa API, saved locations persisted in PostgreSQL
 4. **Interactive Map Explorer** - Multiple map styles (satellite, streets, dark, light) with smooth flyTo animations and 3D buildings toggle
 5. **Real-time Bicycle Parking** - Live data from LTA DataMall showing nearby bicycle parking with shelter indicators, save favorites locally
 6. **Real-time Rainfall Overlay** - 2-hour rainfall nowcast with heat map visualization showing rain intensity across Singapore (live + mock modes)
@@ -52,7 +52,7 @@ A modern Singapore and Jakarta map explorer with intelligent landmark search, cr
 
 - Node.js 18+ and pnpm
 - [Mapbox Access Token](https://account.mapbox.com/access-tokens/)
-- [Convex Account](https://convex.dev)
+- Docker Desktop (local PostgreSQL)
 - [Exa API Key](https://exa.ai)
 - [LTA DataMall Account Key](https://datamall.lta.gov.sg/content/datamall/en/request-for-api.html)
 
@@ -76,12 +76,12 @@ A modern Singapore and Jakarta map explorer with intelligent landmark search, cr
    LTA_ACCOUNT_KEY=your_lta_account_key
    ```
 
-3. **Start Convex development server:**
+3. **Start PostgreSQL, run migrations, and start Next.js:**
    ```bash
-   npx convex dev
+   pnpm run dev:all
    ```
-   
-   Follow the prompts to set up your Convex project.
+
+   See `docs/POSTGRES_SETUP.md` for details.
 
 4. **Start Next.js development server:**
    ```bash
@@ -155,9 +155,9 @@ See [docs/RUNTIME_ARCHITECTURE.md](docs/RUNTIME_ARCHITECTURE.md) for details.
 
 ### Key Services
 
-**15 Effect-TS Services:** ExaSearchService, DatabaseSearchService, ConvexService, MapboxService, BicycleParkingService, RainfallService, SearchStateService, GeolocationService, RandomCoordinatesService, ToastService, ThemeSyncService, MapReadinessService, ConfigService, MapNavigationService, CrossBorderNavigationService
+**15 Effect-TS Services:** ExaSearchService, DatabaseSearchService, CapturedImageService, MapboxService, BicycleParkingService, RainfallService, SearchStateService, GeolocationService, RandomCoordinatesService, ToastService, ThemeSyncService, MapReadinessService, ConfigService, MapNavigationService, CrossBorderNavigationService
 
-**Convex Schema:** 3 tables (locations, bicycleParking, rainfall) with caching and indexing
+**PostgreSQL Schema:** 5 tables (locations, rainfall_readings, bicycle_parking_cache, captured_images, image_blobs) behind repository ports
 
 ## 📦 Project Structure
 
@@ -171,7 +171,7 @@ src/
 │   ├── actions/     # Next.js Server Actions
 │   ├── services/    # Effect-TS services
 │   └── schema/      # Effect.Schema definitions
-convex/              # Convex backend functions
+src/lib/repositories/ # Repository ports and PostgreSQL adapters
 tests/               # Playwright e2e tests
 ```
 
@@ -208,7 +208,7 @@ pnpm test:visual:local
 
 - **Map Loading**: Initial map render and controls
 - **Search Panel**: Search interface and results display  
-- **Convex Integration**: Database result badges and UI state
+- **Database Integration**: Database result badges and UI state
 
 ### Usage
 
@@ -222,13 +222,13 @@ pnpm test:visual:local
 Additional documentation in the `docs/` directory:
 
 ### Setup & Deployment
-- `CONVEX_SETUP.md` - Convex backend configuration
+- `POSTGRES_SETUP.md` - PostgreSQL persistence and repository ports
 - `DEPLOYMENT.md` - Vercel deployment instructions
 - `DEV_VS_PROD.md` - Development vs production environment setup
 
 ### Features & Architecture
 - `SEARCH_INTEGRATION.md` - Search architecture overview
-- `SCHEMA_INTEGRATION.md` - Convex schema design patterns
+- `SCHEMA_INTEGRATION.md` - Schema design patterns
 - `BICYCLE_PARKING_FEATURE.md` - Bicycle parking implementation
 - `THEME_SYNC_SERVICE.md` - Theme synchronization service
 
@@ -281,7 +281,7 @@ This project was built during the [Cursor Hackathon Singapore 2025](https://luma
 - Sponsored by Cursor, OpenAI, DeepMind, Anthropic, Groq, ElevenLabs, Supabase, Convex, Exa, and more
 
 Special thanks to the sponsors whose APIs and services power this application:
-- **Convex** - Real-time backend with caching
+- **Convex** - Original hackathon backend, since replaced by PostgreSQL
 - **Exa** - Semantic search API
 - **Mapbox** - Interactive map rendering
 

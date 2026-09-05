@@ -1,26 +1,18 @@
 "use client";
 
-import { useQuery } from "convex/react";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { logger } from "@/lib/client-logger";
+import { getMockRainfallData } from "@/lib/rainfall-mock-data";
+import type { RainfallReadingRecord } from "@/lib/repositories/rainfall-repository";
 import {
   generateBoundedGrid,
   type Point,
   SINGAPORE_BOUNDARY,
 } from "@/lib/utils/idw-interpolation";
-import { api } from "../../convex/_generated/api";
 
 interface RainfallHeatMapOverlayProps {
   map: mapboxgl.Map | null;
-  initialRainfallData: Array<{
-    stationId: string;
-    stationName: string;
-    latitude: number;
-    longitude: number;
-    value: number;
-    timestamp: string;
-    fetchedAt: number;
-  }>;
+  initialRainfallData: ReadonlyArray<RainfallReadingRecord>;
   useMockData?: boolean;
   useInterpolation?: boolean; // Enable IDW interpolation
 }
@@ -31,8 +23,8 @@ interface RainfallHeatMapOverlayProps {
  * Renders real-time rainfall data as a heat map on the Mapbox map.
  *
  * Data source:
- * - Uses initialRainfallData from server (NEA API → Convex fallback)
- * - Only queries Convex when useMockData is true for testing/demo
+ * - Uses initialRainfallData from server (NEA API, repository fallback)
+ * - Generates local mock data when useMockData is true for testing/demo
  *
  * Visualization approach:
  * - Heatmap activates even at trace rainfall (0.1mm+)
@@ -52,14 +44,12 @@ export function RainfallHeatMapOverlay({
   useMockData,
   useInterpolation = true, // Default to using interpolation
 }: RainfallHeatMapOverlayProps) {
-  // Only query Convex when using mock data (for testing/demo)
-  const mockDataFromConvex = useQuery(
-    api.rainfall.getLatestRainfall,
-    useMockData ? { useMockData: true } : "skip",
+  // Use generated mock data when requested (testing/demo), otherwise server data
+  const mockRainfallData = useMemo(
+    () => (useMockData ? getMockRainfallData() : undefined),
+    [useMockData],
   );
-
-  // Use mock data from Convex if requested, otherwise use server-fetched data
-  const rainfallData = useMockData ? mockDataFromConvex : initialRainfallData;
+  const rainfallData = useMockData ? mockRainfallData : initialRainfallData;
 
   const layerAddedRef = useRef(false);
   const sourceIdRef = useRef("rainfall-data");
@@ -88,7 +78,7 @@ export function RainfallHeatMapOverlay({
         }));
 
         // Log station data for debugging with actual raw data
-        logger.info(`📍 Raw weather stations from Convex:`);
+        logger.info(`📍 Raw weather stations:`);
         rainfallData.slice(0, 3).forEach((reading) => {
           logger.info(
             `  ${reading.stationName}: lat=${reading.latitude}, lon=${reading.longitude}, value=${reading.value}mm`,

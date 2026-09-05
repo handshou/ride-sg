@@ -1,7 +1,7 @@
 "use server";
 
 import type { City } from "@/providers/city-provider";
-import { runCoordinatedSearch } from "../search-orchestrator";
+import { coordinatedSearchEffect } from "../search-orchestrator";
 import { runServerEffectAsync } from "../server-runtime";
 import type { SearchResult } from "../services/search-state-service";
 
@@ -10,7 +10,7 @@ import type { SearchResult } from "../services/search-state-service";
  *
  * This runs on the server side using the managed runtime, keeping API keys secure.
  * The search orchestrator will:
- * 1. Search Convex first
+ * 1. Search the configured location repository
  * 2. If empty, search Exa API (server-side, secure)
  * 3. Geocode results with Mapbox (server-side, secure)
  * 4. Calculate distances if reference location provided
@@ -36,7 +36,7 @@ export async function searchLandmarksAction(
   try {
     // Run the coordinated search effect using managed runtime
     const results = await runServerEffectAsync(
-      runCoordinatedSearch(
+      coordinatedSearchEffect(
         query,
         userLocation,
         referenceLocation,

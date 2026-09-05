@@ -21,9 +21,8 @@ export interface AppConfig {
   lta: {
     accountKey: string;
   };
-  convex: {
-    deployment: string;
-    publicUrl: string;
+  database: {
+    url: string;
   };
   urls: {
     mapboxGeocoding: string;
@@ -88,17 +87,13 @@ export class ConfigService extends Effect.Service<ConfigService>()(
             ),
           ),
         },
-        convex: {
-          deployment: yield* Config.string("CONVEX_DEPLOYMENT").pipe(
-            Config.withDefault(""),
-            Config.withDescription(
-              "Convex deployment URL for database operations - server-side only",
+        database: {
+          url: yield* Config.string("DATABASE_URL").pipe(
+            Config.withDefault(
+              "postgresql://ride_sg:ride_sg@127.0.0.1:54329/ride_sg",
             ),
-          ),
-          publicUrl: yield* Config.string("NEXT_PUBLIC_CONVEX_URL").pipe(
-            Config.withDefault(""),
             Config.withDescription(
-              "Convex public URL for client-side database subscriptions",
+              "PostgreSQL connection URL - server-side only, never expose to client",
             ),
           ),
         },
@@ -139,17 +134,6 @@ export const exaApiKeyConfig = Config.string("EXA_API_KEY").pipe(
   Config.withDescription(
     "Exa API key for semantic search - server-side only, never expose to client",
   ),
-);
-
-export const convexDeploymentConfig = Config.string("CONVEX_DEPLOYMENT").pipe(
-  Config.withDefault(""),
-  Config.withDescription(
-    "Convex deployment URL for database operations - server-side only",
-  ),
-);
-
-export const convexPublicDeploymentConfig = Effect.sync(
-  () => process.env.NEXT_PUBLIC_CONVEX_URL || "",
 );
 
 export const ltaAccountKeyConfig = Config.string("LTA_ACCOUNT_KEY").pipe(

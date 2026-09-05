@@ -1,11 +1,10 @@
 "use client";
 
-import { useQuery } from "convex/react";
 import mapboxgl from "mapbox-gl";
 import { useEffect, useRef } from "react";
+import { useRandomizableLocations } from "@/hooks/use-randomizable-locations";
 import { logger } from "@/lib/client-logger";
 import { useCityContext } from "@/providers/city-provider";
-import { api } from "../../convex/_generated/api";
 
 interface SavedLocationsOverlayProps {
   map: mapboxgl.Map;
@@ -15,12 +14,9 @@ export function SavedLocationsOverlay({ map }: SavedLocationsOverlayProps) {
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const { city } = useCityContext();
 
-  // Use Convex reactive query - automatically updates when data changes!
-  // Filter by current city to only show saved locations for the active city
-  // Returns undefined during SSR or when ConvexProvider is not available
-  const locations = useQuery(api.locations.getRandomizableLocations, { city });
+  const locations = useRandomizableLocations(city);
 
-  // Reactively render markers whenever Convex data changes
+  // Render markers whenever repository data changes
   useEffect(() => {
     // Clear existing markers
     for (const marker of markersRef.current) {
@@ -37,7 +33,7 @@ export function SavedLocationsOverlay({ map }: SavedLocationsOverlayProps) {
     }
 
     logger.info(
-      `[SavedLocationsOverlay] 🔄 Rendering ${locations.length} saved location pins (real-time update)`,
+      `[SavedLocationsOverlay] Rendering ${locations.length} saved location pins`,
     );
 
     // Create native Mapbox pin marker for each saved location (blue color)
@@ -71,7 +67,7 @@ export function SavedLocationsOverlay({ map }: SavedLocationsOverlayProps) {
       }
       markersRef.current = [];
     };
-  }, [locations, map]); // Re-run whenever locations data changes from Convex!
+  }, [locations, map]);
 
   return null;
 }

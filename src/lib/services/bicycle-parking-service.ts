@@ -1,6 +1,8 @@
-import { ConvexHttpClient } from "convex/browser";
 import { Context, Effect, Schema } from "effect";
-import { api } from "../../../convex/_generated/api";
+import {
+  BicycleParkingCacheRepository,
+  type BicycleParkingCacheRepositoryService,
+} from "../repositories/bicycle-parking-cache-repository";
 import type {
   BicycleParkingResponse,
   BicycleParkingResult,
@@ -8,6 +10,12 @@ import type {
 import { BicycleParkingResponseSchema } from "../schema/bicycle-parking.schema";
 import type { AppConfig } from "./config-service";
 import { ConfigService } from "./config-service";
+
+/** Cached LTA results within this many degrees of the query point are reused. ~1 km. */
+const CACHE_QUERY_THRESHOLD_DEGREES = 0.01;
+
+/** Cached LTA results older than this are purged on each refresh. */
+const CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Bicycle Parking Service Error
@@ -20,7 +28,8 @@ export class BicycleParkingError {
 /**
  * Bicycle Parking Service Interface
  *
- * Fetches bicycle parking data from LTA DataMall API with Convex caching
+ * Fetches bicycle parking data from LTA DataMall API, caching results through
+ * the provider-neutral BicycleParkingCacheRepository.
  */
 export interface IBicycleParkingService {
   fetchNearbyParking: (
@@ -33,32 +42,10 @@ export interface IBicycleParkingService {
  * Implementation of Bicycle Parking Service
  */
 class BicycleParkingServiceImpl {
-  private convexClient: ConvexHttpClient | null = null;
-
-  constructor(private readonly config: AppConfig) {}
-
-  private getConvexClient() {
-    return Effect.gen(
-      function* (this: BicycleParkingServiceImpl) {
-        if (this.convexClient) {
-          return this.convexClient;
-        }
-
-        const deployment = this.config.convex.publicUrl;
-
-        if (!deployment || deployment === "") {
-          yield* Effect.logWarning(
-            "Convex not configured, bicycle parking cache unavailable",
-          );
-          return null;
-        }
-
-        this.convexClient = new ConvexHttpClient(deployment);
-        yield* Effect.log(`Convex client initialized for bicycle parking`);
-        return this.convexClient;
-      }.bind(this),
-    );
-  }
+  constructor(
+    private readonly config: AppConfig,
+    private readonly cache: BicycleParkingCacheRepositoryService,
+  ) {}
 
   fetchNearbyParking(
     lat: number,
@@ -70,46 +57,42 @@ class BicycleParkingServiceImpl {
           `Fetching bicycle parking near (${lat.toFixed(4)}, ${long.toFixed(4)})`,
         );
 
-        // Step 1: Check Convex cache first
-        const convexClient = yield* this.getConvexClient();
-        if (convexClient) {
-          const cachedResults = yield* Effect.tryPromise({
-            try: () =>
-              convexClient.query(
-                api.bicycleParking.getBicycleParkingByLocation,
-                {
-                  queryLatitude: lat,
-                  queryLongitude: long,
-                  radiusThreshold: 0.01, // ~1km
-                },
-              ),
-            catch: (error) =>
-              new BicycleParkingError(`Failed to query Convex cache: ${error}`),
-          }).pipe(Effect.catchAll(() => Effect.succeed([])));
+        const cacheArea = {
+          queryLatitude: lat,
+          queryLongitude: long,
+          thresholdDegrees: CACHE_QUERY_THRESHOLD_DEGREES,
+        };
 
-          if (cachedResults.length > 0) {
-            yield* Effect.log(
-              `Found ${cachedResults.length} cached bicycle parking results`,
-            );
+        // Step 1: Check cache first
+        const cachedResults = yield* this.cache
+          .findNearQueryPoint(cacheArea)
+          .pipe(
+            Effect.catchAll((error) =>
+              Effect.logWarning(
+                "Bicycle parking cache lookup failed, fetching from LTA",
+                error,
+              ).pipe(Effect.as([])),
+            ),
+          );
 
-            // Convert Convex results to BicycleParkingResult
-            const results: BicycleParkingResult[] = cachedResults.map(
-              (cached) => ({
-                id: cached._id,
-                description: cached.description,
-                latitude: cached.latitude,
-                longitude: cached.longitude,
-                rackType: cached.rackType,
-                rackCount: cached.rackCount,
-                hasShelter: cached.shelterIndicator === "Y",
-                queryLatitude: cached.queryLatitude,
-                queryLongitude: cached.queryLongitude,
-                timestamp: cached.timestamp,
-              }),
-            );
-
-            return results;
-          }
+        if (cachedResults.length > 0) {
+          yield* Effect.log(
+            `Found ${cachedResults.length} cached bicycle parking results`,
+          );
+          return cachedResults.map(
+            (cached): BicycleParkingResult => ({
+              id: cached.id,
+              description: cached.description,
+              latitude: cached.latitude,
+              longitude: cached.longitude,
+              rackType: cached.rackType,
+              rackCount: cached.rackCount,
+              hasShelter: cached.hasShelter,
+              queryLatitude: cached.queryLatitude,
+              queryLongitude: cached.queryLongitude,
+              timestamp: cached.timestamp,
+            }),
+          );
         }
 
         // Step 2: Fetch from LTA API
@@ -197,40 +180,45 @@ class BicycleParkingServiceImpl {
           }),
         );
 
-        // Step 5: Save to Convex cache
-        if (convexClient && results.length > 0) {
-          yield* Effect.tryPromise({
-            try: () =>
-              convexClient.mutation(api.bicycleParking.saveBicycleParking, {
-                parkingLocations: results.map((r) => ({
-                  description: r.description,
-                  latitude: r.latitude,
-                  longitude: r.longitude,
-                  rackType: r.rackType,
-                  rackCount: r.rackCount,
-                  shelterIndicator: r.hasShelter ? "Y" : "N",
-                  queryLatitude: r.queryLatitude,
-                  queryLongitude: r.queryLongitude,
-                  timestamp: r.timestamp,
-                })),
-                queryLatitude: lat,
-                queryLongitude: long,
-              }),
-            catch: (error) => error, // Don't fail if cache save fails
-          }).pipe(
-            Effect.catchAll((error) =>
-              Effect.gen(function* () {
-                yield* Effect.logWarning(
-                  `Failed to save bicycle parking to Convex: ${error}`,
-                );
-                return null;
-              }),
-            ),
-          );
+        // Step 5: Save to cache and purge stale entries
+        if (results.length > 0) {
+          const saved = yield* this.cache
+            .replaceForQueryPoint(
+              cacheArea,
+              results.map((r) => ({
+                description: r.description,
+                latitude: r.latitude,
+                longitude: r.longitude,
+                rackType: r.rackType,
+                rackCount: r.rackCount,
+                hasShelter: r.hasShelter,
+                queryLatitude: r.queryLatitude,
+                queryLongitude: r.queryLongitude,
+                timestamp: r.timestamp,
+              })),
+            )
+            .pipe(
+              Effect.tap((saved) =>
+                Effect.log(
+                  `Saved ${saved.length} bicycle parking locations to cache`,
+                ),
+              ),
+              Effect.catchAll((error) =>
+                Effect.logWarning(
+                  "Failed to save bicycle parking to cache",
+                  error,
+                ).pipe(Effect.as(null)),
+              ),
+            );
 
-          yield* Effect.log(
-            `Saved ${results.length} bicycle parking locations to Convex`,
-          );
+          yield* this.cache
+            .deleteOlderThan(timestamp - CACHE_MAX_AGE_MS)
+            .pipe(Effect.catchAll(() => Effect.succeed(0)));
+
+          // Prefer persisted ids so cached and fresh results share identity
+          if (saved && saved.length === results.length) {
+            return saved.map((record): BicycleParkingResult => ({ ...record }));
+          }
         }
 
         return results;
@@ -259,8 +247,9 @@ export class BicycleParkingService extends Effect.Service<BicycleParkingService>
   {
     effect: Effect.gen(function* () {
       const config = yield* ConfigService;
+      const cache = yield* BicycleParkingCacheRepository;
       yield* Effect.logDebug("🚲 BicycleParkingService initialized");
-      return new BicycleParkingServiceImpl(config);
+      return new BicycleParkingServiceImpl(config, cache);
     }),
     dependencies: [ConfigService.Default],
   },

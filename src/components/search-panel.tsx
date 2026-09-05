@@ -22,9 +22,10 @@ import { CityToggleButton } from "@/components/city-toggle-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useMobile } from "@/hooks/use-mobile";
+import { notifySavedLocationsChanged } from "@/hooks/use-randomizable-locations";
 import { useSearchState } from "@/hooks/use-search-state";
-import { deleteLocationFromConvexAction } from "@/lib/actions/delete-location-action";
-import { saveLocationToConvexAction } from "@/lib/actions/save-location-action";
+import { deleteLocationAction } from "@/lib/actions/delete-location-action";
+import { saveLocationAction } from "@/lib/actions/save-location-action";
 import { logger } from "@/lib/client-logger";
 import { getCurrentPositionEffect } from "@/lib/services/geolocation-service";
 import type { SearchResult } from "@/lib/services/search-state-service";
@@ -213,7 +214,7 @@ export function SearchPanel({
       ? [filteredResults[currentResultIndex]]
       : filteredResults;
 
-  const handleSaveToConvex = async (
+  const handleSaveLocation = async (
     result: SearchResult,
     e: React.MouseEvent,
   ) => {
@@ -224,21 +225,20 @@ export function SearchPanel({
       const {
         success,
         error: saveError,
-        id: newConvexId,
-      } = await saveLocationToConvexAction(result);
+        id: savedLocationId,
+      } = await saveLocationAction(result);
 
       if (saveError) {
         logger.error("Save failed:", saveError);
         // Show user-friendly toast error
         toast.error(`Failed to save: ${saveError}`);
       } else if (success) {
-        logger.success(`Saved to Convex: ${result.title} (ID: ${newConvexId})`);
-        // Mark as saved (turns green)
+        logger.success(
+          `Saved to database: ${result.title} (ID: ${savedLocationId})`,
+        );
         setSavedIds((prev) => new Set(prev).add(result.id));
-        // Show success toast
+        notifySavedLocationsChanged();
         toast.success(`Saved ${result.title}`);
-        // Refresh search results to get the database version with proper Convex ID
-        // This ensures the delete button will work correctly
         await search(query);
       }
     } catch (error) {
@@ -249,7 +249,7 @@ export function SearchPanel({
     }
   };
 
-  const handleDeleteFromConvex = async (
+  const handleDeleteLocation = async (
     result: SearchResult,
     e: React.MouseEvent,
   ) => {
@@ -262,8 +262,9 @@ export function SearchPanel({
     // Use toast.promise for automatic loading/success/error states
     const deletePromise = (async () => {
       try {
-        const { success, error: deleteError } =
-          await deleteLocationFromConvexAction(result.id);
+        const { success, error: deleteError } = await deleteLocationAction(
+          result.id,
+        );
 
         if (deleteError) {
           logger.error("Delete failed:", deleteError);
@@ -275,8 +276,8 @@ export function SearchPanel({
           });
           throw new Error(deleteError);
         } else if (success) {
-          logger.success(`Deleted from Convex: ${result.title}`);
-          // Refresh search to sync with Convex (will remove from actual results)
+          logger.success(`Deleted from database: ${result.title}`);
+          notifySavedLocationsChanged();
           await search(query);
           // Clear optimistic state after real data loads
           setOptimisticallyDeletedIds((prev) => {
@@ -437,7 +438,7 @@ export function SearchPanel({
                   const isDeleting = deletingId === result.id;
                   const isSaved = savedIds.has(result.id);
                   const isFromExa = result.source === "exa";
-                  const isFromConvex = result.source === "database";
+                  const isFromDatabase = result.source === "database";
 
                   return (
                     <div
@@ -495,7 +496,7 @@ export function SearchPanel({
                                 ) : (
                                   <>
                                     <Database className="h-3 w-3" />
-                                    <span>Convex</span>
+                                    <span>PostgreSQL</span>
                                   </>
                                 )}
                               </Badge>
@@ -541,11 +542,11 @@ export function SearchPanel({
 
                       {/* Action Buttons */}
                       <div className="flex items-center gap-1 pr-3">
-                        {/* Save to Convex Button - Only show for Exa results */}
+                        {/* Save button - only show for external results */}
                         {isFromExa && (
                           <button
                             type="button"
-                            onClick={(e) => handleSaveToConvex(result, e)}
+                            onClick={(e) => handleSaveLocation(result, e)}
                             disabled={isSaving}
                             className={`p-2 rounded-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed group ${
                               isSaved
@@ -570,14 +571,14 @@ export function SearchPanel({
                           </button>
                         )}
 
-                        {/* Delete from Convex Button - Only show for Convex results */}
-                        {isFromConvex && (
+                        {/* Delete button - only show for persisted results */}
+                        {isFromDatabase && (
                           <button
                             type="button"
-                            onClick={(e) => handleDeleteFromConvex(result, e)}
+                            onClick={(e) => handleDeleteLocation(result, e)}
                             disabled={isDeleting}
                             className="p-2 rounded-md text-red-600 hover:text-red-500 dark:text-red-400 dark:hover:text-red-300 hover:bg-gray-200 dark:hover:bg-gray-700/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="Delete from Convex"
+                            title="Delete from database"
                           >
                             <X
                               className={`h-4 w-4 ${isDeleting ? "animate-pulse" : ""}`}

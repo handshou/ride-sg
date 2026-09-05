@@ -1,13 +1,13 @@
 import { expect, test } from "@playwright/test";
 
 /**
- * Integration Tests: Convex UI State Validations
+ * Integration Tests: Saved-Location Database UI State Validations
  *
  * These tests verify UI state consistency and edge cases,
  * not complete user journeys.
  */
 
-test.describe("Convex UI States", () => {
+test.describe("Database UI States", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
@@ -31,7 +31,7 @@ test.describe("Convex UI States", () => {
     if (await exaResult.isVisible()) {
       // Check that there's NO delete button near this result
       const deleteButtonNearExa = exaResult.locator(
-        'button[title="Delete from Convex"]',
+        'button[title="Delete from database"]',
       );
 
       await expect(deleteButtonNearExa).not.toBeVisible();
@@ -57,7 +57,7 @@ test.describe("Convex UI States", () => {
 
     // Try to click delete button if it exists
     const deleteButton = page
-      .locator('button[title="Delete from Convex"]')
+      .locator('button[title="Delete from database"]')
       .first();
 
     if (await deleteButton.isVisible()) {

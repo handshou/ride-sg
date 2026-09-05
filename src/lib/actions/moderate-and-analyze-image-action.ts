@@ -1,10 +1,8 @@
 "use server";
 
-import { ConvexHttpClient } from "convex/browser";
 import { Config, Effect, Layer } from "effect";
-import { api } from "../../../convex/_generated/api";
-import type { Id } from "../../../convex/_generated/dataModel";
 import { runServerEffectAsync } from "../server-runtime";
+import { CapturedImageService } from "../services/captured-image-service";
 import {
   ContentModerationServiceLive,
   ContentModerationServiceTag,
@@ -22,37 +20,26 @@ import {
  */
 const moderateAndAnalyzeImageEffect = (
   imageId: string,
-  imageUrl: string,
   latitude?: number,
   longitude?: number,
 ) =>
   Effect.gen(function* () {
     yield* Effect.log("Starting analysis for image", { imageId });
-    const deployment = process.env.NEXT_PUBLIC_CONVEX_URL;
+    const imageService = yield* CapturedImageService;
 
-    if (!deployment) {
-      yield* Effect.logError("NEXT_PUBLIC_CONVEX_URL not configured");
+    // Vision APIs cannot fetch a localhost URL, so send the bytes inline
+    const imageUrl = yield* imageService.getImageDataUrl(imageId);
+    if (!imageUrl) {
       return {
         success: false,
-        error: "Convex not configured. Run 'npx convex dev' first.",
+        error: "Image not found",
       };
     }
 
-    yield* Effect.log("Convex client initialized");
-    const client = new ConvexHttpClient(deployment);
-
     // Update status to processing
-    yield* Effect.tryPromise({
-      try: () =>
-        client.mutation(api.capturedImages.updateImageAnalysis, {
-          imageId: imageId as Id<"capturedImages">,
-          analysis: "Analyzing image...",
-          status: "processing",
-        }),
-      catch: (error) => ({
-        _tag: "ConvexError" as const,
-        message: `Failed to update status: ${error}`,
-      }),
+    yield* imageService.updateAnalysis(imageId, {
+      analysis: "Analyzing image...",
+      analysisStatus: "processing",
     });
 
     // First, analyze the image to get description
@@ -302,17 +289,8 @@ const moderateAndAnalyzeImageEffect = (
         `Inappropriate content detected in image ${imageId}. Deleting...`,
       );
 
-      // Delete the image
-      yield* Effect.tryPromise({
-        try: () =>
-          client.mutation(api.capturedImages.deleteCapturedImage, {
-            id: imageId as Id<"capturedImages">,
-          }),
-        catch: (error) => ({
-          _tag: "ConvexError" as const,
-          message: `Failed to delete inappropriate image: ${error}`,
-        }),
-      });
+      // Delete the image and its stored bytes
+      yield* imageService.deleteImage(imageId);
 
       return {
         success: false,
@@ -367,37 +345,31 @@ const moderateAndAnalyzeImageEffect = (
     }
 
     // Image is safe, update with analysis
-    yield* Effect.log("Saving analysis to Convex", {
+    yield* Effect.log("Saving analysis", {
       imageId,
       analysisLength: formattedAnalysis.length,
       analyzedObjectsCount: analyzedObjects.length,
       hasGeocodedLocation: !!geocodedLocation,
     });
 
-    yield* Effect.tryPromise({
-      try: () =>
-        client.mutation(api.capturedImages.updateImageAnalysis, {
-          imageId: imageId as Id<"capturedImages">,
-          analysis: formattedAnalysis,
-          analyzedObjects:
-            analyzedObjects.length > 0 ? analyzedObjects : undefined,
-          status: "completed",
-          // Update image location with geocoded coordinates if available
-          latitude: geocodedLocation?.latitude,
-          longitude: geocodedLocation?.longitude,
-        }),
-      catch: (error) => ({
-        _tag: "ConvexError" as const,
-        message: `Failed to save analysis: ${error}`,
-      }),
-    }).pipe(
-      Effect.tap(() =>
-        Effect.log("Successfully completed analysis", {
-          imageId,
-          locationUpdated: !!geocodedLocation,
-        }),
-      ),
-    );
+    yield* imageService
+      .updateAnalysis(imageId, {
+        analysis: formattedAnalysis,
+        analyzedObjects:
+          analyzedObjects.length > 0 ? analyzedObjects : undefined,
+        analysisStatus: "completed",
+        // Update image location with geocoded coordinates if available
+        latitude: geocodedLocation?.latitude,
+        longitude: geocodedLocation?.longitude,
+      })
+      .pipe(
+        Effect.tap(() =>
+          Effect.log("Successfully completed analysis", {
+            imageId,
+            locationUpdated: !!geocodedLocation,
+          }),
+        ),
+      );
 
     yield* Effect.log("Analysis and moderation complete", { imageId });
 
@@ -422,32 +394,18 @@ const moderateAndAnalyzeImageEffect = (
             ? String(error.message)
             : String(error);
 
-        // Update image status to failed in Convex
-        const deployment = process.env.NEXT_PUBLIC_CONVEX_URL;
-        if (deployment) {
-          const client = new ConvexHttpClient(deployment);
-          yield* Effect.tryPromise({
-            try: () =>
-              client.mutation(api.capturedImages.updateImageAnalysis, {
-                imageId: imageId as Id<"capturedImages">,
-                analysis: `Error: ${errorMessage}`,
-                status: "failed",
-              }),
-            catch: (updateError) => ({
-              _tag: "ConvexError" as const,
-              message: `Failed to update error status: ${updateError}`,
-            }),
-          }).pipe(
-            Effect.catchAll((convexError) =>
-              Effect.gen(function* () {
-                yield* Effect.logError(
-                  "Failed to update error status in Convex",
-                  convexError,
-                );
-              }),
+        // Record the failure on the image so the UI can offer a retry
+        const imageService = yield* CapturedImageService;
+        yield* imageService
+          .updateAnalysis(imageId, {
+            analysis: `Error: ${errorMessage}`,
+            analysisStatus: "failed",
+          })
+          .pipe(
+            Effect.catchAll((updateError) =>
+              Effect.logError("Failed to update error status", updateError),
             ),
           );
-        }
 
         return {
           success: false,
@@ -463,7 +421,6 @@ const moderateAndAnalyzeImageEffect = (
  */
 export async function moderateAndAnalyzeImageAction(
   imageId: string,
-  imageUrl: string,
   latitude?: number,
   longitude?: number,
 ): Promise<{
@@ -477,6 +434,6 @@ export async function moderateAndAnalyzeImageAction(
   };
 }> {
   return await runServerEffectAsync(
-    moderateAndAnalyzeImageEffect(imageId, imageUrl, latitude, longitude),
+    moderateAndAnalyzeImageEffect(imageId, latitude, longitude),
   );
 }

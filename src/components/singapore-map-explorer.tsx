@@ -1,6 +1,5 @@
 "use client";
 
-import { useQuery } from "convex/react";
 import { Effect, Schema } from "effect";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTheme } from "next-themes";
@@ -26,6 +25,7 @@ import { SavedBicycleParkingOverlay } from "@/components/saved-bicycle-parking-o
 import { SavedLocationsOverlay } from "@/components/saved-locations-overlay";
 import { SearchPanel } from "@/components/search-panel";
 import { useMobile } from "@/hooks/use-mobile";
+import { useRandomizableLocations } from "@/hooks/use-randomizable-locations";
 import { logger } from "@/lib/client-logger";
 import { runClientEffectAsync } from "@/lib/client-runtime";
 import { MAPBOX_STYLES } from "@/lib/map-styles";
@@ -43,7 +43,6 @@ import {
   getTimeBasedMapStyle,
 } from "@/lib/services/theme-sync-service";
 import { useCityContext } from "@/providers/city-provider";
-import { api } from "../../convex/_generated/api";
 
 interface SingaporeMapExplorerProps {
   initialRandomCoords: { latitude: number; longitude: number };
@@ -139,78 +138,47 @@ export function SingaporeMapExplorer({
   const [show3DBuildings, setShow3DBuildings] = useState(false);
   const [currentStyleSupports3D, setCurrentStyleSupports3D] = useState(true);
 
-  // Saved locations for random navigation - using Convex reactive query
-  // Returns undefined during SSR or when ConvexProvider is not available
-  // Uses dynamic city from context - automatically refetches when city changes!
-  const convexLocations = useQuery(api.locations.getRandomizableLocations, {
-    city,
-  });
+  const locationRecords = useRandomizableLocations(city);
   const [savedLocations, setSavedLocations] = useState<
     Array<{
       latitude: number;
       longitude: number;
       title: string;
       description?: string;
-      convexId?: string;
+      databaseId?: string;
     }>
   >([]);
   const [currentLocationIndex, setCurrentLocationIndex] = useState(0);
 
-  // Reactively update saved locations when Convex data changes or city changes
   useEffect(() => {
-    logger.info(`🏙️  City context: ${city}, updating saved locations`);
+    logger.info(`🏙️ City context: ${city}, updating saved locations`);
 
-    if (!convexLocations || convexLocations.length === 0) {
-      if (convexLocations !== undefined) {
-        logger.warn(
-          `No saved locations found with isRandomizable=true for ${city}. Make sure Convex schema is deployed with 'pnpm run dev:convex'`,
-        );
-      }
+    if (!locationRecords || locationRecords.length === 0) {
       setSavedLocations([]);
       return;
     }
 
-    logger.info(
-      `🔄 Convex update: ${convexLocations.length} saved locations for ${city}`,
-    );
-
-    // Shuffle the locations array
-    const shuffled = [...convexLocations].sort(() => Math.random() - 0.5);
-
-    // Log the shuffled order
-    logger.info(
-      `🔀 Shuffled order for ${city}:`,
-      shuffled.map((loc, idx) => `${idx + 1}. ${loc.title}`).join(", "),
-    );
-
-    // Map to simple format, keeping Convex ID and description
-    const mappedLocations = shuffled.map((loc) => ({
-      latitude: loc.latitude,
-      longitude: loc.longitude,
-      title: loc.title,
-      description: loc.description,
-      convexId: loc._id, // Keep the Convex ID for proper delete functionality
+    const shuffled = [...locationRecords].sort(() => Math.random() - 0.5);
+    const mappedLocations = shuffled.map((location) => ({
+      latitude: location.latitude,
+      longitude: location.longitude,
+      title: location.title,
+      description: location.description,
+      databaseId: location.id,
     }));
 
     setSavedLocations(mappedLocations);
-    setCurrentLocationIndex(0); // Reset to start of shuffled list
-  }, [convexLocations, city]); // Re-run when Convex data or city changes!
+    setCurrentLocationIndex(0);
+  }, [locationRecords, city]);
 
-  // Automatically add saved locations as search results
   useEffect(() => {
-    // Wait for both convexLocations and addSearchResult callback to be ready
-    if (!convexLocations || convexLocations.length === 0 || !addSearchResult) {
+    if (!locationRecords || locationRecords.length === 0 || !addSearchResult) {
       return;
     }
 
-    logger.info(
-      `📍 Auto-adding ${convexLocations.length} saved locations to search results`,
-    );
-
-    // Convert each saved location to SearchResult format and add to search
-    for (const location of convexLocations) {
-      const searchResult: SearchResult = {
-        id: location._id,
+    for (const location of locationRecords) {
+      addSearchResult({
+        id: location.id,
         title: location.title,
         description: location.description,
         location: {
@@ -222,11 +190,9 @@ export function SingaporeMapExplorer({
         address: location.postalCode ? `Singapore ${location.postalCode}` : "",
         url: "",
         distance: 0,
-      };
-
-      addSearchResult(searchResult);
+      });
     }
-  }, [convexLocations, addSearchResult]);
+  }, [locationRecords, addSearchResult]);
 
   // Fetch bicycle parking for a location
   const fetchBicycleParking = useCallback(async (lat: number, long: number) => {
@@ -514,6 +480,7 @@ export function SingaporeMapExplorer({
       longitude: number;
       title?: string;
       description?: string;
+      databaseId?: string;
     }) => {
       // Update static map URL with new coordinates
       const newStaticMapUrl = `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/${newCoords.longitude},${newCoords.latitude},12/400x300?access_token=${mapboxPublicToken}`;
@@ -522,18 +489,14 @@ export function SingaporeMapExplorer({
       // If we have location info, create a SearchResult and add it to search panel
       if (newCoords.title) {
         const searchResult: SearchResult = {
-          // Use Convex ID if available (from saved locations), otherwise generate temp ID
-          // biome-ignore lint/suspicious/noExplicitAny: Optional convexId property from saved locations
-          id: (newCoords as any).convexId || `random-${Date.now()}`,
+          id: newCoords.databaseId || `random-${Date.now()}`,
           title: newCoords.title,
           description: newCoords.description || "Random location in Singapore",
           location: {
             latitude: newCoords.latitude,
             longitude: newCoords.longitude,
           },
-          // Mark as database if it has a Convex ID, otherwise mapbox
-          // biome-ignore lint/suspicious/noExplicitAny: Optional convexId property from saved locations
-          source: (newCoords as any).convexId ? "database" : "mapbox",
+          source: newCoords.databaseId ? "database" : "mapbox",
           timestamp: Date.now(),
         };
 

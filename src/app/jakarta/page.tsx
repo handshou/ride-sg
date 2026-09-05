@@ -5,19 +5,19 @@ import {
   getMapboxPublicToken,
   getSingaporeLocation,
   getStaticMap,
-  runServerEffect,
+  runServerEffectAsync,
 } from "@/lib/server-runtime";
 
-// Force dynamic rendering to enable Convex real-time subscriptions
+// Force dynamic rendering so rainfall and saved data are fetched per request
 export const dynamic = "force-dynamic";
 
 export default async function JakartaPage() {
   // Start at Jakarta's center from MapboxService
-  const jakartaCenter = runServerEffect(getJakartaCenterCoords());
+  const jakartaCenter = await runServerEffectAsync(getJakartaCenterCoords());
 
   // Get Mapbox location data (reusing Singapore's for now - can be extended)
-  const singaporeLocations = runServerEffect(getSingaporeLocation());
-  const staticMapUrl = runServerEffect(
+  const singaporeLocations = await runServerEffectAsync(getSingaporeLocation());
+  const staticMapUrl = await runServerEffectAsync(
     getStaticMap(jakartaCenter, 10, {
       width: 400,
       height: 300,
@@ -25,7 +25,7 @@ export default async function JakartaPage() {
   );
 
   // Get Mapbox public token for client-side use
-  const mapboxPublicToken = runServerEffect(getMapboxPublicToken());
+  const mapboxPublicToken = await runServerEffectAsync(getMapboxPublicToken());
 
   return (
     <ClientOnly
