@@ -7,7 +7,7 @@ Ride-SG persists all application data through Effect repository ports backed by 
 | Port (Context tag)              | Adapter                                              | Table(s)                         | Used by                                   |
 | ------------------------------- | ---------------------------------------------------- | -------------------------------- | ----------------------------------------- |
 | `LocationRepository`            | `postgres-location-repository.ts`                    | `locations`                      | save/delete/search actions, `/api/locations` |
-| `RainfallRepository`            | `postgres-rainfall-repository.ts`                    | `rainfall_readings`              | `getRainfallData` write-through and fallback |
+| `RainfallRepository`            | `postgres-rainfall-repository.ts`                    | `rainfall_latest`                | `getRainfallData` write-through and fallback |
 | `BicycleParkingCacheRepository` | `postgres-bicycle-parking-cache-repository.ts`       | `bicycle_parking_cache`          | `BicycleParkingService` LTA cache         |
 | `CapturedImageRepository`       | `postgres-captured-image-repository.ts`              | `captured_images`                | `CapturedImageService`, `/api/images`     |
 | `ImageBlobStore`                | `postgres-image-blob-store.ts`                       | `image_blobs`                    | `CapturedImageService`                    |
@@ -55,7 +55,7 @@ Override it with the server-only `DATABASE_URL` environment variable.
 
 ## Data lifecycle
 
-- Rainfall: each page render fetches NEA and writes the batch through to `rainfall_readings`, then purges readings older than 2 days. If NEA fails the latest stored batch is served. No scheduler is required.
+- Rainfall: `rainfall_latest` holds one row per NEA station (about 88 rows total). Each `/singapore` render upserts the fetched batch in a single statement and skips rows whose NEA reading timestamp is unchanged, so renders between NEA updates write nothing. If NEA fails the newest stored batch is served. No scheduler or purge is required.
 - Bicycle parking: LTA results are cached per query point (0.01 degree bounding box). Entries older than 24 hours are purged on each refresh.
 - Captured images: bytes are stored as `bytea` in `image_blobs` and served from `GET /api/images/[id]/blob` with immutable cache headers. Metadata lives in `captured_images`. Vision analysis receives a `data:` URL so it works without a public image host.
 

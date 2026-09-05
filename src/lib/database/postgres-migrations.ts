@@ -108,6 +108,22 @@ const createCapturedImagesMigration = runStatements([
    ON captured_images (analysis_status)`,
 ]);
 
+const replaceRainfallWithLatestSnapshotMigration = runStatements([
+  `CREATE TABLE IF NOT EXISTS rainfall_latest (
+    station_id TEXT PRIMARY KEY,
+    station_name TEXT NOT NULL,
+    latitude DOUBLE PRECISION NOT NULL,
+    longitude DOUBLE PRECISION NOT NULL,
+    value DOUBLE PRECISION NOT NULL,
+    reading_timestamp TEXT NOT NULL,
+    fetched_at BIGINT NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  )`,
+  // Per-fetch history grew with page traffic, not with NEA data. Nothing
+  // reads history, so the append-only table goes away.
+  `DROP TABLE IF EXISTS rainfall_readings`,
+]);
+
 /** Runs forward-only PostgreSQL migrations for every repository adapter. */
 export const runPostgresMigrations = Migrator.make({})({
   loader: Migrator.fromRecord({
@@ -116,5 +132,7 @@ export const runPostgresMigrations = Migrator.make({})({
     "0003_create_bicycle_parking_cache": createBicycleParkingCacheMigration,
     "0004_create_rainfall_readings": createRainfallReadingsMigration,
     "0005_create_captured_images": createCapturedImagesMigration,
+    "0006_replace_rainfall_with_latest_snapshot":
+      replaceRainfallWithLatestSnapshotMigration,
   }),
 });

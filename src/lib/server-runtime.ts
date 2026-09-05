@@ -247,21 +247,17 @@ export const getMapboxPublicToken = () => {
  */
 export type RainfallReading = RainfallReadingRecord;
 
-/** Rainfall readings fetched before this age are purged on each write. */
-const RAINFALL_RETENTION_MS = 2 * 24 * 60 * 60 * 1000;
-
 /**
  * Helper function to get rainfall data with NEA API first and the
  * RainfallRepository as fallback.
  *
  * Strategy:
  * 1. Fetch fresh data from NEA API using RainfallService
- * 2. On success, write the batch through to RainfallRepository (non-fatal)
- * 3. If NEA API fails, read the most recent batch from RainfallRepository
+ * 2. On success, upsert the batch into RainfallRepository (non-fatal). The
+ *    store keeps one row per station and skips rows whose NEA reading
+ *    timestamp is unchanged, so renders between NEA updates cost no writes.
+ * 3. If NEA API fails, read the latest snapshot from RainfallRepository
  * 4. Return empty array if both fail
- *
- * The write-through replaces the old scheduled fetch job: every page render
- * refreshes the fallback store, so no separate scheduler is required.
  */
 export const getRainfallData = () => {
   return Effect.gen(function* () {
@@ -324,17 +320,21 @@ export const getRainfallData = () => {
 
           // Write through to the fallback store; never fail the request on it
           const repository = yield* RainfallRepository;
-          yield* repository.saveReadings(processedReadings).pipe(
-            Effect.andThen(() =>
-              repository.deleteOlderThan(fetchedAt - RAINFALL_RETENTION_MS),
-            ),
-            Effect.catchAll((error) =>
-              Effect.logWarning(
-                "Failed to persist rainfall readings to repository",
-                error,
-              ).pipe(Effect.as(0)),
-            ),
-          );
+          const changedStations = yield* repository
+            .saveReadings(processedReadings)
+            .pipe(
+              Effect.catchAll((error) =>
+                Effect.logWarning(
+                  "Failed to persist rainfall readings to repository",
+                  error,
+                ).pipe(Effect.as(0)),
+              ),
+            );
+          if (changedStations > 0) {
+            yield* Effect.log(
+              `Rainfall snapshot updated for ${changedStations} stations`,
+            );
+          }
 
           return processedReadings;
         }),

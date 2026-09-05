@@ -12,50 +12,57 @@ const databaseUrl =
 const layer = makePostgresRainfallRepositoryLayer(databaseUrl);
 
 const reading = (
-  fetchedAt: number,
+  readingTime: string,
   stationId: string,
   value: number,
+  fetchedAt: number,
 ): RainfallReadingRecord => ({
   stationId,
   stationName: `Station ${stationId}`,
   latitude: 1.3,
   longitude: 103.8,
   value,
-  timestamp: new Date(fetchedAt).toISOString(),
+  timestamp: readingTime,
   fetchedAt,
 });
 
-describe("PostgreSQL RainfallRepository", () => {
-  it("returns only the most recent batch and purges old batches", async () => {
-    // Far-future fetchedAt so this test's batch is always the latest row set
-    const base = Date.now() + 10 * 365 * 24 * 60 * 60 * 1000;
-    const olderBatch = base - 60_000;
-    const newerBatch = base;
+describe("PostgreSQL RainfallRepository (latest snapshot)", () => {
+  it("upserts one row per station, skips unchanged readings, returns newest batch", async () => {
+    // Far-future reading times so this test's rows always win max()
+    const run = `${Date.now()}`;
+    const t1 = "2099-01-01T00:00:00+08:00";
+    const t2 = "2099-01-01T00:05:00+08:00";
+    const a = `TEST_A_${run}`;
+    const b = `TEST_B_${run}`;
+    const c = `TEST_C_${run}`;
 
     const result = await Effect.runPromise(
       Effect.gen(function* () {
         const repository = yield* RainfallRepository;
-        yield* repository.saveReadings([
-          reading(olderBatch, "T1", 1),
-          reading(olderBatch, "T2", 2),
+        const firstWrite = yield* repository.saveReadings([
+          reading(t1, a, 1, 1),
+          reading(t1, b, 2, 1),
         ]);
-        yield* repository.saveReadings([
-          reading(newerBatch, "T1", 5),
-          reading(newerBatch, "T2", 6),
-          reading(newerBatch, "T3", 7),
+        // Same NEA timestamp: nothing should change
+        const repeatWrite = yield* repository.saveReadings([
+          reading(t1, a, 1, 2),
+          reading(t1, b, 2, 2),
+        ]);
+        // NEA moved on, station b dropped out, station c appeared
+        const secondWrite = yield* repository.saveReadings([
+          reading(t2, a, 5, 3),
+          reading(t2, c, 7, 3),
         ]);
         const latest = yield* repository.getLatestReadings();
-        const deleted = yield* repository.deleteOlderThan(newerBatch);
-        const afterPurge = yield* repository.getLatestReadings();
-        // Clean up this test's rows
-        yield* repository.deleteOlderThan(newerBatch + 1);
-        return { latest, deleted, afterPurge };
+        return { firstWrite, repeatWrite, secondWrite, latest };
       }).pipe(Effect.provide(layer)),
     );
 
-    expect(result.latest.map((r) => r.stationId)).toEqual(["T1", "T2", "T3"]);
-    expect(result.latest.every((r) => r.fetchedAt === newerBatch)).toBe(true);
-    expect(result.deleted).toBe(2);
-    expect(result.afterPurge).toHaveLength(3);
+    expect(result.firstWrite).toBe(2);
+    expect(result.repeatWrite).toBe(0);
+    expect(result.secondWrite).toBe(2);
+    expect(result.latest.map((r) => r.stationId)).toEqual([a, c]);
+    expect(result.latest.every((r) => r.timestamp === t2)).toBe(true);
+    expect(result.latest.find((r) => r.stationId === a)?.value).toBe(5);
   });
 });

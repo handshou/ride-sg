@@ -10,7 +10,7 @@ Browser ──> Vercel (Next.js, serverless functions)
                 ▼
             Supabase project: handshou's Project (ap-southeast-1)
               role  ride_sg   (login, search_path = ride_sg)
-              schema ride_sg  (locations, rainfall_readings,
+              schema ride_sg  (locations, rainfall_latest,
                                bicycle_parking_cache, captured_images,
                                image_blobs, effect_sql_migrations)
 ```
@@ -83,7 +83,7 @@ Preview deployments may share the production database or get their own `ride_sg_
 
 - Request body limit is 4.5 MB on Vercel functions. `POST /api/images` rejects files over 4 MB.
 - Each function instance holds up to `DATABASE_POOL_MAX` connections. The transaction pooler multiplexes them, so 3 is plenty.
-- Rainfall write-through runs on each `/singapore` render and purges rows older than 2 days. No cron needed.
+- Rainfall write-through runs on each `/singapore` render as one upsert that skips unchanged stations. Table stays at about 88 rows. No cron needed.
 
 ## Deploy
 

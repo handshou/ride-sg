@@ -37,11 +37,12 @@ const makePostgresRainfallRepository = Effect.gen(function* () {
   const repository: RainfallRepositoryService = {
     saveReadings: (readings) =>
       Effect.gen(function* () {
-        if (readings.length === 0) return;
-        yield* sql`
-          INSERT INTO rainfall_readings ${sql.insert(
+        if (readings.length === 0) return 0;
+        // One statement: insert new stations, update stations whose NEA
+        // reading moved on, and skip rows whose reading is unchanged.
+        const changed = yield* sql<{ readonly stationId: string }>`
+          INSERT INTO rainfall_latest ${sql.insert(
             readings.map((reading) => ({
-              id: crypto.randomUUID(),
               station_id: reading.stationId,
               station_name: reading.stationName,
               latitude: reading.latitude,
@@ -51,7 +52,17 @@ const makePostgresRainfallRepository = Effect.gen(function* () {
               fetched_at: reading.fetchedAt,
             })),
           )}
+          ON CONFLICT (station_id) DO UPDATE SET
+            station_name = EXCLUDED.station_name,
+            latitude = EXCLUDED.latitude,
+            longitude = EXCLUDED.longitude,
+            value = EXCLUDED.value,
+            reading_timestamp = EXCLUDED.reading_timestamp,
+            fetched_at = EXCLUDED.fetched_at
+          WHERE rainfall_latest.reading_timestamp IS DISTINCT FROM EXCLUDED.reading_timestamp
+          RETURNING station_id AS "stationId"
         `;
+        return changed.length;
       }).pipe(
         Effect.mapError(
           (cause) => new RainfallRepositoryError("save readings", cause),
@@ -62,8 +73,10 @@ const makePostgresRainfallRepository = Effect.gen(function* () {
       Effect.gen(function* () {
         const rows = yield* sql<PostgresRainfallReadingRow>`
           SELECT ${selectColumns}
-          FROM rainfall_readings
-          WHERE fetched_at = (SELECT max(fetched_at) FROM rainfall_readings)
+          FROM rainfall_latest
+          WHERE reading_timestamp::timestamptz = (
+            SELECT max(reading_timestamp::timestamptz) FROM rainfall_latest
+          )
           ORDER BY station_id ASC
         `;
         return yield* decodeRows(rows);
@@ -72,26 +85,12 @@ const makePostgresRainfallRepository = Effect.gen(function* () {
           (cause) => new RainfallRepositoryError("get latest readings", cause),
         ),
       ),
-
-    deleteOlderThan: (cutoffTimestamp) =>
-      Effect.gen(function* () {
-        const rows = yield* sql<{ readonly id: string }>`
-          DELETE FROM rainfall_readings
-          WHERE fetched_at < ${cutoffTimestamp}
-          RETURNING id
-        `;
-        return rows.length;
-      }).pipe(
-        Effect.mapError(
-          (cause) => new RainfallRepositoryError("delete older than", cause),
-        ),
-      ),
   };
 
   return repository;
 });
 
-/** PostgreSQL implementation of the rainfall repository. */
+/** PostgreSQL implementation of the rainfall repository (one row per station). */
 export const PostgresRainfallRepositoryLayer = Layer.effect(
   RainfallRepository,
   makePostgresRainfallRepository,

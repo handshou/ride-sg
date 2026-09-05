@@ -28,21 +28,27 @@ export class RainfallRepositoryError {
   ) {}
 }
 
-/** Database-independent persistence contract for NEA rainfall readings. */
+/**
+ * Database-independent persistence contract for the latest NEA rainfall
+ * snapshot.
+ *
+ * The store keeps exactly one row per station. Saving a batch upserts each
+ * station and leaves rows untouched when the NEA reading timestamp has not
+ * changed, so repeated page renders between NEA updates cost no writes.
+ */
 export interface RainfallRepositoryService {
-  /** Stores one fetched batch of readings. All readings share `fetchedAt`. */
+  /** Upserts one fetched batch. Returns how many station rows changed. */
   readonly saveReadings: (
     readings: ReadonlyArray<RainfallReadingRecord>,
-  ) => Effect.Effect<void, RainfallRepositoryError>;
-  /** Returns the most recently fetched batch, or an empty array. */
+  ) => Effect.Effect<number, RainfallRepositoryError>;
+  /**
+   * Returns every station from the most recent NEA reading timestamp, or an
+   * empty array. Stations missing from the latest batch are excluded.
+   */
   readonly getLatestReadings: () => Effect.Effect<
     ReadonlyArray<RainfallReadingRecord>,
     RainfallRepositoryError
   >;
-  /** Deletes readings fetched before the given Unix millisecond timestamp. */
-  readonly deleteOlderThan: (
-    cutoffTimestamp: number,
-  ) => Effect.Effect<number, RainfallRepositoryError>;
 }
 
 /** Effect context tag used by application code instead of a database SDK. */

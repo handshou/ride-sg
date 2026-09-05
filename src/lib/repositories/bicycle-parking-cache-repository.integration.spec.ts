@@ -61,8 +61,12 @@ describe("PostgreSQL BicycleParkingCacheRepository", () => {
           ...area,
           queryLatitude: queryLatitude + 1,
         });
-        const deleted = yield* repository.deleteOlderThan(timestamp + 1);
-        return { first, second, nearby, farAway, deleted };
+        // Purge only this test's rows; the shared dev database may hold
+        // other fresh cache entries, so only assert on the bounding box.
+        yield* repository.replaceForQueryPoint(area, []);
+        const afterCleanup = yield* repository.findNearQueryPoint(area);
+        const deleted = yield* repository.deleteOlderThan(0);
+        return { first, second, nearby, farAway, afterCleanup, deleted };
       }).pipe(Effect.provide(layer)),
     );
 
@@ -74,6 +78,7 @@ describe("PostgreSQL BicycleParkingCacheRepository", () => {
     ]);
     expect(result.nearby[0]).toMatchObject({ hasShelter: true, rackCount: 10 });
     expect(result.farAway).toEqual([]);
-    expect(result.deleted).toBe(2);
+    expect(result.afterCleanup).toEqual([]);
+    expect(result.deleted).toBe(0);
   });
 });
