@@ -27,6 +27,7 @@ percy-snapshots/
 
 # next.js
 /.next/
+/.next-verify/
 /out/
 
 # production

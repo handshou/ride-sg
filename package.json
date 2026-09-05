@@ -13,6 +13,7 @@
     "db:provision:remote": "tsx --env-file=.env.remote scripts/provision-postgres-tenant.ts",
     "test:postgres": "pnpm run db:start && pnpm run db:migrate && vitest run src/lib/repositories/*.integration.spec.ts",
     "build": "next build --turbopack",
+    "build:verify": "NEXT_DIST_DIR=.next-verify next build --turbopack",
     "start": "next start",
     "lint": "biome check",
     "format": "biome format --write",
@@ -25,7 +26,7 @@
     "test:integration": "playwright test tests/integration",
     "test:visual": "export PERCY_TOKEN=$(grep PERCY_TOKEN .env.local | cut -d '=' -f2) && percy exec -- playwright test tests/e2e",
     "test:visual:local": "export PERCY_TOKEN=$(grep PERCY_TOKEN .env.local | cut -d '=' -f2) && percy exec -- playwright test tests/e2e --headed",
-    "check-all": "pnpm run fix && pnpm run type-check && pnpm run test && pnpm run test:e2e && pnpm run build",
+    "check-all": "pnpm run fix && pnpm run type-check && pnpm run test && pnpm run test:e2e && pnpm run build:verify",
     "pre-push": "pnpm run check-all",
     "prepare": "husky"
   },
