@@ -77,7 +77,7 @@ Keep the existing keys: `MAPBOX_ACCESS_TOKEN`, `NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN`
 
 Preview deployments may share the production database or get their own `ride_sg_preview` schema via a second provisioning run; either way set `DATABASE_URL` for the Preview environment explicitly.
 
-Build settings stay at the defaults (`pnpm install`, `next build --turbopack`). `instrumentation.ts` connects the pool when each serverless instance starts.
+`vercel.json` pins the build to `pnpm run build` and overrides the old dashboard command `npx convex deploy && pnpm run build`, which would fail now that Convex is gone. `instrumentation.ts` connects the pool when each serverless instance starts.
 
 ## Serverless limits to know
 
